@@ -2,6 +2,7 @@
 ATLAS Engine
 """
 
+from atlas.agents.technical_analyst import TechnicalAnalyst
 from atlas.core.config import AtlasConfig
 from atlas.core.logger import get_logger
 from atlas.core.registry import AgentRegistry
@@ -26,6 +27,8 @@ class AtlasEngine:
         self.registry = AgentRegistry()
 
         self.registry.register(NewsAnalyst())
+
+        self.registry.register(TechnicalAnalyst())
 
         self.analysis_service = AnalysisService(self.registry)
 

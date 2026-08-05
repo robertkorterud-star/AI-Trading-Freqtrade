@@ -6,7 +6,7 @@ from atlas.core.registry import AgentRegistry
 from atlas.core.analysis_service import AnalysisService
 
 from atlas.agents.news_analyst import NewsAnalyst
-
+from atlas.agents.technical_analyst import TechnicalAnalyst
 from atlas.decision.engine import DecisionEngine
 
 
@@ -18,6 +18,8 @@ class DashboardService:
         self.registry = AgentRegistry()
 
         self.registry.register(NewsAnalyst())
+
+        self.registry.register(TechnicalAnalyst())
 
         self.analysis = AnalysisService(self.registry)
 

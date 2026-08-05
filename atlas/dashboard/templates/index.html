@@ -21,7 +21,7 @@
 
         <div class="status">
 
-            🟢 {{ status }}
+            🟢 {{ dashboard.status }}
 
         </div>
 
@@ -71,15 +71,13 @@
 
             <ul>
 
-                <li>🟢 News Analyst</li>
+{% for analyst in dashboard.analysts %}
 
-                <li>⚪ Technical Analyst</li>
+    <li>🟢 {{ analyst.analyst }}</li>
 
-                <li>⚪ Fundamental Analyst</li>
+{% endfor %}
 
-                <li>⚪ Macro Analyst</li>
-
-            </ul>
+</ul>
 
         </section>
 
