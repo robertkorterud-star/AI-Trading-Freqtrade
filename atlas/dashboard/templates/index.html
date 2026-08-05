@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>ATLAS Dashboard</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <header>
+
+        <h1>🚀 ATLAS Dashboard</h1>
+
+        <div class="status">
+
+            🟢 {{ status }}
+
+        </div>
+
+    </header>
+
+    <main class="grid">
+
+        <section class="card">
+
+            <h2>📊 Latest Decision</h2>
+
+            <p><strong>Symbol</strong></p>
+            <p>{{ dashboard.decision.symbol }}</p>
+
+            <p><strong>Decision</strong></p>
+            <p>{{ dashboard.decision.action.value }}</p>
+
+            <p><strong>Evidence</strong></p>
+            <p>{{ dashboard.decision.evidence }}%</p>
+
+            <p><strong>Confidence</strong></p>
+            <p>{{ dashboard.decision.confidence }}%</p>
+
+        </section>
+
+        <section class="card">
+
+            <h2>💼 Portfolio</h2>
+
+            <p><strong>Capital</strong></p>
+
+            <p>{{ dashboard.capital }} NOK</p>
+
+            <p><strong>Profit Vault</strong></p>
+
+            <p>0 NOK</p>
+
+            <p><strong>Positions</strong></p>
+
+            <p>0</p>
+
+        </section>
+
+        <section class="card">
+
+            <h2>🧠 Active Analysts</h2>
+
+            <ul>
+
+                <li>🟢 News Analyst</li>
+
+                <li>⚪ Technical Analyst</li>
+
+                <li>⚪ Fundamental Analyst</li>
+
+                <li>⚪ Macro Analyst</li>
+
+            </ul>
+
+        </section>
+
+        <section class="card">
+
+            <h2>📈 Market Watch</h2>
+
+            <table>
+
+                <tr>
+
+                    <th>Symbol</th>
+
+                    <th>Signal</th>
+
+                </tr>
+
+                <tr>
+
+                    <td>BTC</td>
+
+                    <td>🟢 BUY</td>
+
+                </tr>
+
+                <tr>
+
+                    <td>ETH</td>
+
+                    <td>🟡 HOLD</td>
+
+                </tr>
+
+                <tr>
+
+                    <td>SOL</td>
+
+                    <td>🟢 BUY</td>
+
+                </tr>
+
+                <tr>
+
+                    <td>NVDA</td>
+
+                    <td>🟢 BUY</td>
+
+                </tr>
+
+            </table>
+
+        </section>
+
+    </main>
+
+    <footer>
+
+        Version {{ dashboard.version }}
+
+    </footer>
+
+</div>
+
+</body>
+
+</html>
