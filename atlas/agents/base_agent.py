@@ -1,25 +1,21 @@
 """
-Base class for all ATLAS agents.
+Base class for all ATLAS analysts.
 """
 
 from abc import ABC, abstractmethod
-from atlas.shared.types import AgentResult
+
+from atlas.models.analysis_result import AnalysisResult
 
 
 class BaseAgent(ABC):
-    """
-    Abstract base class for all ATLAS agents.
-
-    Every agent must implement the analyze() method
-    and return an AgentResult.
-    """
+    """Base class for every analyst."""
 
     def __init__(self, name: str):
         self.name = name
 
     @abstractmethod
-    def analyze(self, data) -> AgentResult:
+    def analyze(self, symbol: str) -> AnalysisResult:
         """
-        Analyze market data and return a standardized result.
+        Analyze one symbol and return a standardized result.
         """
-        pass
+        raise NotImplementedError
