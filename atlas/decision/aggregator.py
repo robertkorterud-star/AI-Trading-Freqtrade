@@ -6,9 +6,12 @@ from atlas.models.analysis_result import AnalysisResult
 
 
 class EvidenceAggregator:
-    """Combines multiple analyst results."""
+    """Combine analyst results."""
 
-    def summarize(self, results: list[AnalysisResult]) -> dict:
+    def summarize(
+        self,
+        results: list[AnalysisResult],
+    ) -> dict:
 
         if not results:
             return {
