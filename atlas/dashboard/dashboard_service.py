@@ -2,133 +2,16 @@
 Dashboard Service
 """
 
-from atlas.core.registry import AgentRegistry
-from atlas.core.analysis_service import AnalysisService
-
-from atlas.agents.news_analyst import NewsAnalyst
-from atlas.agents.technical_analyst import TechnicalAnalyst
-
-from atlas.decision.engine import DecisionEngine
-
-from atlas.adapters.news import NewsAdapter
-from atlas.services.technical_service import TechnicalService
-from atlas.services.exchange_rate_service import ExchangeRateService
+from atlas.services.dashboard_data_service import DashboardDataService
 
 
 class DashboardService:
-    """Provides data for the dashboard."""
+    """Provides dashboard data."""
 
     def __init__(self):
 
-        self.registry = AgentRegistry()
-
-        self.registry.register(NewsAnalyst())
-        self.registry.register(TechnicalAnalyst())
-
-        self.analysis = AnalysisService(self.registry)
-        self.decision = DecisionEngine()
-
-        self.news = NewsAdapter()
-        self.technical = TechnicalService()
-        self.exchange = ExchangeRateService()
+        self.data = DashboardDataService()
 
     def get_dashboard(self):
 
-        watchlist = [
-            "BTC-USD",
-            "ETH-USD",
-            "SOL-USD",
-            "NVDA",
-        ]
-
-        exchange = self.exchange.get_rate("USD", "NOK")
-
-        market = []
-
-        latest_results = None
-        latest_decision = None
-        latest_news = []
-        latest_snapshot = None
-
-        for symbol in watchlist:
-
-            # AI Analysis
-            results = self.analysis.analyze(symbol)
-
-            decision = self.decision.evaluate(results)
-
-            # Technical Analysis
-            snapshot = self.technical.get_snapshot(symbol)
-
-            price_usd = round(snapshot.price, 2)
-            price_nok = round(snapshot.price * exchange.rate, 2)
-
-            market.append(
-                {
-                    "symbol": symbol,
-                    "price_usd": price_usd,
-                    "price_nok": price_nok,
-                    "change": round(snapshot.change_percent, 2),
-                    "trend": snapshot.trend,
-                    "decision": decision.action.value,
-                    "confidence": decision.confidence,
-                    "evidence": decision.evidence,
-                }
-            )
-
-            if symbol == "BTC-USD":
-
-                latest_results = results
-                latest_decision = decision
-                latest_snapshot = snapshot
-                latest_news = self.news.latest(symbol)
-
-        return {
-
-            "status": "Running",
-
-            "version": "0.6 Alpha",
-
-            "capital": 5000,
-
-            "currency": {
-
-                "base": exchange.base,
-                "target": exchange.target,
-                "rate": round(exchange.rate, 4),
-
-            },
-
-            "decision": latest_decision,
-
-            "analysts": latest_results,
-
-            "market": market,
-
-            "news": latest_news,
-
-            "technical": {
-
-                "symbol": latest_snapshot.symbol,
-
-                "price_usd": round(latest_snapshot.price, 2),
-
-                "price_nok": round(
-                    latest_snapshot.price * exchange.rate,
-                    2,
-                ),
-
-                "change": round(
-                    latest_snapshot.change_percent,
-                    2,
-                ),
-
-                "ma20": round(latest_snapshot.ma20, 2),
-
-                "ma50": round(latest_snapshot.ma50, 2),
-
-                "trend": latest_snapshot.trend,
-
-            }
-
-        }
+        return self.data.get_dashboard_data()

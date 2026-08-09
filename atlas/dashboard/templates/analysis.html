@@ -4,7 +4,9 @@
 
 <div class="grid">
 
-    <!-- Watchlist -->
+    <!-- =======================================
+         WATCHLIST
+    ======================================== -->
 
     <div class="card">
 
@@ -26,13 +28,23 @@
 
             <tbody>
 
-                {% for item in dashboard.market %}
+            {% for item in dashboard.market %}
 
                 <tr>
 
                     <td>{{ item.symbol }}</td>
 
-                    <td>{{ item.trend }}</td>
+                    <td>
+
+                        {% if item.trend == "Bullish" %}
+                            🟢 Bullish
+                        {% elif item.trend == "Bearish" %}
+                            🔴 Bearish
+                        {% else %}
+                            🟡 Neutral
+                        {% endif %}
+
+                    </td>
 
                     <td>
 
@@ -50,7 +62,7 @@
 
                 </tr>
 
-                {% endfor %}
+            {% endfor %}
 
             </tbody>
 
@@ -58,7 +70,9 @@
 
     </div>
 
-    <!-- Technical Analysis -->
+    <!-- =======================================
+         TECHNICAL
+    ======================================== -->
 
     <div class="card">
 
@@ -68,9 +82,25 @@
 
             <tr>
 
-                <td>💰 Price</td>
+                <td>💰 Price (USD)</td>
 
-                <td>{{ dashboard.technical.price }}</td>
+                <td>
+
+                    {{ dashboard.technical.price_usd }}
+
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td>🇳🇴 Price (NOK)</td>
+
+                <td>
+
+                    {{ dashboard.technical.price_nok }}
+
+                </td>
 
             </tr>
 
@@ -78,7 +108,27 @@
 
                 <td>📈 Change</td>
 
-                <td>{{ dashboard.technical.change }}%</td>
+                <td>
+
+                    {% if dashboard.technical.change > 0 %}
+
+                        <span style="color:#22c55e">
+
+                            +{{ dashboard.technical.change }} %
+
+                        </span>
+
+                    {% else %}
+
+                        <span style="color:#ef4444">
+
+                            {{ dashboard.technical.change }} %
+
+                        </span>
+
+                    {% endif %}
+
+                </td>
 
             </tr>
 
@@ -102,7 +152,11 @@
 
                 <td>📉 Trend</td>
 
-                <td>{{ dashboard.technical.trend }}</td>
+                <td>
+
+                    {{ dashboard.technical.trend }}
+
+                </td>
 
             </tr>
 
@@ -112,25 +166,39 @@
 
         <h3>🤖 AI Consensus</h3>
 
-        <p>
+        <br>
 
-            {% if dashboard.decision.action.value == "BUY" %}
-                <span class="signal buy"></span>
-            {% elif dashboard.decision.action.value == "SELL" %}
-                <span class="signal sell"></span>
-            {% else %}
-                <span class="signal hold"></span>
-            {% endif %}
+        <h2>
 
             {{ dashboard.decision.action.value }}
 
-            ({{ dashboard.decision.confidence }}%)
+        </h2>
+
+        <br>
+
+        <p>
+
+            Confidence
+
+            {{ dashboard.decision.confidence }}%
 
         </p>
 
+        <div class="confidence-bar">
+
+            <div
+                class="confidence-fill"
+                style="width:{{ dashboard.decision.confidence }}%;">
+
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- News -->
+    <!-- =======================================
+         NEWS
+    ======================================== -->
 
     <div class="card">
 
@@ -142,15 +210,33 @@
 
                 <div class="news-item">
 
-                    <h4>{{ article.title }}</h4>
+                    <h4>
 
-                    <p>{{ article.summary }}</p>
+                        {{ article.title }}
 
-                    <small>{{ article.source }}</small>
+                    </h4>
+
+                    <br>
+
+                    <small>
+
+                        {{ article.source }}
+
+                    </small>
 
                     <br><br>
 
-                    <a href="{{ article.url }}" target="_blank">
+                    <p>
+
+                        {{ article.summary }}
+
+                    </p>
+
+                    <br>
+
+                    <a
+                        href="{{ article.url }}"
+                        target="_blank">
 
                         Read article →
 
@@ -164,7 +250,11 @@
 
         {% else %}
 
-            <p>No news found.</p>
+            <p>
+
+                No news found.
+
+            </p>
 
         {% endif %}
 

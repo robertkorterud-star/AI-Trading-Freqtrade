@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 
 <head>
 
@@ -17,6 +17,10 @@
 
 <div class="container">
 
+    <!-- =======================
+         TOP BAR
+    ======================== -->
+
     <header class="topbar">
 
         <div class="logo">
@@ -28,29 +32,59 @@
         <nav class="menu">
 
             <a href="/">Dashboard</a>
-
-            <a href="/analysis">Analyse</a>
-
+            <a href="/analysis">Analysis</a>
             <a href="/markets">Markets</a>
-
             <a href="/portfolio">Portfolio</a>
-
             <a href="/agents">Agents</a>
 
         </nav>
 
-        <div class="status">
+        <div class="top-right">
 
-            <span class="dot"></span>
+            <!-- Currency selector (frontend for now) -->
 
-            {{ dashboard.status }}
+            <select class="currency-select">
+
+                <option selected>🇺🇸 USD</option>
+                <option>🇳🇴 NOK</option>
+                <option>🇪🇺 EUR</option>
+                <option>🇸🇪 SEK</option>
+
+            </select>
+
+            <div class="status">
+
+                <div class="status-dot"></div>
+
+                {{ dashboard.status }}
+
+            </div>
 
         </div>
 
     </header>
 
+    <!-- =======================
+         PAGE CONTENT
+    ======================== -->
+
     {% block content %}
+
     {% endblock %}
+
+    <!-- =======================
+         FOOTER
+    ======================== -->
+
+    <footer>
+
+        <p>
+
+            ATLAS {{ dashboard.version }}
+
+        </p>
+
+    </footer>
 
 </div>
 
