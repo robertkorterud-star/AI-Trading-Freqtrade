@@ -12,6 +12,7 @@ from atlas.decision.engine import DecisionEngine
 
 from atlas.adapters.news import NewsAdapter
 from atlas.services.technical_service import TechnicalService
+from atlas.services.exchange_rate_service import ExchangeRateService
 
 
 class DashboardService:
@@ -29,6 +30,7 @@ class DashboardService:
 
         self.news = NewsAdapter()
         self.technical = TechnicalService()
+        self.exchange = ExchangeRateService()
 
     def get_dashboard(self):
 
@@ -38,6 +40,8 @@ class DashboardService:
             "SOL-USD",
             "NVDA",
         ]
+
+        exchange = self.exchange.get_rate("USD", "NOK")
 
         market = []
 
@@ -56,10 +60,14 @@ class DashboardService:
             # Technical Analysis
             snapshot = self.technical.get_snapshot(symbol)
 
+            price_usd = round(snapshot.price, 2)
+            price_nok = round(snapshot.price * exchange.rate, 2)
+
             market.append(
                 {
                     "symbol": symbol,
-                    "price": round(snapshot.price, 2),
+                    "price_usd": price_usd,
+                    "price_nok": price_nok,
                     "change": round(snapshot.change_percent, 2),
                     "trend": snapshot.trend,
                     "decision": decision.action.value,
@@ -79,9 +87,17 @@ class DashboardService:
 
             "status": "Running",
 
-            "version": "0.5 Beta",
+            "version": "0.6 Alpha",
 
             "capital": 5000,
+
+            "currency": {
+
+                "base": exchange.base,
+                "target": exchange.target,
+                "rate": round(exchange.rate, 4),
+
+            },
 
             "decision": latest_decision,
 
@@ -95,9 +111,17 @@ class DashboardService:
 
                 "symbol": latest_snapshot.symbol,
 
-                "price": round(latest_snapshot.price, 2),
+                "price_usd": round(latest_snapshot.price, 2),
 
-                "change": round(latest_snapshot.change_percent, 2),
+                "price_nok": round(
+                    latest_snapshot.price * exchange.rate,
+                    2,
+                ),
+
+                "change": round(
+                    latest_snapshot.change_percent,
+                    2,
+                ),
 
                 "ma20": round(latest_snapshot.ma20, 2),
 
