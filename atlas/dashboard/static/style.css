@@ -97,3 +97,150 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+/* ===== Status ===== */
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 10px #22c55e;
+}
+
+/* ===== Signals ===== */
+
+.signal {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.signal.buy {
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+}
+
+.signal.hold {
+    background: #facc15;
+    box-shadow: 0 0 8px #facc15;
+}
+
+.signal.sell {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+/* ===========================
+   TOP BAR
+=========================== */
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    margin-bottom:30px;
+}
+
+.logo{
+
+    font-size:40px;
+    font-weight:bold;
+
+    color:white;
+}
+
+.logo span{
+
+    margin-left:8px;
+}
+
+.menu{
+
+    display:flex;
+
+    gap:30px;
+}
+
+.menu a{
+
+    text-decoration:none;
+
+    color:#a8b3cf;
+
+    font-size:18px;
+
+    transition:.2s;
+}
+
+.menu a:hover{
+
+    color:#38bdf8;
+}
+
+.status{
+
+    background:#14532d;
+
+    color:white;
+
+    padding:12px 20px;
+
+    border-radius:30px;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+}
+
+.dot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    background:#22c55e;
+
+    box-shadow:0 0 12px #22c55e;
+}
+
+.card{
+
+    transition:.25s;
+}
+
+.card:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:0 0 30px rgba(56,189,248,.15);
+}
+
+.buy{
+
+    background:#22c55e;
+}
+
+.sell{
+
+    background:#ef4444;
+}
+
+.hold{
+
+    background:#facc15;
+}

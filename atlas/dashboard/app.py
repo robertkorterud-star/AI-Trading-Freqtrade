@@ -37,3 +37,63 @@ async def dashboard(request: Request):
             "dashboard": dashboard,
         },
     )
+
+
+@app.get("/analysis", response_class=HTMLResponse)
+async def analysis(request: Request):
+
+    dashboard = service.get_dashboard()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="analysis.html",
+        context={
+            "request": request,
+            "dashboard": dashboard,
+        },
+    )
+
+
+@app.get("/markets", response_class=HTMLResponse)
+async def markets(request: Request):
+
+    dashboard = service.get_dashboard()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="markets.html",
+        context={
+            "request": request,
+            "dashboard": dashboard,
+        },
+    )
+
+
+@app.get("/portfolio", response_class=HTMLResponse)
+async def portfolio(request: Request):
+
+    dashboard = service.get_dashboard()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="portfolio.html",
+        context={
+            "request": request,
+            "dashboard": dashboard,
+        },
+    )
+
+
+@app.get("/agents", response_class=HTMLResponse)
+async def agents(request: Request):
+
+    dashboard = service.get_dashboard()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="agents.html",
+        context={
+            "request": request,
+            "dashboard": dashboard,
+        },
+    )

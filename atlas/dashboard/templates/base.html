@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="no">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ATLAS</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <header class="topbar">
+
+        <div class="logo">
+
+            🚀 <span>ATLAS</span>
+
+        </div>
+
+        <nav class="menu">
+
+            <a href="/">Dashboard</a>
+
+            <a href="/analysis">Analyse</a>
+
+            <a href="/markets">Markets</a>
+
+            <a href="/portfolio">Portfolio</a>
+
+            <a href="/agents">Agents</a>
+
+        </nav>
+
+        <div class="status">
+
+            <span class="dot"></span>
+
+            {{ dashboard.status }}
+
+        </div>
+
+    </header>
+
+    {% block content %}
+    {% endblock %}
+
+</div>
+
+</body>
+
+</html>

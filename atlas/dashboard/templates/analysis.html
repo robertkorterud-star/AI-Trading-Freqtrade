@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="grid">
+
+    <!-- Watchlist -->
+
+    <div class="card">
+
+        <h2>⭐ Watchlist</h2>
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Symbol</th>
+                    <th>Trend</th>
+                    <th>AI</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for item in dashboard.market %}
+
+                <tr>
+
+                    <td>{{ item.symbol }}</td>
+
+                    <td>{{ item.trend }}</td>
+
+                    <td>
+
+                        {% if item.decision == "BUY" %}
+                            <span class="signal buy"></span>
+                        {% elif item.decision == "SELL" %}
+                            <span class="signal sell"></span>
+                        {% else %}
+                            <span class="signal hold"></span>
+                        {% endif %}
+
+                        {{ item.decision }}
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <!-- Technical Analysis -->
+
+    <div class="card">
+
+        <h2>{{ dashboard.technical.symbol }}</h2>
+
+        <table>
+
+            <tr>
+
+                <td>💰 Price</td>
+
+                <td>{{ dashboard.technical.price }}</td>
+
+            </tr>
+
+            <tr>
+
+                <td>📈 Change</td>
+
+                <td>{{ dashboard.technical.change }}%</td>
+
+            </tr>
+
+            <tr>
+
+                <td>📊 MA20</td>
+
+                <td>{{ dashboard.technical.ma20 }}</td>
+
+            </tr>
+
+            <tr>
+
+                <td>📊 MA50</td>
+
+                <td>{{ dashboard.technical.ma50 }}</td>
+
+            </tr>
+
+            <tr>
+
+                <td>📉 Trend</td>
+
+                <td>{{ dashboard.technical.trend }}</td>
+
+            </tr>
+
+        </table>
+
+        <hr>
+
+        <h3>🤖 AI Consensus</h3>
+
+        <p>
+
+            {% if dashboard.decision.action.value == "BUY" %}
+                <span class="signal buy"></span>
+            {% elif dashboard.decision.action.value == "SELL" %}
+                <span class="signal sell"></span>
+            {% else %}
+                <span class="signal hold"></span>
+            {% endif %}
+
+            {{ dashboard.decision.action.value }}
+
+            ({{ dashboard.decision.confidence }}%)
+
+        </p>
+
+    </div>
+
+    <!-- News -->
+
+    <div class="card">
+
+        <h2>📰 Latest News</h2>
+
+        {% if dashboard.news %}
+
+            {% for article in dashboard.news %}
+
+                <div class="news-item">
+
+                    <h4>{{ article.title }}</h4>
+
+                    <p>{{ article.summary }}</p>
+
+                    <small>{{ article.source }}</small>
+
+                    <br><br>
+
+                    <a href="{{ article.url }}" target="_blank">
+
+                        Read article →
+
+                    </a>
+
+                </div>
+
+                <hr>
+
+            {% endfor %}
+
+        {% else %}
+
+            <p>No news found.</p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -20,14 +20,15 @@
         <h1>🚀 ATLAS Dashboard</h1>
 
         <div class="status">
-
-            🟢 {{ dashboard.status }}
-
+            <span class="status-dot"></span>
+            {{ dashboard.status }}
         </div>
 
     </header>
 
     <main class="grid">
+
+        <!-- Latest Decision -->
 
         <section class="card">
 
@@ -37,7 +38,24 @@
             <p>{{ dashboard.decision.symbol }}</p>
 
             <p><strong>Decision</strong></p>
-            <p>{{ dashboard.decision.action.value }}</p>
+
+            <p>
+
+                {% if dashboard.decision.action.value == "BUY" %}
+
+                    <span class="signal buy"></span> BUY
+
+                {% elif dashboard.decision.action.value == "SELL" %}
+
+                    <span class="signal sell"></span> SELL
+
+                {% else %}
+
+                    <span class="signal hold"></span> HOLD
+
+                {% endif %}
+
+            </p>
 
             <p><strong>Evidence</strong></p>
             <p>{{ dashboard.decision.evidence }}%</p>
@@ -47,23 +65,24 @@
 
         </section>
 
+        <!-- Portfolio -->
+
         <section class="card">
 
             <h2>💼 Portfolio</h2>
 
             <p><strong>Capital</strong></p>
-
             <p>{{ dashboard.capital }} NOK</p>
 
             <p><strong>Profit Vault</strong></p>
-
             <p>0 NOK</p>
 
             <p><strong>Positions</strong></p>
-
             <p>0</p>
 
         </section>
+
+        <!-- Active Analysts -->
 
         <section class="card">
 
@@ -71,15 +90,20 @@
 
             <ul>
 
-{% for analyst in dashboard.analysts %}
+                {% for analyst in dashboard.analysts %}
 
-    <li>🟢 {{ analyst.analyst }}</li>
+                    <li>
+                        <span class="signal buy"></span>
+                        {{ analyst.analyst }}
+                    </li>
 
-{% endfor %}
+                {% endfor %}
 
-</ul>
+            </ul>
 
         </section>
+
+        <!-- Market Watch -->
 
         <section class="card">
 
@@ -95,37 +119,33 @@
 
                 </tr>
 
-                <tr>
-
-                    <td>BTC</td>
-
-                    <td>🟢 BUY</td>
-
-                </tr>
+                {% for item in dashboard.market %}
 
                 <tr>
 
-                    <td>ETH</td>
+                    <td>{{ item.symbol }}</td>
 
-                    <td>🟡 HOLD</td>
+                    <td>
+
+                        {% if item.decision == "BUY" %}
+
+                            <span class="signal buy"></span> BUY
+
+                        {% elif item.decision == "SELL" %}
+
+                            <span class="signal sell"></span> SELL
+
+                        {% else %}
+
+                            <span class="signal hold"></span> HOLD
+
+                        {% endif %}
+
+                    </td>
 
                 </tr>
 
-                <tr>
-
-                    <td>SOL</td>
-
-                    <td>🟢 BUY</td>
-
-                </tr>
-
-                <tr>
-
-                    <td>NVDA</td>
-
-                    <td>🟢 BUY</td>
-
-                </tr>
+                {% endfor %}
 
             </table>
 
