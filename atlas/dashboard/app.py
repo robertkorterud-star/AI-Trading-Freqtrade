@@ -3,7 +3,7 @@ ATLAS Dashboard
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -24,10 +24,20 @@ templates = Jinja2Templates(
 service = DashboardService()
 
 
+def build_dashboard(selected_symbol=None):
+    return service.get_dashboard(
+        selected_symbol=selected_symbol
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
 
-    dashboard = service.get_dashboard()
+    selected_symbol = request.query_params.get("symbol")
+
+    dashboard = build_dashboard(
+        selected_symbol=selected_symbol
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -36,6 +46,43 @@ async def dashboard(request: Request):
             "request": request,
             "dashboard": dashboard,
         },
+    )
+
+
+@app.get("/api/dashboard")
+async def dashboard_api(request: Request):
+
+    selected_symbol = request.query_params.get("symbol")
+
+    dashboard = build_dashboard(
+        selected_symbol=selected_symbol
+    )
+
+    return JSONResponse(
+        content={
+            "status": dashboard["status"],
+            "version": dashboard["version"],
+            "currency": dashboard["currency"],
+            "technical": dashboard["technical"],
+            "decision": {
+                "action": (
+                    dashboard["decision"].action.value
+                    if dashboard["decision"]
+                    else None
+                ),
+                "confidence": (
+                    dashboard["decision"].confidence
+                    if dashboard["decision"]
+                    else None
+                ),
+                "evidence": (
+                    dashboard["decision"].evidence
+                    if dashboard["decision"]
+                    else None
+                ),
+            },
+            "market": dashboard["market"],
+        }
     )
 
 

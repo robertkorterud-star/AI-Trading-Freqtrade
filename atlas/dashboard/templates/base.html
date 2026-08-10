@@ -5,11 +5,17 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>ATLAS</title>
 
-    <link rel="stylesheet" href="/static/style.css">
+    <link
+        rel="stylesheet"
+        href="/static/style.css"
+    >
 
 </head>
 
@@ -17,76 +23,61 @@
 
 <div class="container">
 
-    <!-- =======================
-         TOP BAR
-    ======================== -->
+    {% include "components/navbar.html" %}
 
-    <header class="topbar">
+    {% include "components/status_bar.html" %}
 
-        <div class="logo">
+    <main>
 
-            🚀 <span>ATLAS</span>
+        {% block content %}
+        {% endblock %}
 
-        </div>
-
-        <nav class="menu">
-
-            <a href="/">Dashboard</a>
-            <a href="/analysis">Analysis</a>
-            <a href="/markets">Markets</a>
-            <a href="/portfolio">Portfolio</a>
-            <a href="/agents">Agents</a>
-
-        </nav>
-
-        <div class="top-right">
-
-            <!-- Currency selector (frontend for now) -->
-
-            <select class="currency-select">
-
-                <option selected>🇺🇸 USD</option>
-                <option>🇳🇴 NOK</option>
-                <option>🇪🇺 EUR</option>
-                <option>🇸🇪 SEK</option>
-
-            </select>
-
-            <div class="status">
-
-                <div class="status-dot"></div>
-
-                {{ dashboard.status }}
-
-            </div>
-
-        </div>
-
-    </header>
-
-    <!-- =======================
-         PAGE CONTENT
-    ======================== -->
-
-    {% block content %}
-
-    {% endblock %}
-
-    <!-- =======================
-         FOOTER
-    ======================== -->
+    </main>
 
     <footer>
-
-        <p>
-
-            ATLAS {{ dashboard.version }}
-
-        </p>
-
+        ATLAS v0.8.1
+        <span id="atlas-refresh-status">
+            · Live refresh: 30s
+        </span>
     </footer>
 
 </div>
+
+<script>
+(function () {
+    /*
+     * ATLAS live refresh:
+     * reloads the current dashboard every 30 seconds.
+     * The current ?symbol=... URL is preserved automatically,
+     * so the selected asset remains selected.
+     *
+     * Favorites are stored in localStorage by watchlist.html
+     * and therefore also survive the refresh.
+     */
+
+    const REFRESH_MS = 30000;
+
+    let countdown = REFRESH_MS / 1000;
+    const status = document.getElementById("atlas-refresh-status");
+
+    const timer = window.setInterval(function () {
+
+        countdown -= 1;
+
+        if (status) {
+            status.textContent =
+                " · Live refresh: " + countdown + "s";
+        }
+
+        if (countdown <= 0) {
+            window.clearInterval(timer);
+            window.location.reload();
+        }
+
+    }, 1000);
+
+})();
+</script>
 
 </body>
 

@@ -1,0 +1,182 @@
+<section class="watchlist-panel">
+
+    <div class="panel-header">
+
+        <div>
+            <h2>⭐ Watchlist</h2>
+            <div class="panel-subtitle">Market overview</div>
+        </div>
+
+        <span class="watchlist-count">
+            {{ dashboard.market|length }}
+        </span>
+
+    </div>
+
+    <div class="watchlist-search">
+        <input
+            id="watchlist-search"
+            type="search"
+            placeholder="🔍 Search symbol..."
+            autocomplete="off"
+        >
+    </div>
+
+    <div class="watchlist" id="watchlist">
+
+        {% for item in dashboard.market %}
+
+        <a
+            href="/?symbol={{ item.symbol|urlencode }}"
+            class="watchlist-item{% if item.is_selected %} selected{% endif %}"
+            data-symbol="{{ item.symbol }}"
+            aria-current="{% if item.is_selected %}page{% else %}false{% endif %}"
+        >
+
+            <button
+                type="button"
+                class="favorite-button"
+                data-favorite-symbol="{{ item.symbol }}"
+                aria-label="Toggle favorite for {{ item.symbol }}"
+                title="Toggle favorite"
+            >
+                <span class="favorite-icon">☆</span>
+            </button>
+
+            <div class="watch-symbol">
+                <strong>{{ item.symbol }}</strong>
+
+                <small>
+                    {% if item.trend == "Bullish" %}
+                        <span class="signal buy"></span>
+                    {% elif item.trend == "Bearish" %}
+                        <span class="signal sell"></span>
+                    {% else %}
+                        <span class="signal hold"></span>
+                    {% endif %}
+                    {{ item.trend }}
+                </small>
+            </div>
+
+            <div class="watch-price">
+                <strong>
+                    ${{ "{:,.2f}".format(item.price_usd) }}
+                </strong>
+
+                <small class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if item.change >= 0 %}+{% endif %}{{ item.change }}%
+                </small>
+            </div>
+
+            <div class="watch-signal">
+
+                {% if item.decision == "BUY" %}
+                    <span class="signal-badge buy">BUY</span>
+                {% elif item.decision == "SELL" %}
+                    <span class="signal-badge sell">SELL</span>
+                {% else %}
+                    <span class="signal-badge hold">HOLD</span>
+                {% endif %}
+
+            </div>
+
+        </a>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+<script>
+(function () {
+    const input = document.getElementById("watchlist-search");
+    const items = document.querySelectorAll(".watchlist-item");
+    const favoriteButtons = document.querySelectorAll(".favorite-button");
+
+    const STORAGE_KEY = "atlas.favorite_symbols";
+
+    function getFavorites() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function saveFavorites(favorites) {
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(favorites)
+        );
+    }
+
+    function updateFavoriteButton(button, isFavorite) {
+        const icon = button.querySelector(".favorite-icon");
+
+        button.classList.toggle("active", isFavorite);
+        button.setAttribute(
+            "aria-pressed",
+            isFavorite ? "true" : "false"
+        );
+
+        if (icon) {
+            icon.textContent = isFavorite ? "★" : "☆";
+        }
+    }
+
+    function refreshFavorites() {
+        const favorites = getFavorites();
+
+        favoriteButtons.forEach(function (button) {
+            const symbol = button.dataset.favoriteSymbol;
+
+            updateFavoriteButton(
+                button,
+                favorites.includes(symbol)
+            );
+        });
+    }
+
+    favoriteButtons.forEach(function (button) {
+        button.addEventListener("click", function (event) {
+            /*
+             * The star sits inside the asset link.
+             * Stop the click here so clicking the star does
+             * not also open the selected asset.
+             */
+            event.preventDefault();
+            event.stopPropagation();
+
+            const symbol = button.dataset.favoriteSymbol;
+            const favorites = getFavorites();
+
+            const index = favorites.indexOf(symbol);
+
+            if (index === -1) {
+                favorites.push(symbol);
+            } else {
+                favorites.splice(index, 1);
+            }
+
+            saveFavorites(favorites);
+            refreshFavorites();
+        });
+    });
+
+    if (input) {
+        input.addEventListener("input", function () {
+            const query = this.value.trim().toLowerCase();
+
+            items.forEach(function (item) {
+                const symbol = item.dataset.symbol.toLowerCase();
+
+                item.style.display =
+                    symbol.includes(query) ? "grid" : "none";
+            });
+        });
+    }
+
+    refreshFavorites();
+})();
+</script>

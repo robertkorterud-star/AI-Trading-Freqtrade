@@ -1,166 +1,208 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block content %}
 
-    <meta charset="UTF-8">
+<div class="dashboard-layout">
 
-    <title>ATLAS Dashboard</title>
+    <!-- =================================================
+         LEFT: WATCHLIST
+         ================================================= -->
 
-    <link rel="stylesheet" href="/static/style.css">
+    <aside class="dashboard-sidebar">
 
-</head>
+        {% include "components/watchlist.html" %}
 
-<body>
+    </aside>
 
-<div class="container">
 
-    <header>
+    <!-- =================================================
+         CENTER: SELECTED ASSET + AI
+         ================================================= -->
 
-        <h1>🚀 ATLAS Dashboard</h1>
+    <section class="dashboard-main">
 
-        <div class="status">
-            <span class="status-dot"></span>
-            {{ dashboard.status }}
+        <!-- SELECTED ASSET -->
+
+        <div class="card">
+
+            <h2>📊 Selected Asset</h2>
+
+            <h3>
+                {{ dashboard.technical.symbol }}
+            </h3>
+
+            <div class="asset-price">
+
+                <strong>
+                    ${{ "{:,.2f}".format(
+                        dashboard.technical.price_usd
+                    ) }}
+                </strong>
+
+                <span
+                    class="{% if dashboard.technical.change >= 0 %}
+                        positive
+                    {% else %}
+                        negative
+                    {% endif %}"
+                >
+
+                    {% if dashboard.technical.change >= 0 %}
+                        +
+                    {% endif %}
+
+                    {{ dashboard.technical.change }}%
+
+                </span>
+
+            </div>
+
+            <hr>
+
+            <div class="technical-grid">
+
+                <div>
+                    <small>MA20</small>
+
+                    <strong>
+                        {{ dashboard.technical.ma20 }}
+                    </strong>
+                </div>
+
+                <div>
+                    <small>MA50</small>
+
+                    <strong>
+                        {{ dashboard.technical.ma50 }}
+                    </strong>
+                </div>
+
+                <div>
+                    <small>Trend</small>
+
+                    <strong>
+                        {{ dashboard.technical.trend }}
+                    </strong>
+                </div>
+
+            </div>
+
         </div>
 
-    </header>
 
-    <main class="grid">
+        <!-- AI CONSENSUS -->
 
-        <!-- Latest Decision -->
+        <div class="card">
 
-        <section class="card">
+            <h2>🤖 AI Consensus</h2>
 
-            <h2>📊 Latest Decision</h2>
-
-            <p><strong>Symbol</strong></p>
-            <p>{{ dashboard.decision.symbol }}</p>
-
-            <p><strong>Decision</strong></p>
-
-            <p>
+            <div class="consensus">
 
                 {% if dashboard.decision.action.value == "BUY" %}
 
-                    <span class="signal buy"></span> BUY
+                    <span class="signal-badge buy">
+                        BUY
+                    </span>
 
                 {% elif dashboard.decision.action.value == "SELL" %}
 
-                    <span class="signal sell"></span> SELL
+                    <span class="signal-badge sell">
+                        SELL
+                    </span>
 
                 {% else %}
 
-                    <span class="signal hold"></span> HOLD
+                    <span class="signal-badge hold">
+                        HOLD
+                    </span>
 
                 {% endif %}
 
+            </div>
+
+            <p>
+                Confidence:
+                <strong>
+                    {{ dashboard.decision.confidence }}%
+                </strong>
             </p>
 
-            <p><strong>Evidence</strong></p>
-            <p>{{ dashboard.decision.evidence }}%</p>
+            <p>
+                Evidence:
+                <strong>
+                    {{ dashboard.decision.evidence }}%
+                </strong>
+            </p>
 
-            <p><strong>Confidence</strong></p>
-            <p>{{ dashboard.decision.confidence }}%</p>
+        </div>
 
-        </section>
+    </section>
 
-        <!-- Portfolio -->
 
-        <section class="card">
+    <!-- =================================================
+         RIGHT: PORTFOLIO + NEWS
+         ================================================= -->
+
+    <aside class="dashboard-right">
+
+        <!-- PORTFOLIO -->
+
+        <div class="card">
 
             <h2>💼 Portfolio</h2>
 
-            <p><strong>Capital</strong></p>
-            <p>{{ dashboard.capital }} NOK</p>
+            <p>
+                <small>Capital</small>
+            </p>
 
-            <p><strong>Profit Vault</strong></p>
-            <p>0 NOK</p>
+            <h3>
+                {{ dashboard.capital }} NOK
+            </h3>
 
-            <p><strong>Positions</strong></p>
-            <p>0</p>
+            <p>
+                Positions:
+                <strong>0</strong>
+            </p>
 
-        </section>
+        </div>
 
-        <!-- Active Analysts -->
 
-        <section class="card">
+        <!-- NEWS -->
 
-            <h2>🧠 Active Analysts</h2>
+        <div class="card">
 
-            <ul>
+            <h2>📰 Latest News</h2>
 
-                {% for analyst in dashboard.analysts %}
+            {% if dashboard.news %}
 
-                    <li>
-                        <span class="signal buy"></span>
-                        {{ analyst.analyst }}
-                    </li>
+                {% for article in dashboard.news[:4] %}
 
-                {% endfor %}
+                    <div class="news-item">
 
-            </ul>
+                        <strong>
+                            {{ article.title }}
+                        </strong>
 
-        </section>
+                        <small>
+                            {{ article.source }}
+                        </small>
 
-        <!-- Market Watch -->
-
-        <section class="card">
-
-            <h2>📈 Market Watch</h2>
-
-            <table>
-
-                <tr>
-
-                    <th>Symbol</th>
-
-                    <th>Signal</th>
-
-                </tr>
-
-                {% for item in dashboard.market %}
-
-                <tr>
-
-                    <td>{{ item.symbol }}</td>
-
-                    <td>
-
-                        {% if item.decision == "BUY" %}
-
-                            <span class="signal buy"></span> BUY
-
-                        {% elif item.decision == "SELL" %}
-
-                            <span class="signal sell"></span> SELL
-
-                        {% else %}
-
-                            <span class="signal hold"></span> HOLD
-
-                        {% endif %}
-
-                    </td>
-
-                </tr>
+                    </div>
 
                 {% endfor %}
 
-            </table>
+            {% else %}
 
-        </section>
+                <p>
+                    No news found.
+                </p>
 
-    </main>
+            {% endif %}
 
-    <footer>
+        </div>
 
-        Version {{ dashboard.version }}
-
-    </footer>
+    </aside>
 
 </div>
 
-</body>
-
-</html>
+{% endblock %}

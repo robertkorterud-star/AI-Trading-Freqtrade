@@ -4,9 +4,7 @@
 
 <div class="grid">
 
-    <!-- =======================================
-         WATCHLIST
-    ======================================== -->
+    <!-- WATCHLIST -->
 
     <div class="card">
 
@@ -32,7 +30,20 @@
 
                 <tr>
 
-                    <td>{{ item.symbol }}</td>
+                    <td>
+
+                        <a
+                            href="/symbol/{{ item.symbol }}"
+                            style="
+                                color:white;
+                                text-decoration:none;
+                                font-weight:bold;
+                            "
+                        >
+                            {{ item.symbol }}
+                        </a>
+
+                    </td>
 
                     <td>
 
@@ -49,14 +60,12 @@
                     <td>
 
                         {% if item.decision == "BUY" %}
-                            <span class="signal buy"></span>
+                            🟢 BUY
                         {% elif item.decision == "SELL" %}
-                            <span class="signal sell"></span>
+                            🔴 SELL
                         {% else %}
-                            <span class="signal hold"></span>
+                            🟡 HOLD
                         {% endif %}
-
-                        {{ item.decision }}
 
                     </td>
 
@@ -70,9 +79,7 @@
 
     </div>
 
-    <!-- =======================================
-         TECHNICAL
-    ======================================== -->
+    <!-- ANALYSIS -->
 
     <div class="card">
 
@@ -82,25 +89,17 @@
 
             <tr>
 
-                <td>💰 Price (USD)</td>
+                <td>💰 USD</td>
 
-                <td>
-
-                    {{ dashboard.technical.price_usd }}
-
-                </td>
+                <td>{{ dashboard.technical.price_usd }}</td>
 
             </tr>
 
             <tr>
 
-                <td>🇳🇴 Price (NOK)</td>
+                <td>🇳🇴 NOK</td>
 
-                <td>
-
-                    {{ dashboard.technical.price_nok }}
-
-                </td>
+                <td>{{ dashboard.technical.price_nok }}</td>
 
             </tr>
 
@@ -108,27 +107,7 @@
 
                 <td>📈 Change</td>
 
-                <td>
-
-                    {% if dashboard.technical.change > 0 %}
-
-                        <span style="color:#22c55e">
-
-                            +{{ dashboard.technical.change }} %
-
-                        </span>
-
-                    {% else %}
-
-                        <span style="color:#ef4444">
-
-                            {{ dashboard.technical.change }} %
-
-                        </span>
-
-                    {% endif %}
-
-                </td>
+                <td>{{ dashboard.technical.change }} %</td>
 
             </tr>
 
@@ -152,11 +131,7 @@
 
                 <td>📉 Trend</td>
 
-                <td>
-
-                    {{ dashboard.technical.trend }}
-
-                </td>
+                <td>{{ dashboard.technical.trend }}</td>
 
             </tr>
 
@@ -164,7 +139,7 @@
 
         <hr>
 
-        <h3>🤖 AI Consensus</h3>
+        <h3>AI Decision</h3>
 
         <br>
 
@@ -176,13 +151,9 @@
 
         <br>
 
-        <p>
+        Confidence
 
-            Confidence
-
-            {{ dashboard.decision.confidence }}%
-
-        </p>
+        {{ dashboard.decision.confidence }}%
 
         <div class="confidence-bar">
 
@@ -196,9 +167,7 @@
 
     </div>
 
-    <!-- =======================================
-         NEWS
-    ======================================== -->
+    <!-- NEWS -->
 
     <div class="card">
 
@@ -210,29 +179,17 @@
 
                 <div class="news-item">
 
-                    <h4>
-
-                        {{ article.title }}
-
-                    </h4>
+                    <h4>{{ article.title }}</h4>
 
                     <br>
 
-                    <small>
-
-                        {{ article.source }}
-
-                    </small>
+                    <small>{{ article.source }}</small>
 
                     <br><br>
 
-                    <p>
+                    {{ article.summary }}
 
-                        {{ article.summary }}
-
-                    </p>
-
-                    <br>
+                    <br><br>
 
                     <a
                         href="{{ article.url }}"
@@ -250,11 +207,7 @@
 
         {% else %}
 
-            <p>
-
-                No news found.
-
-            </p>
+            <p>No news found.</p>
 
         {% endif %}
 

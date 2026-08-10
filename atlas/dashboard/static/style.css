@@ -1,382 +1,1176 @@
+
+dette er hva som ligger på github. 
+
+
+dette er den jeg har nå. 
+
+image(6).png
+image(7).png
+
+
+fikk melding 
+
+feil melding 
+
+nå ble det slik 
+
+fikset det nå. ble feil når jeg kopierer fra deg over til VS. måtte flytte med space til de sto slik
+
+
+
+ble en misforståelse her tror jeg. opprettet 
+
+denne blir den ikke noe python fil av. 
+
+
+
+
+
+
+
+
+
+ok fungerer. 
+
+
+
+
+trykker valuta i drop down meny skjer ingenting. 
+
+image(20260809-143249).png
+
+image(20260809-143618).png
+ingen meny på første side 
+
+image(20260809-144413).png
+oi skjedde noe 
+
+5f4736c0-070e-4ee5-8890-631e274f9efa.png
+
+43c685bd-9a8d-4421-a437-8a1f49a297fd.png
+
+5f4736c0-070e-4ee5-8890-631e274f9efa.png
+Bilde 09.08.2026 klokken 17.09 (1).png
+
+Bilde 09.08.2026 klokken 17.12.png
+Bilde 09.08.2026 klokken 17.12 (1).png
+
+Der fant vi feilen. 😄 index.html mangler selve <div class="dashboard-layout"> rundt de tre hovedkolonnene. CSS-en vi laget har regler for .dashboard-layout, men HTML-en bruker aldri klassen.
+
+Derfor blir alt stablet vertikalt.
+
+Erstatt hele index.html med denne
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="dashboard-layout">
+
+    <!-- =================================================
+         LEFT: WATCHLIST
+         ================================================= -->
+
+    <aside class="dashboard-sidebar">
+
+        {% include "components/watchlist.html" %}
+
+    </aside>
+
+
+    <!-- =================================================
+         CENTER: SELECTED ASSET + AI
+         ================================================= -->
+
+    <section class="dashboard-main">
+
+        <!-- SELECTED ASSET -->
+
+        <div class="card">
+
+            <h2>📊 Selected Asset</h2>
+
+            <h3>
+                {{ dashboard.technical.symbol }}
+            </h3>
+
+            <div class="asset-price">
+
+                <strong>
+                    ${{ "{:,.2f}".format(
+                        dashboard.technical.price_usd
+                    ) }}
+                </strong>
+
+                <span
+                    class="{% if dashboard.technical.change >= 0 %}
+                        positive
+                    {% else %}
+                        negative
+                    {% endif %}"
+                >
+
+                    {% if dashboard.technical.change >= 0 %}
+                        +
+                    {% endif %}
+
+                    {{ dashboard.technical.change }}%
+
+                </span>
+
+            </div>
+
+            <hr>
+
+            <div class="technical-grid">
+
+                <div>
+                    <small>MA20</small>
+
+                    <strong>
+                        {{ dashboard.technical.ma20 }}
+                    </strong>
+                </div>
+
+                <div>
+                    <small>MA50</small>
+
+                    <strong>
+                        {{ dashboard.technical.ma50 }}
+                    </strong>
+                </div>
+
+                <div>
+                    <small>Trend</small>
+
+                    <strong>
+                        {{ dashboard.technical.trend }}
+                    </strong>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- AI CONSENSUS -->
+
+        <div class="card">
+
+            <h2>🤖 AI Consensus</h2>
+
+            <div class="consensus">
+
+                {% if dashboard.decision.action.value == "BUY" %}
+
+                    <span class="signal-badge buy">
+                        BUY
+                    </span>
+
+                {% elif dashboard.decision.action.value == "SELL" %}
+
+                    <span class="signal-badge sell">
+                        SELL
+                    </span>
+
+                {% else %}
+
+                    <span class="signal-badge hold">
+                        HOLD
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+            <p>
+                Confidence:
+                <strong>
+                    {{ dashboard.decision.confidence }}%
+                </strong>
+            </p>
+
+            <p>
+                Evidence:
+                <strong>
+                    {{ dashboard.decision.evidence }}%
+                </strong>
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- =================================================
+         RIGHT: PORTFOLIO + NEWS
+         ================================================= -->
+
+    <aside class="dashboard-right">
+
+        <!-- PORTFOLIO -->
+
+        <div class="card">
+
+            <h2>💼 Portfolio</h2>
+
+            <p>
+                <small>Capital</small>
+            </p>
+
+            <h3>
+                {{ dashboard.capital }} NOK
+            </h3>
+
+            <p>
+                Positions:
+                <strong>0</strong>
+            </p>
+
+        </div>
+
+
+        <!-- NEWS -->
+
+        <div class="card">
+
+            <h2>📰 Latest News</h2>
+
+            {% if dashboard.news %}
+
+                {% for article in dashboard.news[:4] %}
+
+                    <div class="news-item">
+
+                        <strong>
+                            {{ article.title }}
+                        </strong>
+
+                        <small>
+                            {{ article.source }}
+                        </small>
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <p>
+                    No news found.
+                </p>
+
+            {% endif %}
+
+        </div>
+
+    </aside>
+
+</div>
+
+{% endblock %}
+Det viktige som er nytt
+Dette er hele forskjellen som manglet:
+
+<div class="dashboard-layout">
+
+    <aside class="dashboard-sidebar">
+        ...
+    </aside>
+
+    <section class="dashboard-main">
+        ...
+    </section>
+
+    <aside class="dashboard-right">
+        ...
+    </aside>
+
+</div>
+Nå matcher HTML-en CSS-en:
+
+.dashboard-layout
+        │
+        ├── dashboard-sidebar
+        │       └── Watchlist
+        │
+        ├── dashboard-main
+        │       ├── Selected Asset
+        │       └── AI Consensus
+        │
+        └── dashboard-right
+                ├── Portfolio
+                └── Latest News
+Og på skjermen skal vi nå få tre kolonner, ikke fire store kort under hverandre.
+
+Lagre filen og refresh siden. Ikke gjør flere endringer enn dette ennå. Dette er akkurat den strukturelle feilen vi lette etter. 🚀
+
+
+Bilde 09.08.2026 klokken 17.16.png
+Bilde 09.08.2026 klokken 17.15.png
+
+Jobbet i 7s
+Ja, nå ser jeg det. 👍 HTML-strukturen er riktig, men CSS-gridet blir fortsatt slått av. Det er derfor Watchlist og Selected Asset fortsatt havner under hverandre.
+
+Det er sannsynligvis en viewport/media-query eller CSS-konflikt. Vi kan løse dette robust ved å gjøre hovedlayouten mer spesifikk og ikke la den gamle .grid-stylingen påvirke den.
+
+Bytt bare denne delen i style.css
+Finn:
+
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 280px minmax(400px, 1fr) 330px;
+    gap: 22px;
+    align-items: start;
+}
+og erstatt med:
+
+main .dashboard-layout {
+    display: grid !important;
+    grid-template-columns: 280px minmax(500px, 1fr) 330px !important;
+    gap: 22px;
+    width: 100%;
+    align-items: start;
+}
+
+main .dashboard-layout > .dashboard-sidebar {
+    grid-column: 1;
+}
+
+main .dashboard-layout > .dashboard-main {
+    grid-column: 2;
+}
+
+main .dashboard-layout > .dashboard-right {
+    grid-column: 3;
+}
+Og veldig viktig: litt lenger ned i CSS-en har vi denne media-queryen:
+
+@media (max-width: 1250px) {
+
+    .dashboard-layout {
+        grid-template-columns: 240px minmax(350px, 1fr);
+    }
+
+    .dashboard-right {
+        grid-column: 2;
+    }
+
+}
+Slett hele den blokken.
+
+La bare mobil-blokken stå:
+
+@media (max-width: 900px) {
+
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-sidebar,
+    .dashboard-main,
+    .dashboard-right {
+        grid-column: auto;
+    }
+
+    .topbar,
+    header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .top-right {
+        justify-content: center;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+Men før du refresh-er
+Kjør dette i terminalen:
+
+grep -n -A12 "dashboard-layout" atlas/dashboard/static/style.css
+Send meg resultatet.
+
+Da ser jeg nøyaktig hvilken CSS som faktisk ligger i filen, og vi slipper å gjøre flere endringer på måfå. Vi er veldig nær nå. 😄🚀
+
+
+kan du lage css fila
+
+Ja 👍 Jeg har laget en komplett ny style.css med den korrigerte 3-kolonne-layouten.
+
+Last ned den nye style.css
+
+Legg den inn som:
+
+atlas/dashboard/static/style.css
+Deretter refresh dashboardet med Cmd + Shift + R i nettleseren, så får vi lastet CSS-en helt på nytt. 
+
+
+style.css
+Kode
+
+
+Bibliotek
+/
+style.css
+
+
 /* =====================================================
-   ATLAS v0.6
-===================================================== */
+   ATLAS Dashboard v0.8.1
+   ===================================================== */
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-body{
-
-    background:#0f172a;
-
-    color:#f8fafc;
-
-    font-family:Arial, Helvetica, sans-serif;
-
-    min-height:100vh;
+html,
+body {
+    min-height: 100%;
 }
 
-.container{
-
-    max-width:1500px;
-
-    margin:auto;
-
-    padding:30px;
+body {
+    background: #0f172a;
+    color: #f8fafc;
+    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
 }
 
-/* =====================================================
-   TOP BAR
-===================================================== */
-
-.topbar{
-
-    display:flex;
-
-    justify-content:space-between;
-
-    align-items:center;
-
-    margin-bottom:35px;
-
-    padding-bottom:20px;
-
-    border-bottom:1px solid #253046;
-}
-
-.logo{
-
-    font-size:38px;
-
-    font-weight:bold;
-
-    color:white;
-}
-
-.logo span{
-
-    margin-left:8px;
-}
-
-.menu{
-
-    display:flex;
-
-    gap:28px;
-}
-
-.menu a{
-
-    color:#94a3b8;
-
-    text-decoration:none;
-
-    transition:.25s;
-
-    font-size:17px;
-}
-
-.menu a:hover{
-
-    color:#38bdf8;
-}
-
-.top-right{
-
-    display:flex;
-
-    align-items:center;
-
-    gap:18px;
-}
-
-.currency-select{
-
-    background:#1e293b;
-
-    color:white;
-
-    border:1px solid #334155;
-
-    border-radius:10px;
-
-    padding:10px 16px;
-
-    cursor:pointer;
-}
-
-.status{
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-
-    background:#14532d;
-
-    padding:10px 18px;
-
-    border-radius:25px;
-
-    color:white;
-}
-
-.status-dot{
-
-    width:12px;
-
-    height:12px;
-
-    border-radius:50%;
-
-    background:#22c55e;
-
-    box-shadow:0 0 12px #22c55e;
+.container {
+    width: 100%;
+    max-width: 1700px;
+    margin: 0 auto;
+    padding: 24px 28px 30px;
 }
 
 /* =====================================================
-   GRID
-===================================================== */
+   NAVBAR / TOP BAR
+   ===================================================== */
 
-.grid{
+.topbar,
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 14px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #253046;
+}
 
-    display:grid;
+.logo,
+.logo a {
+    color: #f8fafc;
+    text-decoration: none;
+    font-size: 27px;
+    font-weight: 700;
+}
 
-    grid-template-columns:1fr 1fr 1fr;
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
 
-    gap:25px;
+.menu a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 16px;
+    transition: color .2s ease;
+}
+
+.menu a:hover {
+    color: #38bdf8;
+}
+
+.top-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.currency-select {
+    background: #1e293b;
+    color: #fff;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 9px 12px;
+    cursor: pointer;
 }
 
 /* =====================================================
-   CARD
-===================================================== */
+   STATUS
+   ===================================================== */
 
-.card{
-
-    background:#1e293b;
-
-    border-radius:16px;
-
-    padding:24px;
-
-    border:1px solid #334155;
-
-    transition:.25s;
+.status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #14532d;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 25px;
+    font-weight: 700;
 }
 
-.card:hover{
-
-    transform:translateY(-4px);
-
-    border-color:#38bdf8;
-
-    box-shadow:0 12px 30px rgba(56,189,248,.15);
-}
-
-.card h2{
-
-    margin-bottom:20px;
-
-    color:#38bdf8;
-}
-
-.card h3{
-
-    margin-top:20px;
-}
-
-hr{
-
-    border:none;
-
-    border-top:1px solid #334155;
-
-    margin:20px 0;
+.status-dot {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 12px #22c55e;
 }
 
 /* =====================================================
-   TABLE
-===================================================== */
+   MAIN DASHBOARD
+   ===================================================== */
 
-table{
+/*
+   IMPORTANT:
+   This is the main three-column layout.
 
-    width:100%;
+   Column 1 = Watchlist
+   Column 2 = Selected Asset + AI
+   Column 3 = Portfolio + News
+*/
 
-    border-collapse:collapse;
+main .dashboard-layout {
+    display: grid !important;
+    grid-template-columns: 280px minmax(0, 1fr) 330px !important;
+    gap: 22px;
+    width: 100%;
+    align-items: start;
 }
 
-th{
-
-    text-align:left;
-
-    padding:12px 0;
-
-    color:#94a3b8;
-
-    border-bottom:1px solid #334155;
+main .dashboard-layout > .dashboard-sidebar {
+    grid-column: 1;
+    min-width: 0;
 }
 
-td{
-
-    padding:12px 0;
-
-    border-bottom:1px solid rgba(255,255,255,.05);
+main .dashboard-layout > .dashboard-main {
+    grid-column: 2;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
 }
 
-/* =====================================================
-   SIGNALS
-===================================================== */
-
-.signal{
-
-    display:inline-block;
-
-    width:12px;
-
-    height:12px;
-
-    border-radius:50%;
-
-    margin-right:8px;
-}
-
-.buy{
-
-    background:#22c55e;
-
-    box-shadow:0 0 8px #22c55e;
-}
-
-.sell{
-
-    background:#ef4444;
-
-    box-shadow:0 0 8px #ef4444;
-}
-
-.hold{
-
-    background:#facc15;
-
-    box-shadow:0 0 8px #facc15;
+main .dashboard-layout > .dashboard-right {
+    grid-column: 3;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
 }
 
 /* =====================================================
-   CONFIDENCE BAR
-===================================================== */
+   WATCHLIST
+   ===================================================== */
 
-.confidence-bar{
-
-    width:100%;
-
-    height:14px;
-
-    background:#0f172a;
-
-    border-radius:10px;
-
-    overflow:hidden;
-
-    margin-top:12px;
+.watchlist-panel {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 20px;
 }
 
-.confidence-fill{
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+}
 
-    height:100%;
+.panel-header h2 {
+    color: #38bdf8;
+    font-size: 23px;
+    margin-bottom: 4px;
+}
 
-    background:linear-gradient(
-        90deg,
-        #22c55e,
-        #38bdf8
-    );
+.panel-subtitle {
+    color: #94a3b8;
+    font-size: 13px;
+}
 
-    border-radius:10px;
+.watchlist-count {
+    background: #0f172a;
+    color: #38bdf8;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.watchlist-search {
+    margin-bottom: 14px;
+}
+
+.watchlist-search input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 9px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #fff;
+    outline: none;
+    font-size: 14px;
+}
+
+.watchlist-search input::placeholder {
+    color: #64748b;
+}
+
+.watchlist-search input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, .12);
+}
+
+.watchlist {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.watchlist-item {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+    padding: 11px 9px;
+    border-radius: 10px;
+    color: #f8fafc;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: background .2s ease, border-color .2s ease;
+}
+
+.watchlist-item:hover {
+    background: #253247;
+    border-color: #334155;
+}
+
+.watchlist-item.selected {
+    background: #172b3f;
+    border-color: #38bdf8;
+    box-shadow: inset 3px 0 0 #38bdf8;
+}
+
+.favorite {
+    color: #facc15;
+    font-size: 17px;
+    line-height: 1;
+}
+
+.watch-symbol {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.watch-symbol strong {
+    font-size: 14px;
+}
+
+.watch-symbol small {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.watch-price,
+.watch-signal {
+    grid-column: 2;
+}
+
+.watch-price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.watch-price strong {
+    font-size: 13px;
+}
+
+.watch-price small {
+    font-size: 12px;
+}
+
+.watch-signal {
+    margin-top: 3px;
+}
+
+/* =====================================================
+   CARDS
+   ===================================================== */
+
+.card {
+    width: 100%;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 24px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .35);
+}
+
+.card h2 {
+    margin-bottom: 20px;
+    color: #38bdf8;
+    font-size: 25px;
+}
+
+.card h3 {
+    margin-top: 10px;
+    font-size: 22px;
+}
+
+.card p {
+    margin-bottom: 10px;
+}
+
+.card small {
+    color: #94a3b8;
+}
+
+/* =====================================================
+   SELECTED ASSET
+   ===================================================== */
+
+.asset-price {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.asset-price strong {
+    font-size: 30px;
+}
+
+.positive {
+    color: #22c55e;
+}
+
+.negative {
+    color: #ef4444;
+}
+
+.technical-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.technical-grid > div {
+    background: #172033;
+    border: 1px solid #2d3a50;
+    border-radius: 10px;
+    padding: 13px;
+}
+
+.technical-grid small {
+    display: block;
+    margin-bottom: 7px;
+}
+
+.technical-grid strong {
+    font-size: 15px;
+}
+
+/* =====================================================
+   AI CONSENSUS
+   ===================================================== */
+
+.consensus {
+    margin: 10px 0 20px;
+}
+
+.signal-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.signal-badge.buy {
+    color: #4ade80;
+    background: rgba(34, 197, 94, .12);
+    border: 1px solid rgba(34, 197, 94, .35);
+    box-shadow: none;
+}
+
+.signal-badge.sell {
+    color: #f87171;
+    background: rgba(239, 68, 68, .12);
+    border: 1px solid rgba(239, 68, 68, .35);
+    box-shadow: none;
+}
+
+.signal-badge.hold {
+    color: #facc15;
+    background: rgba(250, 204, 21, .12);
+    border: 1px solid rgba(250, 204, 21, .35);
+    box-shadow: none;
+}
+
+/* =====================================================
+   SIGNAL DOTS
+   ===================================================== */
+
+.signal {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    margin-right: 7px;
+}
+
+.signal.buy {
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+}
+
+.signal.sell {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+.signal.hold {
+    background: #facc15;
+    box-shadow: 0 0 8px #facc15;
 }
 
 /* =====================================================
    NEWS
-===================================================== */
+   ===================================================== */
 
-.news-item{
-
-    margin-bottom:20px;
+.news-item {
+    padding: 13px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
 }
 
-.news-item h4{
-
-    color:white;
-
-    line-height:1.4;
+.news-item:last-child {
+    border-bottom: none;
 }
 
-.news-item p{
-
-    color:#cbd5e1;
-
-    line-height:1.6;
+.news-item strong {
+    display: block;
+    line-height: 1.4;
+    margin-bottom: 5px;
 }
 
-.news-item a{
-
-    color:#38bdf8;
-
-    text-decoration:none;
+.news-item small {
+    color: #64748b;
 }
 
-.news-item a:hover{
+/* =====================================================
+   TABLE
+   ===================================================== */
 
-    text-decoration:underline;
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 12px 0;
+    color: #94a3b8;
+    border-bottom: 1px solid #334155;
+}
+
+td {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+
+/* =====================================================
+   CONFIDENCE
+   ===================================================== */
+
+.confidence-bar {
+    width: 100%;
+    height: 12px;
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #38bdf8);
+    border-radius: 10px;
+}
+
+/* =====================================================
+   HR
+   ===================================================== */
+
+hr {
+    border: none;
+    border-top: 1px solid #334155;
+    margin: 18px 0;
 }
 
 /* =====================================================
    FOOTER
-===================================================== */
+   ===================================================== */
 
-footer{
+footer {
+    margin-top: 30px;
+    padding-top: 20px;
+    text-align: center;
+    color: #64748b;
+}
 
-    margin-top:40px;
+/* =====================================================
+   LEGACY GRID SUPPORT
+   ===================================================== */
 
-    text-align:center;
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+}
 
-    color:#64748b;
+/* =====================================================
+   TABLET
+   ===================================================== */
+
+@media (max-width: 1200px) {
+
+    main .dashboard-layout {
+        grid-template-columns: 240px minmax(0, 1fr) !important;
+    }
+
+    main .dashboard-layout > .dashboard-sidebar {
+        grid-column: 1;
+    }
+
+    main .dashboard-layout > .dashboard-main {
+        grid-column: 2;
+    }
+
+    main .dashboard-layout > .dashboard-right {
+        grid-column: 2;
+    }
 }
 
 /* =====================================================
    MOBILE
-===================================================== */
+   ===================================================== */
 
-@media(max-width:1200px){
+@media (max-width: 850px) {
 
-.grid{
+    .container {
+        padding: 16px;
+    }
 
-grid-template-columns:1fr;
+    .topbar,
+    header {
+        flex-direction: column;
+        align-items: stretch;
+    }
 
+    .menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .top-right {
+        justify-content: center;
+    }
+
+    main .dashboard-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    main .dashboard-layout > .dashboard-sidebar,
+    main .dashboard-layout > .dashboard-main,
+    main .dashboard-layout > .dashboard-right {
+        grid-column: 1;
+    }
+
+    .technical-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-.topbar{
+/* =====================================================
+   FAVORITES
+   ===================================================== */
 
-flex-direction:column;
+.favorite-button {
+    grid-column: 1;
+    grid-row: 1 / span 3;
 
-gap:20px;
+    width: 22px;
+    height: 22px;
 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+    margin: 0;
+
+    background: transparent;
+    border: 0;
+
+    color: #64748b;
+    cursor: pointer;
+
+    font-size: 18px;
+    line-height: 1;
+
+    transition:
+        color .2s ease,
+        transform .2s ease;
 }
 
-.menu{
-
-flex-wrap:wrap;
-
-justify-content:center;
-
+.favorite-button:hover {
+    color: #facc15;
+    transform: scale(1.12);
 }
 
-.top-right{
-
-flex-direction:column;
-
+.favorite-button.active {
+    color: #facc15;
+    text-shadow: 0 0 8px rgba(250, 204, 21, .55);
 }
+
+.favorite-button:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.favorite-icon {
+    display: block;
+}
+
+/* =====================================================
+   TRADE HISTORY
+   ===================================================== */
+
+.trade-history-card {
+    margin-top: 25px;
+}
+
+.trade-history {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.trade-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    align-items: center;
+    gap: 20px;
+
+    padding: 16px 18px;
+
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+
+    transition: .2s;
+}
+
+.trade-row:hover {
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+}
+
+.trade-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.trade-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 60px;
+    padding: 6px 10px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.trade-action.buy {
+    color: #22c55e;
+    background: rgba(34, 197, 94, .12);
+}
+
+.trade-action.sell {
+    color: #ef4444;
+    background: rgba(239, 68, 68, .12);
+}
+
+.trade-details {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+
+    color: #cbd5e1;
+}
+
+.trade-details span {
+    white-space: nowrap;
+}
+
+.trade-time {
+    color: #64748b;
+    white-space: nowrap;
+}
+
+/* Mobile */
+
+@media(max-width: 800px) {
+
+    .trade-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .trade-details {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .trade-time {
+        font-size: 12px;
+    }
 
 }
