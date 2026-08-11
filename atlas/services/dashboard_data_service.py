@@ -5,6 +5,7 @@ Collects all data required by the dashboard.
 """
 
 from atlas.config.settings import settings
+from atlas.core.config import AtlasConfig
 from atlas.core.registry import AgentRegistry
 from atlas.core.analysis_service import AnalysisService
 
@@ -24,6 +25,8 @@ class DashboardDataService:
     """Collects dashboard data."""
 
     def __init__(self):
+
+        self.config = AtlasConfig()
 
         self.registry = AgentRegistry()
 
@@ -155,7 +158,23 @@ class DashboardDataService:
 
             "version": "0.8.1",
 
-            "capital": 5000,
+            "capital": self.config.capital_limit,
+
+            "trading": {
+
+                "mode": self.config.trading_mode,
+
+                "paper_trading": (
+                    self.config.paper_trading
+                ),
+
+                "live_orders": False,
+
+                "virtual_capital_nok": (
+                    self.config.capital_limit
+                ),
+
+            },
 
             "portfolio": (
                 self.portfolio.as_dict(
