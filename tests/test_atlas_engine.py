@@ -1,3 +1,4 @@
+from atlas.core.config import AtlasConfig
 from atlas.core.engine import AtlasEngine
 from atlas.trading.trading_runtime import TradingRuntime
 
@@ -196,3 +197,24 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(monkeypatch):
     assert len(calls) == 1
     assert calls[0]["decision"] == decision
     assert calls[0]["decision"].symbol == "BTC-USD"
+
+
+def test_atlas_config_defaults_to_safe_advisor_mode():
+
+    config = AtlasConfig()
+
+    assert config.trading_mode == "advisor"
+    assert config.paper_trading is True
+    assert config.capital_limit == 5000.0
+
+
+def test_atlas_config_supports_paper_mode():
+
+    config = AtlasConfig(
+        trading_mode="paper",
+        paper_trading=True,
+    )
+
+    assert config.trading_mode == "paper"
+    assert config.paper_trading is True
+    assert config.capital_limit == 5000.0
