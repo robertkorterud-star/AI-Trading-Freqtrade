@@ -529,6 +529,15 @@ header {
     box-shadow: 0 0 12px #22c55e;
 }
 
+.paper-status {
+    background: #1e3a5f;
+}
+
+.paper-status .status-dot {
+    background: #38bdf8;
+    box-shadow: 0 0 12px #38bdf8;
+}
+
 /* =====================================================
    MAIN DASHBOARD
    ===================================================== */
