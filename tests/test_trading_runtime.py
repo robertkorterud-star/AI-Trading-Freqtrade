@@ -19,7 +19,9 @@ def make_buy():
 
 
 def make_runtime(config=None):
-    config = config or AtlasConfig()
+    config = config or AtlasConfig(
+    trading_mode="paper",
+)
 
     portfolio = PortfolioService(
         config.capital_limit
@@ -90,3 +92,22 @@ def test_trading_runtime_preserves_btc_usd_symbol():
     )
 
     assert result["symbol"] == "BTC-USD"
+
+def test_trading_runtime_rejects_advisor_mode():
+
+    config = AtlasConfig(
+        trading_mode="advisor",
+        paper_trading=True,
+    )
+
+    runtime = make_runtime(config)
+
+    result = runtime.execute(
+        decision=make_buy(),
+        price_usd=65000,
+        usd_nok=9.50,
+        amount_nok=1000,
+    )
+
+    assert result["executed"] is False
+    assert result["reason"] == "Trading mode is advisor."

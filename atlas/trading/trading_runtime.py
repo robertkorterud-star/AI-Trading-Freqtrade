@@ -40,6 +40,14 @@ class TradingRuntime:
                 "reason": "Paper trading is disabled.",
             }
 
+        if self.config.trading_mode == "advisor":
+            return {
+                "executed": False,
+                "action": decision.action.value,
+                "symbol": decision.symbol,
+                "reason": "Trading mode is advisor.",
+            }
+
         if amount_nok > self.config.capital_limit:
             return {
                 "executed": False,
