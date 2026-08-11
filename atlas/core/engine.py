@@ -14,6 +14,13 @@ from atlas.decision.engine import DecisionEngine
 
 from atlas.report.report_builder import ReportBuilder
 
+from atlas.risk.risk_engine import RiskEngine
+from atlas.services.portfolio_service import PortfolioService
+from atlas.trading.paper_trading_engine import PaperTradingEngine
+from atlas.trading.trading_controller import TradingController
+from atlas.trading.trading_runtime import TradingRuntime
+from atlas.trading.trading_service import TradingService
+
 
 class AtlasEngine:
     """Main entry point for ATLAS."""
@@ -27,14 +34,38 @@ class AtlasEngine:
         self.registry = AgentRegistry()
 
         self.registry.register(NewsAnalyst())
-
         self.registry.register(TechnicalAnalyst())
 
-        self.analysis_service = AnalysisService(self.registry)
+        self.analysis_service = AnalysisService(
+            self.registry
+        )
 
         self.decision_engine = DecisionEngine()
 
         self.report = ReportBuilder()
+
+        portfolio = PortfolioService(
+            self.config.capital_limit
+        )
+
+        risk = RiskEngine()
+
+        trading = TradingService()
+
+        trader = PaperTradingEngine(
+            portfolio=portfolio,
+            risk=risk,
+            trading=trading,
+        )
+
+        controller = TradingController(
+            trader=trader,
+        )
+
+        self.trading_runtime = TradingRuntime(
+            config=self.config,
+            controller=controller,
+        )
 
     def start(self):
 
@@ -52,9 +83,13 @@ class AtlasEngine:
             f"Capital Limit: {self.config.capital_limit}"
         )
 
-        results = self.analysis_service.analyze("BTC")
+        results = self.analysis_service.analyze(
+            "BTC-USD"
+        )
 
-        decision = self.decision_engine.evaluate(results)
+        decision = self.decision_engine.evaluate(
+            results
+        )
 
         self.report.print_decision(decision)
 

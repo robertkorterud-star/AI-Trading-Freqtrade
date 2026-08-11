@@ -36,7 +36,7 @@ class DashboardDataService:
         self.technical = TechnicalService()
         self.exchange = ExchangeRateService()
         self.portfolio = PortfolioService()
-    self.trading = TradingService()
+        self.trading = TradingService()
 
     def get_dashboard_data(self, selected_symbol=None):
 
