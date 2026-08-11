@@ -83,8 +83,10 @@ class AtlasEngine:
             f"Capital Limit: {self.config.capital_limit}"
         )
 
+        symbol = "BTC-USD"
+
         results = self.analysis_service.analyze(
-            "BTC-USD"
+            symbol
         )
 
         decision = self.decision_engine.evaluate(
@@ -93,7 +95,41 @@ class AtlasEngine:
 
         self.report.print_decision(decision)
 
+        if self.config.trading_mode == "paper":
+
+            snapshot = self._get_market_snapshot(
+                symbol
+            )
+
+            exchange = self._get_usd_nok_rate()
+
+            trade_result = self.trading_runtime.execute(
+                decision=decision,
+                price_usd=snapshot.price,
+                usd_nok=exchange.rate,
+                amount_nok=1000.0,
+            )
+
+            self.logger.info(
+                f"Paper trading result: "
+                f"{trade_result}"
+            )
+
         self.logger.info("ATLAS is ready.")
+
+    def _get_market_snapshot(self, symbol):
+        from atlas.services.technical_service import TechnicalService
+
+        technical = TechnicalService()
+
+        return technical.get_snapshot(symbol)
+
+    def _get_usd_nok_rate(self):
+        from atlas.services.exchange_rate_service import ExchangeRateService
+
+        exchange = ExchangeRateService()
+
+        return exchange.get_rate("USD", "NOK")
 
 
 if __name__ == "__main__":

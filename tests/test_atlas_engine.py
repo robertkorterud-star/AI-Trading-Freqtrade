@@ -118,3 +118,81 @@ def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit():
 
     assert portfolio["profit_vault_nok"] > 0
     assert portfolio["positions"] == []
+
+
+def test_atlas_engine_start_sends_decision_to_paper_runtime(monkeypatch):
+
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    engine.config.trading_mode = "paper"
+    engine.config.paper_trading = True
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=95.0,
+        evidence=95.0,
+    )
+
+    calls = []
+
+    def fake_analyze(symbol):
+        return []
+
+    def fake_evaluate(results):
+        return decision
+
+    def fake_print_decision(decision):
+        pass
+
+    def fake_execute(
+        decision,
+        price_usd,
+        usd_nok,
+        amount_nok=1000.0,
+    ):
+        calls.append({
+            "decision": decision,
+            "price_usd": price_usd,
+            "usd_nok": usd_nok,
+            "amount_nok": amount_nok,
+        })
+
+        return {
+            "executed": True,
+            "action": "BUY",
+            "symbol": "BTC-USD",
+        }
+
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        fake_analyze,
+    )
+
+    monkeypatch.setattr(
+        engine.decision_engine,
+        "evaluate",
+        fake_evaluate,
+    )
+
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        fake_print_decision,
+    )
+
+    monkeypatch.setattr(
+        engine.trading_runtime,
+        "execute",
+        fake_execute,
+    )
+
+    engine.start()
+
+    assert len(calls) == 1
+    assert calls[0]["decision"] == decision
+    assert calls[0]["decision"].symbol == "BTC-USD"
