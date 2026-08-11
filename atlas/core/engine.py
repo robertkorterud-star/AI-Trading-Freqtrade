@@ -16,6 +16,8 @@ from atlas.report.report_builder import ReportBuilder
 
 from atlas.risk.risk_engine import RiskEngine
 from atlas.services.portfolio_service import PortfolioService
+from atlas.services.technical_service import TechnicalService
+from atlas.services.exchange_rate_service import ExchangeRateService
 from atlas.trading.paper_trading_engine import PaperTradingEngine
 from atlas.trading.trading_controller import TradingController
 from atlas.trading.trading_runtime import TradingRuntime
@@ -43,6 +45,9 @@ class AtlasEngine:
         self.decision_engine = DecisionEngine()
 
         self.report = ReportBuilder()
+
+        self.technical = TechnicalService()
+        self.exchange = ExchangeRateService()
 
         portfolio = PortfolioService(
             self.config.capital_limit
@@ -118,18 +123,10 @@ class AtlasEngine:
         self.logger.info("ATLAS is ready.")
 
     def _get_market_snapshot(self, symbol):
-        from atlas.services.technical_service import TechnicalService
-
-        technical = TechnicalService()
-
-        return technical.get_snapshot(symbol)
+        return self.technical.get_snapshot(symbol)
 
     def _get_usd_nok_rate(self):
-        from atlas.services.exchange_rate_service import ExchangeRateService
-
-        exchange = ExchangeRateService()
-
-        return exchange.get_rate("USD", "NOK")
+        return self.exchange.get_rate("USD", "NOK")
 
 
 if __name__ == "__main__":
