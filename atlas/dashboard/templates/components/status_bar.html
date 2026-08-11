@@ -1,11 +1,41 @@
 <div class="status-bar">
 
-    <div class="status">
+    {% if dashboard.trading.mode == "paper" and dashboard.trading.paper_trading %}
 
-        <span class="status-dot"></span>
+        <div class="status paper-status">
 
-        {{ dashboard.status }}
+            <span class="status-dot"></span>
 
-    </div>
+            <span>
+                PAPER TRADING · DRY RUN
+            </span>
+
+            <span>
+                · {{ dashboard.trading.virtual_capital_nok }} NOK
+            </span>
+
+            {% if not dashboard.trading.live_orders %}
+                <span>
+                    · LIVE ORDERS DISABLED
+                </span>
+            {% endif %}
+
+        </div>
+
+    {% else %}
+
+        <div class="status">
+
+            <span class="status-dot"></span>
+
+            {{ dashboard.status }}
+
+            <span>
+                · ADVISOR MODE · NO ORDERS
+            </span>
+
+        </div>
+
+    {% endif %}
 
 </div>
