@@ -154,6 +154,10 @@ class DashboardDataService:
             prices_usd
         )
 
+        portfolio_data = self.portfolio.as_dict(
+            exchange.rate
+        )
+
         return {
 
             "status": "Running",
@@ -178,13 +182,33 @@ class DashboardDataService:
                     self.config.capital_limit
                 ),
 
+                "cash_nok": portfolio_data["cash_nok"],
+
+                "invested_nok": portfolio_data["invested_nok"],
+
+                "positions_value_nok": (
+                    portfolio_data["positions_value_nok"]
+                ),
+
+                "position_count": (
+                    portfolio_data["position_count"]
+                ),
+
+                "unrealized_pnl_nok": (
+                    portfolio_data["unrealized_pnl_nok"]
+                ),
+
+                "total_pnl_nok": (
+                    portfolio_data["total_pnl_nok"]
+                ),
+
+                "return_percent": (
+                    portfolio_data["return_percent"]
+                ),
+
             },
 
-            "portfolio": (
-                self.portfolio.as_dict(
-                    exchange.rate
-                )
-            ),
+            "portfolio": portfolio_data,
 
             "trade_history": self.trading.history(),
 

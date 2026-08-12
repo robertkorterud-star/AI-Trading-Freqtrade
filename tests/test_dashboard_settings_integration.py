@@ -41,3 +41,25 @@ def test_dashboard_data_uses_settings_service_trading_mode():
     assert dashboard["trading"]["mode"] == "paper"
     assert dashboard["trading"]["paper_trading"] is True
     assert dashboard["trading"]["live_orders"] is False
+
+def test_dashboard_exposes_paper_trading_summary():
+
+    from atlas.services.dashboard_data_service import DashboardDataService
+
+    service = DashboardDataService()
+
+    service.settings.set_trading_mode("paper")
+
+    data = service.get_dashboard_data(
+        selected_symbol="BTC-USD"
+    )
+
+    trading = data["trading"]
+
+    assert "cash_nok" in trading
+    assert "invested_nok" in trading
+    assert "positions_value_nok" in trading
+    assert "position_count" in trading
+    assert "unrealized_pnl_nok" in trading
+    assert "total_pnl_nok" in trading
+    assert "return_percent" in trading
