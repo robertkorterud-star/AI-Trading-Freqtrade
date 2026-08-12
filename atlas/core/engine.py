@@ -27,9 +27,9 @@ from atlas.trading.trading_service import TradingService
 class AtlasEngine:
     """Main entry point for ATLAS."""
 
-    def __init__(self):
+    def __init__(self, config=None):
 
-        self.config = AtlasConfig()
+        self.config = config or AtlasConfig()
 
         self.logger = get_logger("ATLAS")
 
