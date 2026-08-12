@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="settings-page">
+
+    <div class="card">
+
+        <h2>⚙️ Settings</h2>
+
+        <p>
+            Configure how ATLAS operates.
+        </p>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>Trading Mode</h2>
+
+        <div class="settings-option">
+
+            <label>
+                <input
+                    type="radio"
+                    name="trading_mode"
+                    value="advisor"
+                >
+
+                Advisor
+            </label>
+
+            <small>
+                ATLAS analyzes the market but does not place orders.
+            </small>
+
+        </div>
+
+
+        <div class="settings-option">
+
+            <label>
+                <input
+                    type="radio"
+                    name="trading_mode"
+                    value="paper"
+                    id="paper_trading"
+            >
+
+                Paper / Dry Run
+            </label>
+
+            <small>
+                ATLAS simulates trades without placing real orders.
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>Paper Trading</h2>
+
+        <div class="settings-row">
+
+            <span>Paper trading</span>
+
+            <strong>
+                {{ dashboard.trading.paper_trading
+                   if dashboard.trading is defined
+                   else "ON" }}
+            </strong>
+
+        </div>
+
+
+        <div class="settings-row">
+
+            <span>Virtual capital</span>
+
+            <strong>
+                {{ dashboard.trading.virtual_capital_nok
+                   if dashboard.trading is defined
+                   else 5000 }}
+                NOK
+            </strong>
+
+        </div>
+
+
+        <div class="settings-row">
+
+            <span>Live orders</span>
+
+            <strong>
+                DISABLED
+            </strong>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

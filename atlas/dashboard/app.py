@@ -131,6 +131,21 @@ async def portfolio(request: Request):
     )
 
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings(request: Request):
+
+    dashboard = service.get_dashboard()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={
+            "request": request,
+            "dashboard": dashboard,
+        },
+    )
+
+
 @app.get("/agents", response_class=HTMLResponse)
 async def agents(request: Request):
 
