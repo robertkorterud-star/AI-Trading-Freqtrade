@@ -24,6 +24,30 @@ from atlas.trading.trading_runtime import TradingRuntime
 from atlas.trading.trading_service import TradingService
 
 
+def build_config_from_args(args=None):
+    """Build ATLAS configuration from command-line arguments."""
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--paper",
+        action="store_true",
+        help="Run ATLAS in paper/dry-run mode.",
+    )
+
+    parsed = parser.parse_args(args)
+
+    if parsed.paper:
+        return AtlasConfig(
+            trading_mode="paper",
+            paper_trading=True,
+        )
+
+    return AtlasConfig()
+
+
 class AtlasEngine:
     """Main entry point for ATLAS."""
 
@@ -130,4 +154,5 @@ class AtlasEngine:
 
 
 if __name__ == "__main__":
-    AtlasEngine().start()
+    config = build_config_from_args()
+    AtlasEngine(config=config).start()
