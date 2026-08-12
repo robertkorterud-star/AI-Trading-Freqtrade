@@ -2,6 +2,11 @@
 
 {% block content %}
 
+<form
+    action="/settings"
+    method="post"
+>
+
 <div class="settings-page">
 
     <div class="card">
@@ -19,6 +24,13 @@
 
         <h2>Trading Mode</h2>
 
+        <p>
+            Active mode:
+            <strong>
+                {{ dashboard.trading.mode.upper() }}
+            </strong>
+        </p>
+
         <div class="settings-option">
 
             <label>
@@ -26,6 +38,7 @@
                     type="radio"
                     name="trading_mode"
                     value="advisor"
+                    {% if dashboard.trading.mode == "advisor" %}checked{% endif %}
                 >
 
                 Advisor
@@ -46,6 +59,7 @@
                     name="trading_mode"
                     value="paper"
                     id="paper_trading"
+                    {% if dashboard.trading.mode == "paper" %}checked{% endif %}
             >
 
                 Paper / Dry Run
@@ -69,9 +83,11 @@
             <span>Paper trading</span>
 
             <strong>
-                {{ dashboard.trading.paper_trading
-                   if dashboard.trading is defined
-                   else "ON" }}
+                {% if dashboard.trading.paper_trading %}
+                    ON
+                {% else %}
+                    OFF
+                {% endif %}
             </strong>
 
         </div>
@@ -82,9 +98,11 @@
             <span>Virtual capital</span>
 
             <strong>
-                {{ dashboard.trading.virtual_capital_nok
-                   if dashboard.trading is defined
-                   else 5000 }}
+                {{ "{:,.0f}".format(
+                    dashboard.trading.virtual_capital_nok
+                    if dashboard.trading is defined
+                    else 5000
+                ) }}
                 NOK
             </strong>
 
@@ -104,5 +122,33 @@
     </div>
 
 </div>
+
+    <button
+        type="submit"
+        class="settings-save-button"
+    >
+        💾 Save Settings
+    </button>
+
+    <section class="settings-section settings-safety">
+
+        <h2>🛡️ Safety</h2>
+
+        <div class="settings-safety-row">
+            <span>Live orders</span>
+
+            <strong class="settings-disabled">
+                DISABLED
+            </strong>
+        </div>
+
+        <p class="settings-safety-text">
+            ATLAS cannot place real orders.
+            Trading remains protected while this setting is disabled.
+        </p>
+
+    </section>
+
+</form>
 
 {% endblock %}

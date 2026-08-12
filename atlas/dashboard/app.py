@@ -3,11 +3,12 @@ ATLAS Dashboard
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from atlas.dashboard.dashboard_service import DashboardService
+from atlas.services.settings_service import SettingsService
 
 app = FastAPI(title="ATLAS Dashboard")
 
@@ -22,6 +23,7 @@ templates = Jinja2Templates(
 )
 
 service = DashboardService()
+settings_service = service.data.settings
 
 
 def build_dashboard(selected_symbol=None):
@@ -128,6 +130,24 @@ async def portfolio(request: Request):
             "request": request,
             "dashboard": dashboard,
         },
+    )
+
+
+@app.post("/settings")
+async def update_settings(request: Request):
+
+    form = await request.form()
+
+    trading_mode = form.get("trading_mode")
+
+    if trading_mode is not None:
+        settings_service.set_trading_mode(
+            trading_mode
+        )
+
+    return RedirectResponse(
+        url="/settings",
+        status_code=303,
     )
 
 

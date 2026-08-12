@@ -5,8 +5,7 @@ def test_dashboard_reports_paper_trading_status():
 
     service = DashboardDataService()
 
-    service.config.trading_mode = "paper"
-    service.config.paper_trading = True
+    service.settings.set_trading_mode("paper")
 
     data = service.get_dashboard_data(
         selected_symbol="BTC-USD"

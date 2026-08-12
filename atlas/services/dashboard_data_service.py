@@ -19,6 +19,7 @@ from atlas.services.technical_service import TechnicalService
 from atlas.services.exchange_rate_service import ExchangeRateService
 from atlas.services.portfolio_service import PortfolioService
 from atlas.trading.trading_service import TradingService
+from atlas.services.settings_service import SettingsService
 
 
 class DashboardDataService:
@@ -40,6 +41,7 @@ class DashboardDataService:
         self.exchange = ExchangeRateService()
         self.portfolio = PortfolioService()
         self.trading = TradingService()
+        self.settings = SettingsService()
 
     def get_dashboard_data(self, selected_symbol=None):
 
@@ -162,13 +164,15 @@ class DashboardDataService:
 
             "trading": {
 
-                "mode": self.config.trading_mode,
+                "mode": self.settings.get_trading_status()["mode"],
 
                 "paper_trading": (
-                    self.config.paper_trading
+                    self.settings.get_trading_status()["paper_trading"]
                 ),
 
-                "live_orders": False,
+                "live_orders": (
+                    self.settings.get_trading_status()["live_orders"]
+                ),
 
                 "virtual_capital_nok": (
                     self.config.capital_limit
