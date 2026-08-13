@@ -11,6 +11,7 @@ from atlas.core.analysis_service import AnalysisService
 
 from atlas.agents.news_analyst import NewsAnalyst
 from atlas.agents.technical_analyst import TechnicalAnalyst
+from atlas.agents.company_analyst import CompanyAnalyst
 
 from atlas.decision.engine import DecisionEngine
 from atlas.adapters.news import NewsAdapter
@@ -20,6 +21,10 @@ from atlas.services.exchange_rate_service import ExchangeRateService
 from atlas.services.portfolio_service import PortfolioService
 from atlas.trading.trading_service import TradingService
 from atlas.services.settings_service import SettingsService
+from atlas.trading.agent_performance_tracker import (
+    AgentPerformanceTracker,
+)
+from atlas.trading.agent_weight_engine import AgentWeightEngine
 
 
 class DashboardDataService:
@@ -33,6 +38,7 @@ class DashboardDataService:
 
         self.registry.register(NewsAnalyst())
         self.registry.register(TechnicalAnalyst())
+        self.registry.register(CompanyAnalyst())
 
         self.analysis = AnalysisService(self.registry)
         self.decision = DecisionEngine()
@@ -42,6 +48,14 @@ class DashboardDataService:
         self.portfolio = PortfolioService()
         self.trading = TradingService()
         self.settings = SettingsService()
+
+        self.agent_performance = AgentPerformanceTracker()
+        self.agent_weight_engine = AgentWeightEngine(
+            self.agent_performance
+        )
+
+        for agent in self.registry.get_all():
+            self.agent_performance.ensure(agent.name)
 
     def get_dashboard_data(self, selected_symbol=None):
 
@@ -211,6 +225,11 @@ class DashboardDataService:
             "portfolio": portfolio_data,
 
             "trade_history": self.trading.history(),
+
+        "agent_performance": {
+            "history": self.agent_performance.history(),
+            "weights": self.agent_weight_engine.calculate(),
+        },
 
             "currency": {
 

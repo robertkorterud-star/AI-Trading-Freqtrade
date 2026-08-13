@@ -111,3 +111,40 @@ def test_trading_runtime_rejects_advisor_mode():
 
     assert result["executed"] is False
     assert result["reason"] == "Trading mode is advisor."
+
+
+def test_trading_runtime_records_prediction():
+    from atlas.trading.prediction_tracker import PredictionTracker
+
+    tracker = PredictionTracker()
+
+    runtime = TradingRuntime(
+        config=AtlasConfig(
+            trading_mode="advisor",
+            paper_trading=False,
+        ),
+        controller=None,
+        prediction_tracker=tracker,
+    )
+
+    decision = DecisionResult(
+        symbol="NVDA",
+        action=Action.BUY,
+        confidence=88.0,
+        evidence=85.0,
+    )
+
+    runtime.execute(
+        decision=decision,
+        price_usd=180.0,
+        usd_nok=10.0,
+    )
+
+    history = tracker.history()
+
+    assert tracker.count() == 1
+    assert history[0]["symbol"] == "NVDA"
+    assert history[0]["action"] == "BUY"
+    assert history[0]["confidence"] == 88.0
+    assert history[0]["evidence"] == 85.0
+    assert history[0]["price_usd"] == 180.0

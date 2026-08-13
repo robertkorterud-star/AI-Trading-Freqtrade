@@ -21,6 +21,89 @@
 
     <section class="dashboard-main">
 
+    <!-- =================================================
+         PAPER TRADING SUMMARY
+         ================================================= -->
+
+    <div class="card paper-summary">
+
+        <div class="paper-summary-header">
+
+            <div>
+                <h2>💰 Paper Trading</h2>
+                <small>Virtual portfolio</small>
+            </div>
+
+            <span class="paper-badge">
+                PAPER
+            </span>
+
+        </div>
+
+        <div class="paper-summary-grid">
+
+            <div>
+                <small>Total Equity</small>
+                <strong>
+                    {{ dashboard.portfolio.total_equity_nok }} NOK
+                </strong>
+            </div>
+
+            <div>
+                <small>Cash</small>
+                <strong>
+                    {{ dashboard.portfolio.cash_nok }} NOK
+                </strong>
+            </div>
+
+            <div>
+                <small>Invested</small>
+                <strong>
+                    {{ dashboard.portfolio.invested_nok }} NOK
+                </strong>
+            </div>
+
+            <div>
+                <small>Positions</small>
+                <strong>
+                    {{ dashboard.portfolio.position_count }}
+                </strong>
+            </div>
+
+            <div>
+                <small>Unrealized P/L</small>
+                <strong class="{% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}+{% endif %}
+                    {{ dashboard.portfolio.unrealized_pnl_nok }} NOK
+                </strong>
+            </div>
+
+            <div>
+                <small>Total P/L</small>
+                <strong class="{% if dashboard.portfolio.total_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if dashboard.portfolio.total_pnl_nok >= 0 %}+{% endif %}
+                    {{ dashboard.portfolio.total_pnl_nok }} NOK
+                </strong>
+            </div>
+
+            <div>
+                <small>Return</small>
+                <strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}
+                    {{ dashboard.portfolio.return_percent }}%
+                </strong>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         SELECTED ASSET
+         ================================================= -->
+
+
         <!-- SELECTED ASSET -->
 
         <div class="card">

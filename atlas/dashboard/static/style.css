@@ -1,320 +1,8 @@
 
-dette er hva som ligger på github. 
+/* =====================================================
+   ATLAS Dashboard v0.8.1
+   ===================================================== */
 
-
-dette er den jeg har nå. 
-
-image(6).png
-image(7).png
-
-
-fikk melding 
-
-feil melding 
-
-nå ble det slik 
-
-fikset det nå. ble feil når jeg kopierer fra deg over til VS. måtte flytte med space til de sto slik
-
-
-
-ble en misforståelse her tror jeg. opprettet 
-
-denne blir den ikke noe python fil av. 
-
-
-
-
-
-
-
-
-
-ok fungerer. 
-
-
-
-
-trykker valuta i drop down meny skjer ingenting. 
-
-image(20260809-143249).png
-
-image(20260809-143618).png
-ingen meny på første side 
-
-image(20260809-144413).png
-oi skjedde noe 
-
-5f4736c0-070e-4ee5-8890-631e274f9efa.png
-
-43c685bd-9a8d-4421-a437-8a1f49a297fd.png
-
-5f4736c0-070e-4ee5-8890-631e274f9efa.png
-Bilde 09.08.2026 klokken 17.09 (1).png
-
-Bilde 09.08.2026 klokken 17.12.png
-Bilde 09.08.2026 klokken 17.12 (1).png
-
-Der fant vi feilen. 😄 index.html mangler selve <div class="dashboard-layout"> rundt de tre hovedkolonnene. CSS-en vi laget har regler for .dashboard-layout, men HTML-en bruker aldri klassen.
-
-Derfor blir alt stablet vertikalt.
-
-Erstatt hele index.html med denne
-{% extends "base.html" %}
-
-{% block content %}
-
-<div class="dashboard-layout">
-
-    <!-- =================================================
-         LEFT: WATCHLIST
-         ================================================= -->
-
-    <aside class="dashboard-sidebar">
-
-        {% include "components/watchlist.html" %}
-
-    </aside>
-
-
-    <!-- =================================================
-         CENTER: SELECTED ASSET + AI
-         ================================================= -->
-
-    <section class="dashboard-main">
-
-        <!-- SELECTED ASSET -->
-
-        <div class="card">
-
-            <h2>📊 Selected Asset</h2>
-
-            <h3>
-                {{ dashboard.technical.symbol }}
-            </h3>
-
-            <div class="asset-price">
-
-                <strong>
-                    ${{ "{:,.2f}".format(
-                        dashboard.technical.price_usd
-                    ) }}
-                </strong>
-
-                <span
-                    class="{% if dashboard.technical.change >= 0 %}
-                        positive
-                    {% else %}
-                        negative
-                    {% endif %}"
-                >
-
-                    {% if dashboard.technical.change >= 0 %}
-                        +
-                    {% endif %}
-
-                    {{ dashboard.technical.change }}%
-
-                </span>
-
-            </div>
-
-            <hr>
-
-            <div class="technical-grid">
-
-                <div>
-                    <small>MA20</small>
-
-                    <strong>
-                        {{ dashboard.technical.ma20 }}
-                    </strong>
-                </div>
-
-                <div>
-                    <small>MA50</small>
-
-                    <strong>
-                        {{ dashboard.technical.ma50 }}
-                    </strong>
-                </div>
-
-                <div>
-                    <small>Trend</small>
-
-                    <strong>
-                        {{ dashboard.technical.trend }}
-                    </strong>
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- AI CONSENSUS -->
-
-        <div class="card">
-
-            <h2>🤖 AI Consensus</h2>
-
-            <div class="consensus">
-
-                {% if dashboard.decision.action.value == "BUY" %}
-
-                    <span class="signal-badge buy">
-                        BUY
-                    </span>
-
-                {% elif dashboard.decision.action.value == "SELL" %}
-
-                    <span class="signal-badge sell">
-                        SELL
-                    </span>
-
-                {% else %}
-
-                    <span class="signal-badge hold">
-                        HOLD
-                    </span>
-
-                {% endif %}
-
-            </div>
-
-            <p>
-                Confidence:
-                <strong>
-                    {{ dashboard.decision.confidence }}%
-                </strong>
-            </p>
-
-            <p>
-                Evidence:
-                <strong>
-                    {{ dashboard.decision.evidence }}%
-                </strong>
-            </p>
-
-        </div>
-
-    </section>
-
-
-    <!-- =================================================
-         RIGHT: PORTFOLIO + NEWS
-         ================================================= -->
-
-    <aside class="dashboard-right">
-
-        <!-- PORTFOLIO -->
-
-        <div class="card">
-
-            <h2>💼 Portfolio</h2>
-
-            <p>
-                <small>Capital</small>
-            </p>
-
-            <h3>
-                {{ dashboard.capital }} NOK
-            </h3>
-
-            <p>
-                Positions:
-                <strong>0</strong>
-            </p>
-
-        </div>
-
-
-        <!-- NEWS -->
-
-        <div class="card">
-
-            <h2>📰 Latest News</h2>
-
-            {% if dashboard.news %}
-
-                {% for article in dashboard.news[:4] %}
-
-                    <div class="news-item">
-
-                        <strong>
-                            {{ article.title }}
-                        </strong>
-
-                        <small>
-                            {{ article.source }}
-                        </small>
-
-                    </div>
-
-                {% endfor %}
-
-            {% else %}
-
-                <p>
-                    No news found.
-                </p>
-
-            {% endif %}
-
-        </div>
-
-    </aside>
-
-</div>
-
-{% endblock %}
-Det viktige som er nytt
-Dette er hele forskjellen som manglet:
-
-<div class="dashboard-layout">
-
-    <aside class="dashboard-sidebar">
-        ...
-    </aside>
-
-    <section class="dashboard-main">
-        ...
-    </section>
-
-    <aside class="dashboard-right">
-        ...
-    </aside>
-
-</div>
-Nå matcher HTML-en CSS-en:
-
-.dashboard-layout
-        │
-        ├── dashboard-sidebar
-        │       └── Watchlist
-        │
-        ├── dashboard-main
-        │       ├── Selected Asset
-        │       └── AI Consensus
-        │
-        └── dashboard-right
-                ├── Portfolio
-                └── Latest News
-Og på skjermen skal vi nå få tre kolonner, ikke fire store kort under hverandre.
-
-Lagre filen og refresh siden. Ikke gjør flere endringer enn dette ennå. Dette er akkurat den strukturelle feilen vi lette etter. 🚀
-
-
-Bilde 09.08.2026 klokken 17.16.png
-Bilde 09.08.2026 klokken 17.15.png
-
-Jobbet i 7s
-Ja, nå ser jeg det. 👍 HTML-strukturen er riktig, men CSS-gridet blir fortsatt slått av. Det er derfor Watchlist og Selected Asset fortsatt havner under hverandre.
-
-Det er sannsynligvis en viewport/media-query eller CSS-konflikt. Vi kan løse dette robust ved å gjøre hovedlayouten mer spesifikk og ikke la den gamle .grid-stylingen påvirke den.
-
-Bytt bare denne delen i style.css
-Finn:
 
 .dashboard-layout {
     display: grid;
@@ -322,11 +10,10 @@ Finn:
     gap: 22px;
     align-items: start;
 }
-og erstatt med:
 
 main .dashboard-layout {
     display: grid !important;
-    grid-template-columns: 280px minmax(500px, 1fr) 330px !important;
+    grid-template-columns: 280px minmax(0, 1fr) 260px !important;
     gap: 22px;
     width: 100%;
     align-items: start;
@@ -343,22 +30,7 @@ main .dashboard-layout > .dashboard-main {
 main .dashboard-layout > .dashboard-right {
     grid-column: 3;
 }
-Og veldig viktig: litt lenger ned i CSS-en har vi denne media-queryen:
 
-@media (max-width: 1250px) {
-
-    .dashboard-layout {
-        grid-template-columns: 240px minmax(350px, 1fr);
-    }
-
-    .dashboard-right {
-        grid-column: 2;
-    }
-
-}
-Slett hele den blokken.
-
-La bare mobil-blokken stå:
 
 @media (max-width: 900px) {
 
@@ -391,34 +63,7 @@ La bare mobil-blokken stå:
         grid-template-columns: 1fr;
     }
 }
-Men før du refresh-er
-Kjør dette i terminalen:
 
-grep -n -A12 "dashboard-layout" atlas/dashboard/static/style.css
-Send meg resultatet.
-
-Da ser jeg nøyaktig hvilken CSS som faktisk ligger i filen, og vi slipper å gjøre flere endringer på måfå. Vi er veldig nær nå. 😄🚀
-
-
-kan du lage css fila
-
-Ja 👍 Jeg har laget en komplett ny style.css med den korrigerte 3-kolonne-layouten.
-
-Last ned den nye style.css
-
-Legg den inn som:
-
-atlas/dashboard/static/style.css
-Deretter refresh dashboardet med Cmd + Shift + R i nettleseren, så får vi lastet CSS-en helt på nytt. 
-
-
-style.css
-Kode
-
-
-Bibliotek
-/
-style.css
 
 
 /* =====================================================
@@ -553,7 +198,7 @@ header {
 
 main .dashboard-layout {
     display: grid !important;
-    grid-template-columns: 280px minmax(0, 1fr) 330px !important;
+    grid-template-columns: 280px minmax(0, 1fr) 260px !important;
     gap: 22px;
     width: 100%;
     align-items: start;
@@ -575,6 +220,8 @@ main .dashboard-layout > .dashboard-main {
 main .dashboard-layout > .dashboard-right {
     grid-column: 3;
     min-width: 0;
+    width: 100%;
+    max-width: 260px;
     display: flex;
     flex-direction: column;
     gap: 22px;
@@ -968,24 +615,6 @@ footer {
    TABLET
    ===================================================== */
 
-@media (max-width: 1200px) {
-
-    main .dashboard-layout {
-        grid-template-columns: 240px minmax(0, 1fr) !important;
-    }
-
-    main .dashboard-layout > .dashboard-sidebar {
-        grid-column: 1;
-    }
-
-    main .dashboard-layout > .dashboard-main {
-        grid-column: 2;
-    }
-
-    main .dashboard-layout > .dashboard-right {
-        grid-column: 2;
-    }
-}
 
 /* =====================================================
    MOBILE
@@ -1276,5 +905,704 @@ footer {
 
     color: #94a3b8;
     line-height: 1.6;
+}
+
+
+/* =====================================================
+   PAPER TRADING SUMMARY
+   ===================================================== */
+
+.paper-summary {
+    margin-bottom: 22px;
+}
+
+.paper-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.paper-summary-header h2 {
+    margin-bottom: 4px;
+}
+
+.paper-summary-header small {
+    color: #94a3b8;
+}
+
+.paper-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.paper-summary-grid > div {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 14px;
+    min-width: 0;
+}
+
+.paper-summary-grid small {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-bottom: 7px;
+}
+
+.paper-summary-grid strong {
+    display: block;
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+@media (max-width: 1200px) {
+
+    .paper-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 850px) {
+
+    .paper-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* =====================================================
+   RIGHT COLUMN - PORTFOLIO + NEWS
+   ===================================================== */
+
+main .dashboard-layout > .dashboard-right {
+    grid-column: 3;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+main .dashboard-layout > .dashboard-right > .card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+/* =====================================================
+   RIGHT COLUMN - COMPACT TYPOGRAPHY
+   ===================================================== */
+
+main .dashboard-layout > .dashboard-right > .card h2 {
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+main .dashboard-layout > .dashboard-right > .card h3 {
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+main .dashboard-layout > .dashboard-right > .card p {
+    font-size: 15px;
+}
+
+main .dashboard-layout > .dashboard-right > .card small {
+    font-size: 13px;
+}
+
+main .dashboard-layout > .dashboard-right > .card {
+    padding: 22px;
+}
+
+
+/* =====================================================
+   RIGHT COLUMN - FINAL COMPACT SIZE
+   ===================================================== */
+
+main .dashboard-layout > .dashboard-right {
+    width: 220px !important;
+    max-width: 220px !important;
+    min-width: 220px !important;
+    justify-self: start;
+}
+
+main .dashboard-layout > .dashboard-right > .card {
+    width: 220px !important;
+    max-width: 220px !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+    padding: 16px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card h2 {
+    font-size: 19px !important;
+    margin-bottom: 14px;
+}
+
+main .dashboard-layout > .dashboard-right > .card h3 {
+    font-size: 20px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card p {
+    font-size: 14px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card small {
+    font-size: 12px !important;
+}
+
+
+/* =====================================================
+   ATLAS - FINAL DASHBOARD LAYOUT
+   ===================================================== */
+
+main .dashboard-layout {
+    display: grid !important;
+    grid-template-columns: 280px minmax(0, 1fr) 220px !important;
+    gap: 22px !important;
+    width: 100% !important;
+    align-items: start !important;
+}
+
+main .dashboard-layout > .dashboard-sidebar {
+    grid-column: 1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+main .dashboard-layout > .dashboard-main {
+    grid-column: 2 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+main .dashboard-layout > .dashboard-right {
+    grid-column: 3 !important;
+    min-width: 0 !important;
+    width: 220px !important;
+    max-width: 220px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 22px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card {
+    width: 220px !important;
+    max-width: 220px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 18px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card h2 {
+    font-size: 19px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 14px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card h3 {
+    font-size: 21px !important;
+    line-height: 1.2 !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card p {
+    font-size: 14px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card small {
+    font-size: 12px !important;
+}
+
+
+/* =====================================================
+   MOBILE
+   ===================================================== */
+
+@media (max-width: 900px) {
+
+    main .dashboard-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    main .dashboard-layout > .dashboard-sidebar,
+    main .dashboard-layout > .dashboard-main,
+    main .dashboard-layout > .dashboard-right {
+        grid-column: 1 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    main .dashboard-layout > .dashboard-right > .card {
+        width: 100% !important;
+        max-width: none !important;
+    }
+}
+
+
+/* =====================================================
+   RIGHT COLUMN - COMPACT CARDS
+   ===================================================== */
+
+main .dashboard-layout > .dashboard-right {
+    width: 150px !important;
+    max-width: 150px !important;
+    min-width: 150px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card {
+    width: 150px !important;
+    max-width: 150px !important;
+    min-width: 150px !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card h2 {
+    font-size: 16px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 9px !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card h3 {
+    font-size: 16px !important;
+    line-height: 1.15 !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card p {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+}
+
+main .dashboard-layout > .dashboard-right > .card small {
+    font-size: 10px !important;
+}
+
+
+/* Move Portfolio + Latest News slightly right */
+main .dashboard-layout > .dashboard-right {
+    transform: translateX(35px) !important;
+}
+
+/* =====================================================
+   AI AGENTS
+   ===================================================== */
+
+.agent-performance-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+    width: 100% !important;
+    margin-top: 20px;
+    box-sizing: border-box;
+}
+
+.agent-performance-grid > .agent-card {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    box-sizing: border-box;
+}
+
+.agent-card {
+    min-width: 0;
+    padding: 24px;
+}
+
+.agent-card h3 {
+    margin-top: 0;
+    margin-bottom: 22px;
+}
+
+.agent-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.agent-metrics > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.agent-metrics small {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.agent-metrics strong {
+    font-size: 20px;
+}
+
+.agent-weight {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.agent-weight span {
+    color: #94a3b8;
+}
+
+.agent-weight strong {
+    font-size: 20px;
+}
+
+
+/* =====================================================
+   AI AGENTS - MOBILE
+   ===================================================== */
+
+@media (max-width: 500px) {
+
+    .agent-performance-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+/* =====================================================
+   AI AGENTS - DASHBOARD GRID
+   ===================================================== */
+
+.agents-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    align-items: start;
+}
+
+.agents-dashboard-grid > .agent-dashboard-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.agent-dashboard-card {
+    padding: 24px;
+}
+
+.agent-dashboard-card h2 {
+    margin-top: 0;
+    margin-bottom: 22px;
+}
+
+.agent-empty-card {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+
+    .agents-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* =====================================================
+   AI AGENTS - THREE COLUMN DASHBOARD LAYOUT
+   ===================================================== */
+
+.agents-page {
+    width: 100%;
+}
+
+.agents-header {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 22px;
+}
+
+.agents-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    align-items: start;
+}
+
+.agents-columns > .agent-dashboard-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.agent-dashboard-card {
+    padding: 24px;
+}
+
+.agent-dashboard-card h2 {
+    margin-top: 0;
+    margin-bottom: 22px;
+}
+
+@media (max-width: 900px) {
+    .agents-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .agents-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =====================================================
+   SETTINGS - THREE COLUMN DASHBOARD LAYOUT
+   ===================================================== */
+
+.settings-page {
+    width: 100%;
+}
+
+.settings-header {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 22px;
+}
+
+.settings-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    align-items: start;
+}
+
+.settings-columns > .settings-dashboard-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.settings-dashboard-card {
+    padding: 24px;
+    min-height: 250px;
+    box-sizing: border-box;
+}
+
+.settings-dashboard-card h2 {
+    margin-top: 0;
+    margin-bottom: 22px;
+}
+
+.settings-safety-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-safety-text {
+    margin-top: 22px;
+}
+
+.settings-save-button {
+    margin-top: 22px;
+}
+
+@media (max-width: 900px) {
+
+    .settings-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .settings-columns {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* =====================================================
+   PORTFOLIO - DASHBOARD LAYOUT
+   ===================================================== */
+
+.portfolio-page {
+    width: 100%;
+}
+
+.portfolio-header {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 22px;
+}
+
+.portfolio-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.portfolio-header-content h1 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.portfolio-header-content p {
+    margin-bottom: 0;
+}
+
+.portfolio-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    width: 100%;
+    margin-bottom: 22px;
+}
+
+.portfolio-stat {
+    min-width: 0;
+    padding: 22px;
+    box-sizing: border-box;
+}
+
+.portfolio-stat small {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.portfolio-stat strong {
+    font-size: 22px;
+}
+
+.portfolio-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    align-items: start;
+}
+
+.portfolio-dashboard-card {
+    width: 100%;
+    min-width: 0;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.portfolio-dashboard-card h2 {
+    margin-top: 0;
+    margin-bottom: 22px;
+}
+
+.trade-history-dashboard-card {
+    min-width: 0;
+}
+
+.trade-history-dashboard-card .trade-history {
+    min-width: 0;
+}
+
+.trade-history-dashboard-card .trade-row {
+    min-width: 0;
+}
+
+@media (max-width: 1000px) {
+
+    .portfolio-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .portfolio-dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 700px) {
+
+    .portfolio-header-content {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .portfolio-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* =====================================================
+   ANALYSIS - THREE COLUMN DASHBOARD LAYOUT
+   ===================================================== */
+
+.analysis-page {
+    width: 100%;
+}
+
+.analysis-header {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 22px;
+}
+
+.analysis-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    align-items: stretch;
+}
+
+.analysis-columns > .analysis-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.analysis-card {
+    padding: 24px;
+}
+
+.analysis-card h2 {
+    margin-top: 0;
+    margin-bottom: 22px;
+}
+
+.analysis-card table {
+    width: 100%;
+}
+
+.analysis-card .news-item {
+    margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+
+    .analysis-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .analysis-columns {
+        grid-template-columns: 1fr;
+    }
+
 }
 

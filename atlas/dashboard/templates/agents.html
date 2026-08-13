@@ -1,16 +1,94 @@
 {% extends "base.html" %}
 
 {% block title %}
-ATLAS
+ATLAS - Agents
 {% endblock %}
 
 {% block content %}
 
-<div class="card">
+<div class="agents-page">
 
-<h2>Kommer snart 🚀</h2>
+    <div class="card agents-header">
+        <h1>🤖 AI Agents</h1>
+        <p>
+            Performance and adaptive weights for ATLAS analysts.
+        </p>
+    </div>
 
-<p>Denne siden er under utvikling.</p>
+
+    <div class="agents-columns">
+
+        {% if dashboard.agent_performance.history %}
+
+            {% for agent in dashboard.agent_performance.history %}
+
+                <div class="card agent-dashboard-card">
+
+                    <h2>
+                        {{ agent.analyst }}
+                    </h2>
+
+                    <div class="agent-metrics">
+
+                        <div>
+                            <small>Predictions</small>
+                            <strong>{{ agent.predictions }}</strong>
+                        </div>
+
+                        <div>
+                            <small>Correct</small>
+                            <strong>{{ agent.correct }}</strong>
+                        </div>
+
+                        <div>
+                            <small>Wrong</small>
+                            <strong>{{ agent.wrong }}</strong>
+                        </div>
+
+                        <div>
+                            <small>Accuracy</small>
+                            <strong>{{ agent.accuracy }}%</strong>
+                        </div>
+
+                    </div>
+
+                    <div class="agent-weight">
+
+                        <span>
+                            Current Weight
+                        </span>
+
+                        <strong>
+                            {{
+                                (
+                                    dashboard.agent_performance.weights
+                                    .get(agent.analyst, 0)
+                                    * 100
+                                ) | round(2)
+                            }}%
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="card agent-empty-card">
+
+                <h2>No performance history yet</h2>
+
+                <p>
+                    ATLAS has not evaluated any agent predictions yet.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
 
 </div>
 

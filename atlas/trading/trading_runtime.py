@@ -9,6 +9,7 @@ No live orders are placed.
 from atlas.core.config import AtlasConfig
 from atlas.models.decision_result import DecisionResult
 from atlas.trading.trading_controller import TradingController
+from atlas.trading.prediction_tracker import PredictionTracker
 
 
 class TradingRuntime:
@@ -21,9 +22,14 @@ class TradingRuntime:
         self,
         config: AtlasConfig,
         controller: TradingController,
+        prediction_tracker: PredictionTracker | None = None,
     ):
         self.config = config
         self.controller = controller
+        self.prediction_tracker = (
+            prediction_tracker
+            or PredictionTracker()
+        )
 
     def execute(
         self,
@@ -32,6 +38,13 @@ class TradingRuntime:
         usd_nok: float,
         amount_nok: float = 1000.0,
     ):
+        # Record what ATLAS predicted before
+        # trading execution or risk checks.
+        self.prediction_tracker.record(
+            decision=decision,
+            price_usd=price_usd,
+            reason="ATLAS prediction.",
+        )
         if not self.config.paper_trading:
             return {
                 "executed": False,

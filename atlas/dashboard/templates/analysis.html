@@ -2,214 +2,221 @@
 
 {% block content %}
 
-<div class="grid">
+<div class="analysis-page">
 
-    <!-- WATCHLIST -->
+    <!-- ANALYSIS HEADER -->
 
-    <div class="card">
+    <div class="card analysis-header">
 
-        <h2>⭐ Watchlist</h2>
+        <h1>📊 Market Analysis</h1>
 
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>Symbol</th>
-                    <th>Trend</th>
-                    <th>AI</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-            {% for item in dashboard.market %}
-
-                <tr>
-
-                    <td>
-
-                        <a
-                            href="/symbol/{{ item.symbol }}"
-                            style="
-                                color:white;
-                                text-decoration:none;
-                                font-weight:bold;
-                            "
-                        >
-                            {{ item.symbol }}
-                        </a>
-
-                    </td>
-
-                    <td>
-
-                        {% if item.trend == "Bullish" %}
-                            🟢 Bullish
-                        {% elif item.trend == "Bearish" %}
-                            🔴 Bearish
-                        {% else %}
-                            🟡 Neutral
-                        {% endif %}
-
-                    </td>
-
-                    <td>
-
-                        {% if item.decision == "BUY" %}
-                            🟢 BUY
-                        {% elif item.decision == "SELL" %}
-                            🔴 SELL
-                        {% else %}
-                            🟡 HOLD
-                        {% endif %}
-
-                    </td>
-
-                </tr>
-
-            {% endfor %}
-
-            </tbody>
-
-        </table>
+        <p>
+            Market overview, technical analysis, AI decision and latest news.
+        </p>
 
     </div>
 
-    <!-- ANALYSIS -->
 
-    <div class="card">
+    <!-- ANALYSIS THREE COLUMN LAYOUT -->
 
-        <h2>{{ dashboard.technical.symbol }}</h2>
+    <div class="analysis-columns">
 
-        <table>
+        <!-- WATCHLIST -->
 
-            <tr>
+        <section class="card analysis-card">
 
-                <td>💰 USD</td>
+            <h2>⭐ Watchlist</h2>
 
-                <td>{{ dashboard.technical.price_usd }}</td>
+            <table>
 
-            </tr>
+                <thead>
 
-            <tr>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Trend</th>
+                        <th>AI</th>
+                    </tr>
 
-                <td>🇳🇴 NOK</td>
+                </thead>
 
-                <td>{{ dashboard.technical.price_nok }}</td>
+                <tbody>
 
-            </tr>
+                {% for item in dashboard.market %}
 
-            <tr>
+                    <tr>
 
-                <td>📈 Change</td>
+                        <td>
 
-                <td>{{ dashboard.technical.change }} %</td>
+                            <a
+                                href="/symbol/{{ item.symbol }}"
+                                style="
+                                    color:white;
+                                    text-decoration:none;
+                                    font-weight:bold;
+                                "
+                            >
+                                {{ item.symbol }}
+                            </a>
 
-            </tr>
+                        </td>
 
-            <tr>
 
-                <td>📊 MA20</td>
+                        <td>
 
-                <td>{{ dashboard.technical.ma20 }}</td>
+                            {% if item.trend == "Bullish" %}
+                                🟢 Bullish
+                            {% elif item.trend == "Bearish" %}
+                                🔴 Bearish
+                            {% else %}
+                                🟡 Neutral
+                            {% endif %}
 
-            </tr>
+                        </td>
 
-            <tr>
 
-                <td>📊 MA50</td>
+                        <td>
 
-                <td>{{ dashboard.technical.ma50 }}</td>
+                            {% if item.decision == "BUY" %}
+                                🟢 BUY
+                            {% elif item.decision == "SELL" %}
+                                🔴 SELL
+                            {% else %}
+                                🟡 HOLD
+                            {% endif %}
 
-            </tr>
+                        </td>
 
-            <tr>
+                    </tr>
 
-                <td>📉 Trend</td>
+                {% endfor %}
 
-                <td>{{ dashboard.technical.trend }}</td>
+                </tbody>
 
-            </tr>
+            </table>
 
-        </table>
+        </section>
 
-        <hr>
 
-        <h3>AI Decision</h3>
+        <!-- TECHNICAL ANALYSIS + AI -->
 
-        <br>
+        <section class="card analysis-card">
 
-        <h2>
+            <h2>
+                {{ dashboard.technical.symbol }}
+            </h2>
 
-            {{ dashboard.decision.action.value }}
+            <table>
 
-        </h2>
+                <tr>
+                    <td>💰 USD</td>
+                    <td>{{ dashboard.technical.price_usd }}</td>
+                </tr>
 
-        <br>
+                <tr>
+                    <td>🇳🇴 NOK</td>
+                    <td>{{ dashboard.technical.price_nok }}</td>
+                </tr>
 
-        Confidence
+                <tr>
+                    <td>📈 Change</td>
+                    <td>{{ dashboard.technical.change }} %</td>
+                </tr>
 
-        {{ dashboard.decision.confidence }}%
+                <tr>
+                    <td>📊 MA20</td>
+                    <td>{{ dashboard.technical.ma20 }}</td>
+                </tr>
 
-        <div class="confidence-bar">
+                <tr>
+                    <td>📊 MA50</td>
+                    <td>{{ dashboard.technical.ma50 }}</td>
+                </tr>
 
-            <div
-                class="confidence-fill"
-                style="width:{{ dashboard.decision.confidence }}%;">
+                <tr>
+                    <td>📉 Trend</td>
+                    <td>{{ dashboard.technical.trend }}</td>
+                </tr>
+
+            </table>
+
+
+            <hr>
+
+
+            <h3>AI Decision</h3>
+
+            <h2>
+                {{ dashboard.decision.action.value }}
+            </h2>
+
+
+            <p>
+                Confidence:
+                <strong>
+                    {{ dashboard.decision.confidence }}%
+                </strong>
+            </p>
+
+
+            <div class="confidence-bar">
+
+                <div
+                    class="confidence-fill"
+                    style="width:{{ dashboard.decision.confidence }}%;"
+                >
+                </div>
 
             </div>
 
-        </div>
+        </section>
 
-    </div>
 
-    <!-- NEWS -->
+        <!-- NEWS -->
 
-    <div class="card">
+        <section class="card analysis-card">
 
-        <h2>📰 Latest News</h2>
+            <h2>📰 Latest News</h2>
 
-        {% if dashboard.news %}
+            {% if dashboard.news %}
 
-            {% for article in dashboard.news %}
+                {% for article in dashboard.news %}
 
-                <div class="news-item">
+                    <div class="news-item">
 
-                    <h4>{{ article.title }}</h4>
+                        <h4>
+                            {{ article.title }}
+                        </h4>
 
-                    <br>
+                        <small>
+                            {{ article.source }}
+                        </small>
 
-                    <small>{{ article.source }}</small>
+                        <p>
+                            {{ article.summary }}
+                        </p>
 
-                    <br><br>
+                        <a
+                            href="{{ article.url }}"
+                            target="_blank"
+                        >
+                            Read article →
+                        </a>
 
-                    {{ article.summary }}
+                    </div>
 
-                    <br><br>
+                    <hr>
 
-                    <a
-                        href="{{ article.url }}"
-                        target="_blank">
+                {% endfor %}
 
-                        Read article →
+            {% else %}
 
-                    </a>
+                <p>
+                    No news found.
+                </p>
 
-                </div>
+            {% endif %}
 
-                <hr>
-
-            {% endfor %}
-
-        {% else %}
-
-            <p>No news found.</p>
-
-        {% endif %}
+        </section>
 
     </div>
 

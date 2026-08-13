@@ -16,3 +16,27 @@ def test_dashboard_reports_paper_trading_status():
     assert data["trading"]["paper_trading"] is True
     assert data["trading"]["live_orders"] is False
     assert data["trading"]["virtual_capital_nok"] == 5000.0
+
+def test_dashboard_reports_agent_performance():
+    service = DashboardDataService()
+
+    data = service.get_dashboard_data(
+        selected_symbol="BTC-USD"
+    )
+
+    assert "agent_performance" in data
+
+    performance = data["agent_performance"]
+
+    assert "history" in performance
+    assert "weights" in performance
+
+    assert isinstance(
+        performance["history"],
+        list,
+    )
+
+    assert isinstance(
+        performance["weights"],
+        dict,
+    )

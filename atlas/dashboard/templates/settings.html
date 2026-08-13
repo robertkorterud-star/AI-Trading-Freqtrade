@@ -5,11 +5,12 @@
 <form
     action="/settings"
     method="post"
+    class="settings-page"
 >
 
-<div class="settings-page">
+    <!-- SETTINGS HEADER -->
 
-    <div class="card">
+    <div class="card settings-header">
 
         <h2>⚙️ Settings</h2>
 
@@ -20,108 +21,147 @@
     </div>
 
 
-    <div class="card">
+    <!-- SETTINGS COLUMNS -->
 
-        <h2>Trading Mode</h2>
+    <div class="settings-columns">
 
-        <p>
-            Active mode:
-            <strong>
-                {{ dashboard.trading.mode.upper() }}
-            </strong>
-        </p>
+        <!-- TRADING MODE -->
 
-        <div class="settings-option">
+        <div class="card settings-dashboard-card">
 
-            <label>
-                <input
-                    type="radio"
-                    name="trading_mode"
-                    value="advisor"
-                    {% if dashboard.trading.mode == "advisor" %}checked{% endif %}
-                >
+            <h2>Trading Mode</h2>
 
-                Advisor
-            </label>
+            <p>
+                Active mode:
+                <strong>
+                    {{ dashboard.trading.mode.upper() }}
+                </strong>
+            </p>
 
-            <small>
-                ATLAS analyzes the market but does not place orders.
-            </small>
+            <div class="settings-option">
+
+                <label>
+
+                    <input
+                        type="radio"
+                        name="trading_mode"
+                        value="advisor"
+                        {% if dashboard.trading.mode == "advisor" %}checked{% endif %}
+                    >
+
+                    Advisor
+
+                </label>
+
+                <small>
+                    ATLAS analyzes the market but does not place orders.
+                </small>
+
+            </div>
+
+
+            <div class="settings-option">
+
+                <label>
+
+                    <input
+                        type="radio"
+                        name="trading_mode"
+                        value="paper"
+                        id="paper_trading"
+                        {% if dashboard.trading.mode == "paper" %}checked{% endif %}
+                    >
+
+                    Paper / Dry Run
+
+                </label>
+
+                <small>
+                    ATLAS simulates trades without placing real orders.
+                </small>
+
+            </div>
 
         </div>
 
 
-        <div class="settings-option">
+        <!-- PAPER TRADING -->
 
-            <label>
-                <input
-                    type="radio"
-                    name="trading_mode"
-                    value="paper"
-                    id="paper_trading"
-                    {% if dashboard.trading.mode == "paper" %}checked{% endif %}
-            >
+        <div class="card settings-dashboard-card">
 
-                Paper / Dry Run
-            </label>
+            <h2>Paper Trading</h2>
 
-            <small>
-                ATLAS simulates trades without placing real orders.
-            </small>
+            <div class="settings-row">
+
+                <span>Paper trading</span>
+
+                <strong>
+                    {% if dashboard.trading.paper_trading %}
+                        ON
+                    {% else %}
+                        OFF
+                    {% endif %}
+                </strong>
+
+            </div>
+
+
+            <div class="settings-row">
+
+                <span>Virtual capital</span>
+
+                <strong>
+                    {{ "{:,.0f}".format(
+                        dashboard.trading.virtual_capital_nok
+                        if dashboard.trading is defined
+                        else 5000
+                    ) }}
+                    NOK
+                </strong>
+
+            </div>
+
+
+            <div class="settings-row">
+
+                <span>Live orders</span>
+
+                <strong>
+                    DISABLED
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <!-- SAFETY -->
+
+        <div class="card settings-dashboard-card settings-safety-card">
+
+            <h2>🛡️ Safety</h2>
+
+            <div class="settings-safety-row">
+
+                <span>Live orders</span>
+
+                <strong class="settings-disabled">
+                    DISABLED
+                </strong>
+
+            </div>
+
+            <p class="settings-safety-text">
+                ATLAS cannot place real orders.
+                Trading remains protected while this setting is disabled.
+            </p>
 
         </div>
 
     </div>
 
 
-    <div class="card">
-
-        <h2>Paper Trading</h2>
-
-        <div class="settings-row">
-
-            <span>Paper trading</span>
-
-            <strong>
-                {% if dashboard.trading.paper_trading %}
-                    ON
-                {% else %}
-                    OFF
-                {% endif %}
-            </strong>
-
-        </div>
-
-
-        <div class="settings-row">
-
-            <span>Virtual capital</span>
-
-            <strong>
-                {{ "{:,.0f}".format(
-                    dashboard.trading.virtual_capital_nok
-                    if dashboard.trading is defined
-                    else 5000
-                ) }}
-                NOK
-            </strong>
-
-        </div>
-
-
-        <div class="settings-row">
-
-            <span>Live orders</span>
-
-            <strong>
-                DISABLED
-            </strong>
-
-        </div>
-
-    </div>
-
-</div>
+    <!-- SAVE -->
 
     <button
         type="submit"
@@ -129,25 +169,6 @@
     >
         💾 Save Settings
     </button>
-
-    <section class="settings-section settings-safety">
-
-        <h2>🛡️ Safety</h2>
-
-        <div class="settings-safety-row">
-            <span>Live orders</span>
-
-            <strong class="settings-disabled">
-                DISABLED
-            </strong>
-        </div>
-
-        <p class="settings-safety-text">
-            ATLAS cannot place real orders.
-            Trading remains protected while this setting is disabled.
-        </p>
-
-    </section>
 
 </form>
 

@@ -22,6 +22,10 @@ from atlas.trading.paper_trading_engine import PaperTradingEngine
 from atlas.trading.trading_controller import TradingController
 from atlas.trading.trading_runtime import TradingRuntime
 from atlas.trading.trading_service import TradingService
+from atlas.trading.prediction_tracker import PredictionTracker
+from atlas.trading.outcome_tracker import OutcomeTracker
+from atlas.trading.prediction_evaluator import PredictionEvaluator
+from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
 
 
 def build_config_from_args(args=None):
@@ -81,6 +85,18 @@ class AtlasEngine:
 
         trading = TradingService()
 
+        self.prediction_tracker = PredictionTracker()
+
+        self.outcome_tracker = OutcomeTracker()
+
+        self.agent_performance = AgentPerformanceTracker()
+
+        self.prediction_evaluator = PredictionEvaluator(
+            predictions=self.prediction_tracker,
+            outcomes=self.outcome_tracker,
+            agent_performance=self.agent_performance,
+        )
+
         trader = PaperTradingEngine(
             portfolio=portfolio,
             risk=risk,
@@ -94,6 +110,7 @@ class AtlasEngine:
         self.trading_runtime = TradingRuntime(
             config=self.config,
             controller=controller,
+            prediction_tracker=self.prediction_tracker,
         )
 
     def start(self):
