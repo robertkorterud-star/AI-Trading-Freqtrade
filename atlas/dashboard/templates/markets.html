@@ -1,16 +1,221 @@
 {% extends "base.html" %}
 
 {% block title %}
-ATLAS
+ATLAS - Markets
 {% endblock %}
 
 {% block content %}
 
-<div class="card">
+<div class="markets-page">
 
-<h2>Kommer snart 🚀</h2>
+    <div class="card markets-header">
 
-<p>Denne siden er under utvikling.</p>
+        <h1>📈 Markets</h1>
+
+        <p>
+            Search for stocks and cryptocurrencies to analyze with ATLAS.
+        </p>
+
+        <form
+            method="get"
+            action="/markets"
+            class="market-search-form"
+        >
+
+            <input
+                type="search"
+                name="q"
+                value="{{ query }}"
+                placeholder="Search for a stock or cryptocurrency..."
+                autocomplete="off"
+            >
+
+            <button type="submit">
+                🔎 Search
+            </button>
+
+        </form>
+
+    </div>
+
+
+    {% if query %}
+
+        <div class="markets-results-header">
+
+            <h2>
+                Search results for "{{ query }}"
+            </h2>
+
+        </div>
+
+
+        {% if market_results %}
+
+            <div class="markets-columns">
+
+                {% for market in market_results %}
+
+                    <section class="card market-card">
+
+                        <div class="market-card-type">
+                            {% if market.type == "crypto" %}
+                                🪙 CRYPTO
+                            {% else %}
+                                📈 STOCK
+                            {% endif %}
+                        </div>
+
+                        <h2>
+                            {{ market.name }}
+                        </h2>
+
+                        <p class="market-symbol">
+                            {{ market.symbol }}
+                        </p>
+
+                        <div class="market-data">
+
+                            <div>
+                                <small>Price</small>
+                                <strong>
+                                    {% if market.price_usd is not none %}
+                                        ${{ "{:,.2f}".format(market.price_usd) }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <small>Change</small>
+                                <strong class="{% if market.change is not none and market.change >= 0 %}positive{% elif market.change is not none %}negative{% endif %}">
+                                    {% if market.change is not none %}
+                                        {% if market.change >= 0 %}+{% endif %}
+                                        {{ market.change }}%
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <small>MA20</small>
+                                <strong>
+                                    {% if market.ma20 is not none %}
+                                        {{ market.ma20 }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <small>MA50</small>
+                                <strong>
+                                    {% if market.ma50 is not none %}
+                                        {{ market.ma50 }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </strong>
+                            </div>
+
+                        </div>
+
+                        <a
+                            href="/?symbol={{ market.symbol }}"
+                            class="market-analyze-button"
+                        >
+                            🤖 Analyze with ATLAS →
+                        </a>
+
+                    </section>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="card market-empty-card">
+
+                <h2>🔎 No markets found</h2>
+
+                <p>
+                    Try searching for a company name, ticker or cryptocurrency.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    {% else %}
+
+        <div class="markets-columns">
+
+            <section class="card market-card">
+
+                <div class="market-card-type">
+                    🪙 CRYPTO
+                </div>
+
+                <h2>Bitcoin</h2>
+
+                <p class="market-symbol">BTC-USD</p>
+
+                <a
+                    href="/?symbol=BTC-USD"
+                    class="market-analyze-button"
+                >
+                    🤖 Analyze with ATLAS →
+                </a>
+
+            </section>
+
+
+            <section class="card market-card">
+
+                <div class="market-card-type">
+                    🪙 CRYPTO
+                </div>
+
+                <h2>Ethereum</h2>
+
+                <p class="market-symbol">ETH-USD</p>
+
+                <a
+                    href="/?symbol=ETH-USD"
+                    class="market-analyze-button"
+                >
+                    🤖 Analyze with ATLAS →
+                </a>
+
+            </section>
+
+
+            <section class="card market-card">
+
+                <div class="market-card-type">
+                    📈 STOCK
+                </div>
+
+                <h2>NVIDIA Corporation</h2>
+
+                <p class="market-symbol">NVDA</p>
+
+                <a
+                    href="/?symbol=NVDA"
+                    class="market-analyze-button"
+                >
+                    🤖 Analyze with ATLAS →
+                </a>
+
+            </section>
+
+        </div>
+
+    {% endif %}
 
 </div>
 

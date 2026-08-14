@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from atlas.dashboard.dashboard_service import DashboardService
 from atlas.services.settings_service import SettingsService
+from atlas.services.market_search_service import MarketSearchService
 
 app = FastAPI(title="ATLAS Dashboard")
 
@@ -24,6 +25,7 @@ templates = Jinja2Templates(
 
 service = DashboardService()
 settings_service = service.data.settings
+market_search = MarketSearchService()
 
 
 def build_dashboard(selected_symbol=None):
@@ -106,6 +108,10 @@ async def analysis(request: Request):
 @app.get("/markets", response_class=HTMLResponse)
 async def markets(request: Request):
 
+    query = request.query_params.get("q", "").strip()
+
+    results = market_search.search(query)
+
     dashboard = service.get_dashboard()
 
     return templates.TemplateResponse(
@@ -114,6 +120,8 @@ async def markets(request: Request):
         context={
             "request": request,
             "dashboard": dashboard,
+            "query": query,
+            "market_results": results,
         },
     )
 

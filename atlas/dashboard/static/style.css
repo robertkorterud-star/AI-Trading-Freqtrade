@@ -1606,3 +1606,38 @@ main .dashboard-layout > .dashboard-right {
 
 }
 
+
+/* =====================================================
+   MARKETS - MARKET DATA
+   ===================================================== */
+
+.market-data {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.market-data div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.market-data small {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.market-data strong {
+    font-size: 15px;
+}
+
+@media (max-width: 600px) {
+
+    .market-data {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
