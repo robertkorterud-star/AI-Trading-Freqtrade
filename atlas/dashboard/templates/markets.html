@@ -130,6 +130,13 @@ ATLAS - Markets
                             🤖 Analyze with ATLAS →
                         </a>
 
+                    <a
+                        href="/markets?q={{ market.symbol }}&research={{ market.symbol }}"
+                        class="market-research-button"
+                    >
+                        Research strategies
+                    </a>
+
                     </section>
 
                 {% endfor %}
@@ -138,7 +145,156 @@ ATLAS - Markets
 
         {% else %}
 
-            <div class="card market-empty-card">
+        {% if strategy_research %}
+
+        <div class="card strategy-research-card">
+
+            <h2>
+                🧠 ATLAS Strategy Research —
+                {{ strategy_research.symbol }}
+            </h2>
+
+            {% if strategy_research.strategies %}
+
+                <p class="strategy-research-intro">
+                    ATLAS fant
+                    <strong>{{ strategy_research.strategies|length }}</strong>
+                    strategihypoteser basert på tilgjengelig research.
+                    Hypotesene er testet mot historiske markedsdata.
+                </p>
+
+                <div class="strategy-research-grid">
+
+                    {% for strategy in strategy_research.strategies %}
+
+                        <section class="strategy-result">
+
+                            <div class="market-card-type">
+                                STRATEGY
+                            </div>
+
+                            <h3>{{ strategy.name }}</h3>
+
+                            <p>
+                                <strong>Timeframe:</strong>
+                                {{ strategy.timeframe }}
+                            </p>
+
+                            <p>
+                                <strong>Entry:</strong>
+                                {{ strategy.entry_rule }}
+                            </p>
+
+                            <p>
+                                <strong>Exit:</strong>
+                                {{ strategy.exit_rule }}
+                            </p>
+
+                            <p>
+                                <strong>Stop loss:</strong>
+                                {{ strategy.stop_loss }}
+                            </p>
+
+                            <p>
+                                <strong>Take profit:</strong>
+                                {{ strategy.take_profit }}
+                            </p>
+
+                            <p>
+                                <strong>Source:</strong>
+                                {{ strategy.source }}
+                            </p>
+
+                            {% if strategy.reasoning %}
+
+                                <div class="strategy-reasoning">
+
+                                    <strong>Why ATLAS found this:</strong>
+
+                                    <ul>
+                                        {% for reason in strategy.reasoning %}
+                                            <li>{{ reason }}</li>
+                                        {% endfor %}
+                                    </ul>
+
+                                </div>
+
+                            {% endif %}
+
+                            {% for backtest in strategy_research.backtests %}
+
+                                {% if backtest.strategy_name == strategy.name %}
+
+                                    <div class="strategy-backtest">
+
+                                        <h4>
+                                            Backtest — 1 year / 1h
+                                        </h4>
+
+                                        <div class="market-data">
+
+                                            <div>
+                                                <small>Trades</small>
+                                                <strong>{{ backtest.trades }}</strong>
+                                            </div>
+
+                                            <div>
+                                                <small>Wins</small>
+                                                <strong>{{ backtest.wins }}</strong>
+                                            </div>
+
+                                            <div>
+                                                <small>Losses</small>
+                                                <strong>{{ backtest.losses }}</strong>
+                                            </div>
+
+                                            <div>
+                                                <small>Win rate</small>
+                                                <strong>{{ backtest.win_rate }}%</strong>
+                                            </div>
+
+                                            <div>
+                                                <small>Total return</small>
+                                                <strong>{{ backtest.total_return }}%</strong>
+                                            </div>
+
+                                            <div>
+                                                <small>Profit factor</small>
+                                                <strong>{{ backtest.profit_factor }}</strong>
+                                            </div>
+
+                                            <div>
+                                                <small>Max drawdown</small>
+                                                <strong>{{ backtest.max_drawdown }}%</strong>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                {% endif %}
+
+                            {% endfor %}
+
+                        </section>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <p>
+                    ATLAS fant ingen strategihypoteser i tilgjengelig research.
+                </p>
+
+            {% endif %}
+
+        </div>
+
+    {% endif %}
+
+        <div class="card market-empty-card">
 
                 <h2>🔎 No markets found</h2>
 

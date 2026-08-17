@@ -23,12 +23,24 @@ class AgentRegistry:
     def count(self) -> int:
         return len(self._agents)
 
-    def analyze_all(self, symbol: str):
-        """Run all registered analysts."""
+    def analyze_all(
+        self,
+        symbol: str,
+        exclude: set[str] | None = None,
+    ):
+        """Run all registered analysts except optional exclusions."""
+
+        excluded = exclude or set()
 
         results = []
 
         for agent in self.get_all():
-            results.append(agent.analyze(symbol))
+
+            if agent.name in excluded:
+                continue
+
+            results.append(
+                agent.analyze(symbol)
+            )
 
         return results

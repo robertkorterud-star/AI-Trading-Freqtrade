@@ -71,3 +71,206 @@ def test_intelligence_source_adapter_handles_no_sources():
     )
 
     assert adapter.get("NVDA") == []
+
+
+def test_intelligence_source_adapter_adds_youtube_transcript():
+
+    class FakeYouTube:
+        def search(self, symbol):
+            return [
+                {
+                    "source": "YouTube",
+                    "title": "NVDA RSI Strategy",
+                    "summary": "Trading strategy.",
+                    "sentiment": "neutral",
+                    "video_id": "abc123",
+                }
+            ]
+
+    class FakeTranscript:
+        def get(self, video_id):
+            assert video_id == "abc123"
+            return (
+                "RSI falls below 30. "
+                "Buy when RSI crosses back above 30."
+            )
+
+    class FakeFinnhub:
+        def search(self, symbol):
+            return []
+
+    adapter = IntelligenceSourceAdapter(
+        youtube=FakeYouTube(),
+        finnhub=FakeFinnhub(),
+        transcript=FakeTranscript(),
+    )
+
+    results = adapter.get("NVDA")
+
+    assert len(results) == 1
+    assert results[0]["source"] == "YouTube"
+    assert "RSI falls below 30" in results[0]["summary"]
+    assert results[0]["transcript"] == (
+        "RSI falls below 30. "
+        "Buy when RSI crosses back above 30."
+    )
+
+
+def test_intelligence_source_adapter_adds_sec_research():
+
+    class FakeYouTube:
+        def search(self, symbol):
+            return []
+
+
+    class FakeFinnhub:
+        def search(self, symbol):
+            return []
+
+
+    class FakeTranscript:
+        def get(self, video_id):
+            return ""
+
+
+    class FakeSEC:
+        def get_company_filings(self, cik):
+            assert cik == "0001045810"
+
+            return [
+                {
+                    "source": "SEC",
+                    "company": "NVIDIA CORP",
+                    "form": "10-Q",
+                    "filing_date": "2026-08-01",
+                    "accession_number": "0000000001-26-000001",
+                    "primary_document": "nvda-q1.htm",
+                    "cik": "0001045810",
+                }
+            ]
+
+
+    adapter = IntelligenceSourceAdapter(
+        youtube=FakeYouTube(),
+        finnhub=FakeFinnhub(),
+        transcript=FakeTranscript(),
+        sec=FakeSEC(),
+    )
+
+    results = adapter.get(
+        "NVDA",
+        cik="0001045810",
+    )
+
+    assert len(results) == 1
+    assert results[0]["source"] == "SEC"
+    assert results[0]["company"] == "NVIDIA CORP"
+    assert results[0]["form"] == "10-Q"
+
+
+def test_intelligence_source_adapter_adds_sec_research():
+
+    class FakeYouTube:
+        def search(self, symbol):
+            return []
+
+
+    class FakeFinnhub:
+        def search(self, symbol):
+            return []
+
+
+    class FakeTranscript:
+        def get(self, video_id):
+            return ""
+
+
+    class FakeSEC:
+        def get_company_filings(self, cik):
+            assert cik == "0001045810"
+
+            return [
+                {
+                    "source": "SEC",
+                    "company": "NVIDIA CORP",
+                    "form": "10-Q",
+                    "filing_date": "2026-08-01",
+                    "accession_number": "0000000001-26-000001",
+                    "primary_document": "nvda-q1.htm",
+                    "cik": "0001045810",
+                }
+            ]
+
+
+    adapter = IntelligenceSourceAdapter(
+        youtube=FakeYouTube(),
+        finnhub=FakeFinnhub(),
+        transcript=FakeTranscript(),
+        sec=FakeSEC(),
+    )
+
+    results = adapter.get(
+        "NVDA",
+        cik="0001045810",
+    )
+
+    assert len(results) == 1
+    assert results[0]["source"] == "SEC"
+    assert results[0]["company"] == "NVIDIA CORP"
+    assert results[0]["form"] == "10-Q"
+
+
+def test_intelligence_source_adapter_finds_sec_cik_automatically():
+
+    class FakeYouTube:
+        def search(self, symbol):
+            return []
+
+
+    class FakeFinnhub:
+        def search(self, symbol):
+            return []
+
+
+    class FakeTranscript:
+        def get(self, video_id):
+            return ""
+
+
+    class FakeSEC:
+        def find_cik(self, symbol):
+            assert symbol == "NVDA"
+            return "0001045810"
+
+        def get_company_filings(self, cik):
+            assert cik == "0001045810"
+
+            return [
+                {
+                    "source": "SEC",
+                    "company": "NVIDIA CORP",
+                    "form": "10-Q",
+                    "filing_date": "2026-08-01",
+                    "accession_number": "0000000001-26-000001",
+                    "primary_document": "nvda-q1.htm",
+                    "cik": "0001045810",
+                }
+            ]
+
+
+    adapter = IntelligenceSourceAdapter(
+        youtube=FakeYouTube(),
+        finnhub=FakeFinnhub(),
+        transcript=FakeTranscript(),
+        sec=FakeSEC(),
+    )
+
+    results = adapter.get(
+        "NVDA",
+        include_sec=True,
+    )
+
+    assert len(results) == 1
+    assert results[0]["source"] == "SEC"
+    assert results[0]["company"] == "NVIDIA CORP"
+    assert results[0]["cik"] == "0001045810"

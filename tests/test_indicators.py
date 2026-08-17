@@ -40,3 +40,51 @@ def test_rsi_detects_strong_uptrend():
     )
 
     assert result[-1] == 100.0
+
+
+def test_sma_calculates_simple_moving_average():
+
+    from atlas.trading.indicators import calculate_sma
+
+    closes = [
+        10,
+        20,
+        30,
+        40,
+        50,
+    ]
+
+    result = calculate_sma(
+        closes,
+        period=3,
+    )
+
+    assert result == [
+        None,
+        None,
+        20.0,
+        30.0,
+        40.0,
+    ]
+
+
+def test_sma_uses_only_previous_available_data():
+
+    from atlas.trading.indicators import calculate_sma
+
+    closes = [
+        100,
+        110,
+        120,
+    ]
+
+    result = calculate_sma(
+        closes,
+        period=2,
+    )
+
+    assert result == [
+        None,
+        105.0,
+        115.0,
+    ]

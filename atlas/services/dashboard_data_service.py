@@ -88,7 +88,21 @@ class DashboardDataService:
 
         for symbol in watchlist:
 
-            results = self.analysis.analyze(symbol)
+            if symbol == selected_symbol:
+
+                news = self.news.latest(symbol)
+
+                results = self.analysis.analyze_with_news(
+                    symbol,
+                    news,
+                )
+
+            else:
+
+                results = self.analysis.analyze(
+                    symbol,
+                    exclude={"News Analyst"},
+                )
 
             decision = self.decision.evaluate(
                 results
@@ -160,130 +174,130 @@ class DashboardDataService:
         # Update prices for any existing
         # paper-trading positions.
         prices_usd = {
-            item["symbol"]: item["price_usd"]
-            for item in market
+        item["symbol"]: item["price_usd"]
+        for item in market
         }
 
         self.portfolio.update_prices(
-            prices_usd
+        prices_usd
         )
 
         portfolio_data = self.portfolio.as_dict(
-            exchange.rate
+        exchange.rate
         )
 
         return {
 
-            "status": "Running",
+        "status": "Running",
 
-            "version": "0.8.1",
+        "version": "0.8.1",
 
-            "capital": self.config.capital_limit,
+        "capital": self.config.capital_limit,
 
-            "trading": {
+        "trading": {
 
-                "mode": self.settings.get_trading_status()["mode"],
+            "mode": self.settings.get_trading_status()["mode"],
 
-                "paper_trading": (
-                    self.settings.get_trading_status()["paper_trading"]
-                ),
+            "paper_trading": (
+                self.settings.get_trading_status()["paper_trading"]
+            ),
 
-                "live_orders": (
-                    self.settings.get_trading_status()["live_orders"]
-                ),
+            "live_orders": (
+                self.settings.get_trading_status()["live_orders"]
+            ),
 
-                "virtual_capital_nok": (
-                    self.config.capital_limit
-                ),
+            "virtual_capital_nok": (
+                self.config.capital_limit
+            ),
 
-                "cash_nok": portfolio_data["cash_nok"],
+            "cash_nok": portfolio_data["cash_nok"],
 
-                "invested_nok": portfolio_data["invested_nok"],
+            "invested_nok": portfolio_data["invested_nok"],
 
-                "positions_value_nok": (
-                    portfolio_data["positions_value_nok"]
-                ),
+            "positions_value_nok": (
+                portfolio_data["positions_value_nok"]
+            ),
 
-                "position_count": (
-                    portfolio_data["position_count"]
-                ),
+            "position_count": (
+                portfolio_data["position_count"]
+            ),
 
-                "unrealized_pnl_nok": (
-                    portfolio_data["unrealized_pnl_nok"]
-                ),
+            "unrealized_pnl_nok": (
+                portfolio_data["unrealized_pnl_nok"]
+            ),
 
-                "total_pnl_nok": (
-                    portfolio_data["total_pnl_nok"]
-                ),
+            "total_pnl_nok": (
+                portfolio_data["total_pnl_nok"]
+            ),
 
-                "return_percent": (
-                    portfolio_data["return_percent"]
-                ),
+            "return_percent": (
+                portfolio_data["return_percent"]
+            ),
 
-            },
-
-            "portfolio": portfolio_data,
-
-            "trade_history": self.trading.history(),
-
-        "agent_performance": {
-            "history": self.agent_performance.history(),
-            "weights": self.agent_weight_engine.calculate(),
         },
 
-            "currency": {
+        "portfolio": portfolio_data,
 
-                "base": exchange.base,
+        "trade_history": self.trading.history(),
 
-                "target": exchange.target,
+        "agent_performance": {
+        "history": self.agent_performance.history(),
+        "weights": self.agent_weight_engine.calculate(),
+        },
 
-                "rate": round(
-                    exchange.rate,
-                    4,
-                ),
+        "currency": {
 
-            },
+            "base": exchange.base,
 
-            "decision": latest_decision,
+            "target": exchange.target,
 
-            "analysts": latest_results,
+            "rate": round(
+                exchange.rate,
+                4,
+            ),
 
-            "market": market,
+        },
 
-            "news": latest_news,
+        "decision": latest_decision,
 
-            "technical": {
+        "analysts": latest_results,
 
-                "symbol": latest_snapshot.symbol,
+        "market": market,
 
-                "price_usd": round(
-                    latest_snapshot.price,
-                    2,
-                ),
+        "news": latest_news,
 
-                "price_nok": round(
-                    latest_snapshot.price
-                    * exchange.rate,
-                    2,
-                ),
+        "technical": {
 
-                "change": round(
-                    latest_snapshot.change_percent,
-                    2,
-                ),
+            "symbol": latest_snapshot.symbol,
 
-                "ma20": round(
-                    latest_snapshot.ma20,
-                    2,
-                ),
+            "price_usd": round(
+                latest_snapshot.price,
+                2,
+            ),
 
-                "ma50": round(
-                    latest_snapshot.ma50,
-                    2,
-                ),
+            "price_nok": round(
+                latest_snapshot.price
+                * exchange.rate,
+                2,
+            ),
 
-                "trend": latest_snapshot.trend,
+            "change": round(
+                latest_snapshot.change_percent,
+                2,
+            ),
 
-            },
+            "ma20": round(
+                latest_snapshot.ma20,
+                2,
+            ),
+
+            "ma50": round(
+                latest_snapshot.ma50,
+                2,
+            ),
+
+            "trend": latest_snapshot.trend,
+
+        },
 
         }

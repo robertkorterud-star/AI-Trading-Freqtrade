@@ -55,6 +55,7 @@ class StrategyLearningAgent(BaseAgent):
                 [
                     item.get("title", ""),
                     item.get("summary", ""),
+                    item.get("transcript", ""),
                 ]
             ).lower()
 
@@ -73,10 +74,30 @@ class StrategyLearningAgent(BaseAgent):
                         name="RSI Oversold Reversal",
                         symbol=symbol,
                         timeframe="15m",
-                        entry_rule="RSI < 30",
+                        entry_rule=(
+                            "RSI crosses back above 30 after being below 30"
+                            if (
+                                "cross back above 30" in text
+                                or "crosses back above 30" in text
+                                or "crossed back above 30" in text
+                            )
+                            else "RSI < 30"
+                        ),
                         exit_rule="RSI > 50",
                         stop_loss="2%",
-                        take_profit="4%",
+                        take_profit=(
+                            "RSI >= 60"
+                            if (
+                                "take profit" in text
+                                and (
+                                    "rsi reaches 60" in text
+                                    or "rsi reach 60" in text
+                                    or "rsi hits 60" in text
+                                    or "rsi hit 60" in text
+                                )
+                            )
+                            else "4%"
+                        ),
                         source=source,
                         reasoning=[
                             "Research mentions RSI oversold conditions.",

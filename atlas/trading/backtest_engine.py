@@ -35,11 +35,22 @@ class BacktestEngine:
 
         trades = []
         position = None
+        previous_ma20 = None
+        previous_ma50 = None
 
         for candle in candles:
 
             close = float(candle["close"])
             rsi = float(candle.get("rsi", 50.0))
+
+            ma20 = candle.get("ma20")
+            ma50 = candle.get("ma50")
+
+            if ma20 is not None:
+                ma20 = float(ma20)
+
+            if ma50 is not None:
+                ma50 = float(ma50)
 
             if position is None:
 
@@ -54,6 +65,24 @@ class BacktestEngine:
                         "target": close * 1.04,
                     }
 
+                elif (
+                    strategy.name
+                    == "Moving Average Crossover"
+                    and previous_ma20 is not None
+                    and previous_ma50 is not None
+                    and ma20 is not None
+                    and ma50 is not None
+                    and previous_ma20 <= previous_ma50
+                    and ma20 > ma50
+                ):
+                    position = {
+                        "entry": close,
+                        "stop": close * 0.97,
+                        "target": close * 1.06,
+                    }
+
+                previous_ma20 = ma20
+                previous_ma50 = ma50
                 continue
 
             if close <= position["stop"]:
@@ -74,7 +103,11 @@ class BacktestEngine:
 
                 position = None
 
-            elif rsi > 50:
+            elif (
+                strategy.name
+                == "RSI Oversold Reversal"
+                and rsi > 50
+            ):
 
                 trades.append(
                     (close - position["entry"])
@@ -82,6 +115,27 @@ class BacktestEngine:
                 )
 
                 position = None
+
+            elif (
+                strategy.name
+                == "Moving Average Crossover"
+                and previous_ma20 is not None
+                and previous_ma50 is not None
+                and ma20 is not None
+                and ma50 is not None
+                and previous_ma20 >= previous_ma50
+                and ma20 < ma50
+            ):
+
+                trades.append(
+                    (close - position["entry"])
+                    / position["entry"]
+                )
+
+                position = None
+
+            previous_ma20 = ma20
+            previous_ma50 = ma50
 
         wins = sum(1 for trade in trades if trade > 0)
         losses = sum(1 for trade in trades if trade <= 0)

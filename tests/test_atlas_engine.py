@@ -1,3 +1,7 @@
+from unittest.mock import patch
+
+import pandas as pd
+
 from atlas.core.config import AtlasConfig
 from atlas.core.engine import AtlasEngine
 from atlas.trading.trading_runtime import TradingRuntime
@@ -5,9 +9,37 @@ from atlas.trading.trading_runtime import TradingRuntime
 
 def test_atlas_engine_uses_btc_usd_symbol():
 
-    engine = AtlasEngine()
+    history = pd.DataFrame(
+        {
+            "Close": [
+                60000 + i
+                for i in range(60)
+            ]
+        }
+    )
 
-    results = engine.analysis_service.analyze("BTC-USD")
+    fake_ticker = type(
+        "FakeTicker",
+        (),
+        {
+            "history": lambda self, period: history,
+            "fast_info": {
+                "lastPrice": 65000.0,
+                "previousClose": 64000.0,
+            },
+        },
+    )()
+
+    with patch(
+        "atlas.adapters.market_data.yf.Ticker",
+        return_value=fake_ticker,
+    ):
+
+        engine = AtlasEngine()
+
+        results = engine.analysis_service.analyze(
+            "BTC-USD"
+        )
 
     assert results
     assert all(

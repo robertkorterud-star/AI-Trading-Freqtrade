@@ -262,15 +262,20 @@
 
                     <div class="news-item">
 
-                        <strong>
-                            {{ article.title }}
-                        </strong>
+                    <a
+                    href="{{ article.url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="color: #ffffff !important; text-decoration: none !important;"
+                >
+                        {{ article.title }}
+                    </a>
 
-                        <small>
-                            {{ article.source }}
-                        </small>
+                    <small>
+                        {{ article.source }}
+                    </small>
 
-                    </div>
+                </div>
 
                 {% endfor %}
 

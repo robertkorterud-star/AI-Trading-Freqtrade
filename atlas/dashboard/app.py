@@ -10,6 +10,8 @@ from fastapi.templating import Jinja2Templates
 from atlas.dashboard.dashboard_service import DashboardService
 from atlas.services.settings_service import SettingsService
 from atlas.services.market_search_service import MarketSearchService
+from atlas.services.strategy_research_service import StrategyResearchService
+from atlas.adapters.intelligence_sources import IntelligenceSourceAdapter
 
 app = FastAPI(title="ATLAS Dashboard")
 
@@ -26,6 +28,8 @@ templates = Jinja2Templates(
 service = DashboardService()
 settings_service = service.data.settings
 market_search = MarketSearchService()
+strategy_research = StrategyResearchService()
+intelligence_sources = IntelligenceSourceAdapter()
 
 
 def build_dashboard(selected_symbol=None):
@@ -86,14 +90,29 @@ async def dashboard_api(request: Request):
                 ),
             },
             "market": dashboard["market"],
+        "news": [
+            {
+                "title": article.title,
+                "source": article.source,
+                "summary": article.summary,
+                "url": article.url,
+                "sentiment": article.sentiment,
+            }
+            for article in dashboard["news"]
+        ],
         }
     )
 
 
 @app.get("/analysis", response_class=HTMLResponse)
-async def analysis(request: Request):
+async def analysis(
+    request: Request,
+    symbol: str | None = None,
+):
 
-    dashboard = service.get_dashboard()
+    dashboard = service.get_dashboard(
+        selected_symbol=symbol,
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -109,10 +128,26 @@ async def analysis(request: Request):
 async def markets(request: Request):
 
     query = request.query_params.get("q", "").strip()
+    research_symbol = request.query_params.get("research", "").strip()
 
     results = market_search.search(query)
 
     dashboard = service.get_dashboard()
+
+    strategy_research_result = None
+
+    if research_symbol:
+
+        research_items = intelligence_sources.get(
+            research_symbol
+        )
+
+        strategy_research_result = (
+            strategy_research.research(
+                symbol=research_symbol,
+                research=research_items,
+            )
+        )
 
     return templates.TemplateResponse(
         request=request,
@@ -122,7 +157,64 @@ async def markets(request: Request):
             "dashboard": dashboard,
             "query": query,
             "market_results": results,
+            "strategy_research": strategy_research_result,
         },
+    )
+
+
+@app.get("/api/strategy-research")
+async def strategy_research_api(request: Request):
+
+    symbol = request.query_params.get("symbol", "").strip()
+
+    if not symbol:
+        return JSONResponse(
+            content={
+                "error": "Symbol is required."
+            },
+            status_code=400,
+        )
+
+    research_items = intelligence_sources.get(
+        symbol
+    )
+
+    result = strategy_research.research(
+        symbol=symbol,
+        research=research_items,
+    )
+
+    return JSONResponse(
+        content={
+            "symbol": result.symbol,
+            "strategies": [
+                {
+                    "name": strategy.name,
+                    "timeframe": strategy.timeframe,
+                    "entry_rule": strategy.entry_rule,
+                    "exit_rule": strategy.exit_rule,
+                    "stop_loss": strategy.stop_loss,
+                    "take_profit": strategy.take_profit,
+                    "source": strategy.source,
+                    "reasoning": strategy.reasoning,
+                }
+                for strategy in result.strategies
+            ],
+            "backtests": [
+                {
+                    "strategy_name": backtest.strategy_name,
+                    "symbol": backtest.symbol,
+                    "trades": backtest.trades,
+                    "wins": backtest.wins,
+                    "losses": backtest.losses,
+                    "win_rate": backtest.win_rate,
+                    "total_return": backtest.total_return,
+                    "profit_factor": backtest.profit_factor,
+                    "max_drawdown": backtest.max_drawdown,
+                }
+                for backtest in result.backtests
+            ],
+        }
     )
 
 

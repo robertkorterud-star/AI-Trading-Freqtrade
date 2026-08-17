@@ -76,3 +76,37 @@ def test_strategy_agent_ignores_irrelevant_research():
     )
 
     assert hypotheses == []
+
+
+def test_strategy_agent_extracts_rsi_rules_from_transcript():
+
+    research = [
+        {
+            "source": "YouTube",
+            "title": "NVDA RSI Strategy",
+            "summary": "Trading strategy explained.",
+            "transcript": (
+                "Buy when RSI falls below 30. "
+                "Wait for RSI to cross back above 30. "
+                "Take profit when RSI reaches 60."
+            ),
+        }
+    ]
+
+    agent = StrategyLearningAgent()
+
+    hypotheses = agent.learn(
+        "NVDA",
+        research,
+    )
+
+    assert len(hypotheses) == 1
+
+    strategy = hypotheses[0]
+
+    assert strategy.name == "RSI Oversold Reversal"
+    assert strategy.entry_rule == (
+        "RSI crosses back above 30 after being below 30"
+    )
+    assert strategy.take_profit == "RSI >= 60"
+    assert strategy.source == "YouTube"

@@ -64,3 +64,35 @@ def calculate_rsi(
         )
 
     return rsi
+
+
+def calculate_sma(
+    values: list[float],
+    period: int = 20,
+) -> list[float | None]:
+    """Calculate SMA using only complete historical windows."""
+
+    if period <= 0:
+        raise ValueError("period must be greater than zero.")
+
+    if not values:
+        return []
+
+    sma = []
+
+    for index in range(len(values)):
+
+        if index + 1 < period:
+            sma.append(None)
+            continue
+
+        window = values[
+            index - period + 1:index + 1
+        ]
+
+        sma.append(
+            sum(window) / period
+        )
+
+    return sma
+
