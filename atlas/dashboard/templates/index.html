@@ -30,8 +30,8 @@
         <div class="paper-summary-header">
 
             <div>
-                <h2>💰 Paper Trading</h2>
-                <small>Virtual portfolio</small>
+                <h2>💰 {{ t("paper_trading") }}</h2>
+                <small>{{ t("virtual_portfolio") }}</small>
             </div>
 
             <span class="paper-badge">
@@ -43,35 +43,35 @@
         <div class="paper-summary-grid">
 
             <div>
-                <small>Total Equity</small>
+                <small>{{ t("total_equity") }}</small>
                 <strong>
                     {{ dashboard.portfolio.total_equity_nok }} NOK
                 </strong>
             </div>
 
             <div>
-                <small>Cash</small>
+                <small>{{ t("cash") }}</small>
                 <strong>
                     {{ dashboard.portfolio.cash_nok }} NOK
                 </strong>
             </div>
 
             <div>
-                <small>Invested</small>
+                <small>{{ t("invested") }}</small>
                 <strong>
                     {{ dashboard.portfolio.invested_nok }} NOK
                 </strong>
             </div>
 
             <div>
-                <small>Positions</small>
+                <small>{{ t("positions") }}</small>
                 <strong>
                     {{ dashboard.portfolio.position_count }}
                 </strong>
             </div>
 
             <div>
-                <small>Unrealized P/L</small>
+                <small>{{ t("unrealized_pl") }}</small>
                 <strong class="{% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
                     {% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}+{% endif %}
                     {{ dashboard.portfolio.unrealized_pnl_nok }} NOK
@@ -79,7 +79,7 @@
             </div>
 
             <div>
-                <small>Total P/L</small>
+                <small>{{ t("total_pl") }}</small>
                 <strong class="{% if dashboard.portfolio.total_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
                     {% if dashboard.portfolio.total_pnl_nok >= 0 %}+{% endif %}
                     {{ dashboard.portfolio.total_pnl_nok }} NOK
@@ -87,7 +87,7 @@
             </div>
 
             <div>
-                <small>Return</small>
+                <small>{{ t("return") }}</small>
                 <strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">
                     {% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}
                     {{ dashboard.portfolio.return_percent }}%
@@ -108,7 +108,7 @@
 
         <div class="card">
 
-            <h2>📊 Selected Asset</h2>
+            <h2>📊 {{ t("selected_asset") }}</h2>
 
             <h3>
                 {{ dashboard.technical.symbol }}
@@ -161,7 +161,7 @@
                 </div>
 
                 <div>
-                    <small>Trend</small>
+                    <small>{{ t("trend") }}</small>
 
                     <strong>
                         {{ dashboard.technical.trend }}
@@ -177,7 +177,7 @@
 
         <div class="card">
 
-            <h2>🤖 AI Consensus</h2>
+            <h2>🤖 {{ t("ai_consensus") }}</h2>
 
             <div class="consensus">
 
@@ -204,18 +204,31 @@
             </div>
 
             <p>
-                Confidence:
+                {{ t("confidence") }}:
                 <strong>
                     {{ dashboard.decision.confidence }}%
                 </strong>
             </p>
 
             <p>
-                Evidence:
+                {{ t("evidence") }}:
                 <strong>
                     {{ dashboard.decision.evidence }}%
                 </strong>
             </p>
+
+        {% if dashboard.decision.reasoning %}
+            <div class="decision-reasoning">
+                <h3>{{ t("why_atlas") }}</h3>
+
+                {% for reason in dashboard.decision.reasoning %}
+                    <div class="decision-reason">
+                        {{ reason }}
+                    </div>
+                {% endfor %}
+
+            </div>
+        {% endif %}
 
         </div>
 
@@ -232,10 +245,10 @@
 
         <div class="card">
 
-            <h2>💼 Portfolio</h2>
+            <h2>💼 {{ t("portfolio") }}</h2>
 
             <p>
-                <small>Capital</small>
+                <small>{{ t("capital") }}</small>
             </p>
 
             <h3>
@@ -243,7 +256,7 @@
             </h3>
 
             <p>
-                Positions:
+                {{ t("positions") }}:
                 <strong>0</strong>
             </p>
 
@@ -254,7 +267,7 @@
 
         <div class="card">
 
-            <h2>📰 Latest News</h2>
+            <h2>📰 {{ t("latest_news") }}</h2>
 
             {% if dashboard.news %}
 
@@ -266,7 +279,6 @@
                     href="{{ article.url }}"
                     target="_blank"
                     rel="noopener noreferrer"
-                    style="color: #ffffff !important; text-decoration: none !important;"
                 >
                         {{ article.title }}
                     </a>
@@ -282,7 +294,7 @@
             {% else %}
 
                 <p>
-                    No news found.
+                    {{ t("no_news_found") }}
                 </p>
 
             {% endif %}

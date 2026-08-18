@@ -21,6 +21,17 @@ class SettingsService:
             "live_orders": False,
         }
 
+    def get_language(self):
+        return getattr(self.config, "language", "no")
+
+    def set_language(self, language):
+        if language not in ("no", "en"):
+            raise ValueError(
+                "Unsupported language. Use 'no' or 'en'."
+            )
+
+        self.config.language = language
+
     def set_trading_mode(self, mode):
         if mode == "advisor":
             self.config.trading_mode = "advisor"

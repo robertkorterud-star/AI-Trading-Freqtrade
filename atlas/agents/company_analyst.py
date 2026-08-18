@@ -13,8 +13,8 @@ from atlas.models.analysis_result import AnalysisResult
 class CompanyAnalyst(BaseAgent):
     """Analyzes company fundamentals."""
 
-    def __init__(self) -> None:
-        super().__init__("Company Analyst")
+    def __init__(self, config=None) -> None:
+        super().__init__("Company Analyst", config=config)
         self.company = CompanyDataAdapter()
 
     def analyze(self, symbol: str) -> AnalysisResult:
@@ -29,58 +29,58 @@ class CompanyAnalyst(BaseAgent):
         if data.revenue_growth >= 0.15:
             score += 1
             reasoning.append(
-                "Strong revenue growth."
+                self.t("strong_revenue_growth")
             )
         elif data.revenue_growth > 0:
             score += 0.5
             reasoning.append(
-                "Revenue is growing."
+                self.t("revenue_growing")
             )
         else:
             reasoning.append(
-                "Revenue growth is weak or negative."
+                self.t("revenue_growth_weak")
             )
 
         # Profitability
         if data.profit_margin >= 0.20:
             score += 1
             reasoning.append(
-                "Strong profit margin."
+                self.t("strong_profit_margin")
             )
         elif data.profit_margin > 0:
             score += 0.5
             reasoning.append(
-                "Company is profitable."
+                self.t("company_profitable")
             )
         else:
             reasoning.append(
-                "Profitability is weak or negative."
+                self.t("profitability_weak")
             )
 
         # Debt
         if data.debt_to_equity == 0:
             reasoning.append(
-                "No debt-to-equity data available."
+                self.t("no_debt_data")
             )
         elif data.debt_to_equity <= 100:
             score += 1
             reasoning.append(
-                "Debt level appears manageable."
+                self.t("debt_manageable")
             )
         else:
             reasoning.append(
-                "Debt level is relatively high."
+                self.t("debt_high")
             )
 
         # Free cash flow
         if data.free_cash_flow > 0:
             score += 1
             reasoning.append(
-                "Company generates positive free cash flow."
+                self.t("positive_free_cash_flow")
             )
         else:
             reasoning.append(
-                "Free cash flow is weak or negative."
+                self.t("free_cash_flow_weak")
             )
 
         # Determine action

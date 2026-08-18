@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from atlas.i18n.translations import translate
 from atlas.dashboard.dashboard_service import DashboardService
 from atlas.services.settings_service import SettingsService
 from atlas.services.market_search_service import MarketSearchService
@@ -25,11 +26,21 @@ templates = Jinja2Templates(
     directory="atlas/dashboard/templates"
 )
 
+def template_translate(key):
+    return translate(get_language(), key)
+
+
+templates.env.globals["t"] = template_translate
+
 service = DashboardService()
 settings_service = service.data.settings
 market_search = MarketSearchService()
 strategy_research = StrategyResearchService()
 intelligence_sources = IntelligenceSourceAdapter()
+
+
+def get_language():
+    return settings_service.get_language()
 
 
 def build_dashboard(selected_symbol=None):
@@ -239,10 +250,16 @@ async def update_settings(request: Request):
     form = await request.form()
 
     trading_mode = form.get("trading_mode")
+    language = form.get("language")
 
     if trading_mode is not None:
         settings_service.set_trading_mode(
             trading_mode
+        )
+
+    if language is not None:
+        settings_service.set_language(
+            language
         )
 
     return RedirectResponse(

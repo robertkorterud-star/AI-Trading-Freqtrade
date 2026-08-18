@@ -28,7 +28,11 @@ class CompanyDataAdapter:
 
     def get(self, symbol: str) -> CompanyData:
         ticker = yf.Ticker(symbol)
-        info = ticker.info
+
+        try:
+            info = ticker.info
+        except Exception:
+            info = {}
 
         return CompanyData(
             symbol=symbol,

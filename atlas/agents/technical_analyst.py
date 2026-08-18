@@ -13,9 +13,9 @@ from atlas.models.analysis_result import AnalysisResult
 class TechnicalAnalyst(BaseAgent):
     """Technical trend analyst using moving averages."""
 
-    def __init__(self):
+    def __init__(self, config=None):
 
-        super().__init__("Technical Analyst")
+        super().__init__("Technical Analyst", config=config)
 
         self.market = MarketDataAdapter()
 
@@ -33,11 +33,11 @@ class TechnicalAnalyst(BaseAgent):
 
             reasoning = [
 
-                "Price is above MA20.",
+                self.t("price_above_ma20"),
 
-                "MA20 is above MA50.",
+                self.t("ma20_above_ma50"),
 
-                "Overall trend is bullish.",
+                self.t("overall_trend_bullish"),
 
             ]
 
@@ -51,11 +51,11 @@ class TechnicalAnalyst(BaseAgent):
 
             reasoning = [
 
-                "Price is below MA20.",
+                self.t("price_below_ma20"),
 
-                "MA20 is below MA50.",
+                self.t("ma20_below_ma50"),
 
-                "Overall trend is bearish.",
+                self.t("overall_trend_bearish"),
 
             ]
 
@@ -69,9 +69,9 @@ class TechnicalAnalyst(BaseAgent):
 
             reasoning = [
 
-                "Mixed market trend.",
+                self.t("mixed_market_trend"),
 
-                "Waiting for confirmation.",
+                self.t("waiting_confirmation"),
 
             ]
 

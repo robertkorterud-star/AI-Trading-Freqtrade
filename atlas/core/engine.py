@@ -3,6 +3,7 @@ ATLAS Engine
 """
 
 from atlas.agents.technical_analyst import TechnicalAnalyst
+from atlas.agents.company_analyst import CompanyAnalyst
 from atlas.core.config import AtlasConfig
 from atlas.core.logger import get_logger
 from atlas.core.registry import AgentRegistry
@@ -63,8 +64,9 @@ class AtlasEngine:
 
         self.registry = AgentRegistry()
 
-        self.registry.register(NewsAnalyst())
-        self.registry.register(TechnicalAnalyst())
+        self.registry.register(NewsAnalyst(config=self.config))
+        self.registry.register(TechnicalAnalyst(config=self.config))
+        self.registry.register(CompanyAnalyst(config=self.config))
 
         self.analysis_service = AnalysisService(
             self.registry

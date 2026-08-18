@@ -42,13 +42,27 @@ class DecisionEngine:
 
             action = Action.SELL
 
+        reasoning = [
+            "Decision based on combined analyst evidence.",
+            f"Overall evidence: {summary['evidence']:.1f}/100.",
+            f"Overall confidence: {summary['confidence']:.1f}/100.",
+        ]
+
+        for analyst in summary.get("analyst_breakdown", []):
+            reasoning.append(
+                f"{analyst['analyst']}: {analyst['action']} "
+                f"(evidence {analyst['evidence']:.1f}, "
+                f"confidence {analyst['confidence']:.1f})."
+            )
+
+            for detail in analyst.get("reasoning", []):
+                reasoning.append(f"  {detail}")
+
         return DecisionResult(
             symbol=results[0].symbol,
             action=action,
             confidence=summary["confidence"],
             evidence=summary["evidence"],
             analysts=[r.analyst for r in results],
-            reasoning=[
-                "Decision based on combined analyst evidence."
-            ],
+            reasoning=reasoning,
         )

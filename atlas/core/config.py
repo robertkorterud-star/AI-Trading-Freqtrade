@@ -17,6 +17,8 @@ class AtlasConfig:
 
     trading_mode: str = "advisor"
 
+    language: str = "no"
+
     paper_trading: bool = True
 
     debug: bool = True

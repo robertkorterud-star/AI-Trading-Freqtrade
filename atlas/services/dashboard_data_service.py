@@ -198,6 +198,8 @@ class DashboardDataService:
 
             "mode": self.settings.get_trading_status()["mode"],
 
+        "language": self.settings.get_language(),
+
             "paper_trading": (
                 self.settings.get_trading_status()["paper_trading"]
             ),

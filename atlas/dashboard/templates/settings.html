@@ -85,6 +85,48 @@
         </div>
 
 
+    <!-- LANGUAGE -->
+
+    <div class="card settings-dashboard-card">
+
+        <h2>🌐 Language / Språk</h2>
+
+        <div class="settings-option">
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="language"
+                    value="no"
+                    {% if dashboard.trading.language == "no" %}checked{% endif %}
+                >
+
+                🇳🇴 Norsk
+
+            </label>
+
+        </div>
+
+        <div class="settings-option">
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="language"
+                    value="en"
+                    {% if dashboard.trading.language == "en" %}checked{% endif %}
+                >
+
+                🇬🇧 English
+
+            </label>
+
+        </div>
+
+    </div>
+
         <!-- PAPER TRADING -->
 
         <div class="card settings-dashboard-card">

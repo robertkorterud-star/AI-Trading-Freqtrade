@@ -82,7 +82,7 @@ body {
 }
 
 body {
-    background: #0f172a;
+    background: #000000;
     color: #f8fafc;
     font-family: Arial, Helvetica, sans-serif;
     min-height: 100vh;
@@ -142,7 +142,7 @@ header {
 }
 
 .currency-select {
-    background: #1e293b;
+    background: #181818;
     color: #fff;
     border: 1px solid #334155;
     border-radius: 8px;
@@ -158,10 +158,10 @@ header {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #14532d;
+    background: transparent;
     color: #fff;
-    padding: 10px 18px;
-    border-radius: 25px;
+    padding: 4px 0;
+    border-radius: 0;
     font-weight: 700;
 }
 
@@ -175,7 +175,7 @@ header {
 }
 
 .paper-status {
-    background: #1e3a5f;
+    background: #181818;
 }
 
 .paper-status .status-dot {
@@ -232,7 +232,7 @@ main .dashboard-layout > .dashboard-right {
    ===================================================== */
 
 .watchlist-panel {
-    background: #1e293b;
+    background: #181818;
     border: 1px solid #334155;
     border-radius: 16px;
     padding: 20px;
@@ -258,7 +258,7 @@ main .dashboard-layout > .dashboard-right {
 }
 
 .watchlist-count {
-    background: #0f172a;
+    background: #000000;
     color: #38bdf8;
     border: 1px solid #334155;
     border-radius: 8px;
@@ -276,7 +276,7 @@ main .dashboard-layout > .dashboard-right {
     padding: 10px 12px;
     border-radius: 9px;
     border: 1px solid #334155;
-    background: #0f172a;
+    background: #000000;
     color: #fff;
     outline: none;
     font-size: 14px;
@@ -310,12 +310,12 @@ main .dashboard-layout > .dashboard-right {
 }
 
 .watchlist-item:hover {
-    background: #253247;
+    background: #1a1a1a;
     border-color: #334155;
 }
 
 .watchlist-item.selected {
-    background: #172b3f;
+    background: #151515;
     border-color: #38bdf8;
     box-shadow: inset 3px 0 0 #38bdf8;
 }
@@ -374,7 +374,7 @@ main .dashboard-layout > .dashboard-right {
 
 .card {
     width: 100%;
-    background: #1e293b;
+    background: #181818;
     border: 1px solid #334155;
     border-radius: 16px;
     padding: 24px;
@@ -435,7 +435,7 @@ main .dashboard-layout > .dashboard-right {
 }
 
 .technical-grid > div {
-    background: #172033;
+    background: #181818;
     border: 1px solid #2d3a50;
     border-radius: 10px;
     padding: 13px;
@@ -568,7 +568,7 @@ td {
 .confidence-bar {
     width: 100%;
     height: 12px;
-    background: #0f172a;
+    background: #000000;
     border-radius: 10px;
     overflow: hidden;
     margin-top: 12px;
@@ -734,7 +734,7 @@ footer {
 
     padding: 16px 18px;
 
-    background: #0f172a;
+    background: #000000;
     border: 1px solid #334155;
     border-radius: 12px;
 
@@ -939,7 +939,7 @@ footer {
 }
 
 .paper-summary-grid > div {
-    background: #0f172a;
+    background: #000000;
     border: 1px solid #334155;
     border-radius: 10px;
     padding: 14px;
@@ -1790,3 +1790,130 @@ main .dashboard-layout > .dashboard-right {
 .dashboard-right .news-item > a:hover {
     text-decoration: underline !important;
 }
+
+/* NEWS LINKS */
+.news-item a,
+.news-card a {
+    color: #ffffff;
+}
+
+.news-item a:hover,
+.news-card a:hover {
+    color: #38bdf8;
+}
+
+/* NEWS SUMMARY TEXT */
+.news-item p,
+.news-card p {
+    color: #a1a1aa;
+}
+
+
+/* =====================================================
+   NEWS LINKS - WHITE / ORANGE HOVER
+   ===================================================== */
+
+.news-item a,
+.news-item a:link,
+.news-item a:visited,
+.news-item a:active,
+.news-card a,
+.news-card a:link,
+.news-card a:visited,
+.news-card a:active {
+    color: #ffffff;
+}
+
+.news-item a:hover,
+.news-card a:hover,
+.news-item strong a:hover {
+    color: #f59e0b;
+}
+
+
+/* News headline text */
+.news-item strong {
+    color: #c0c0c0;
+}
+
+.news-item strong a,
+.news-item strong a:link,
+.news-item strong a:visited,
+.news-item strong a:active {
+    color: #c0c0c0;
+}
+
+.news-item strong a:hover {
+    color: #f59e0b;
+}
+
+
+/* =====================================================
+   FINAL NEWS COLOR OVERRIDE
+   ===================================================== */
+
+/* News headlines */
+.news-item strong a,
+.news-item strong a:link,
+.news-item strong a:visited,
+.news-item strong a:active {
+    color: #c0c0c0 !important;
+}
+
+/* News headline hover */
+.news-item strong a:hover {
+    color: #f59e0b !important;
+}
+
+/* Read article links */
+.dashboard-right .news-item > a,
+.dashboard-right .news-item > a:link,
+.dashboard-right .news-item > a:visited,
+.dashboard-right .news-item > a:active {
+    color: #ffffff !important;
+}
+
+/* Read article hover */
+.dashboard-right .news-item > a:hover {
+    color: #f59e0b !important;
+}
+
+/* News summaries */
+.news-item p,
+.news-card p {
+    color: #a1a1aa !important;
+}
+
+/* =====================================================
+   LATEST NEWS - FINAL COLORS
+   ===================================================== */
+
+/* Nyhetsoverskrift */
+.news-item > a,
+.news-item > a:link,
+.news-item > a:visited {
+    color: #a1a1aa !important;
+    text-decoration: none !important;
+}
+
+/* Oransje kun når musepekeren er over overskriften */
+.news-item > a:hover {
+    color: #f97316 !important;
+    text-decoration: none !important;
+}
+
+/* Analysis-siden */
+.news-item h4 {
+    color: #a1a1aa !important;
+}
+
+/* Kilde */
+.news-item small {
+    color: #71717a !important;
+}
+
+/* Informasjon / summary */
+.news-item p {
+    color: #a1a1aa !important;
+}
+

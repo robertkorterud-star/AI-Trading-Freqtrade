@@ -26,7 +26,9 @@ class AIAdapter:
     # Shared cache across AIAdapter instances.
     _cache = {}
 
-    def __init__(self):
+    def __init__(self, language="en"):
+        self.language = language if language in ("no", "en") else "en"
+
         self.api_key = os.getenv("OPENAI_API_KEY")
 
         if not self.api_key:
@@ -48,10 +50,16 @@ class AIAdapter:
         cls,
         symbol: str,
         articles: list,
+        language: str = "en",
     ) -> str:
-        """Create a stable cache key from the supplied news."""
+        """Create a stable cache key from news and language."""
 
-        parts = [symbol.upper()]
+        language = language if language in ("no", "en") else "en"
+
+        parts = [
+            symbol.upper(),
+            language,
+        ]
 
         for article in articles[:10]:
             if isinstance(article, dict):
@@ -148,6 +156,7 @@ class AIAdapter:
         cache_key = self._cache_key(
             symbol,
             articles,
+            language=self.language,
         )
 
         cached = self._get_cached(
@@ -226,6 +235,19 @@ Important rules:
   supplied news.
 - Confidence must reflect the quality and consistency
   of the evidence.
+
+LANGUAGE RULE:
+
+The selected response language is:
+{self.language}
+
+If the language is "no":
+- Write the "reason" field in Norwegian.
+- Keep all JSON field names and allowed enum values in English.
+
+If the language is "en":
+- Write the "reason" field in English.
+- Keep all JSON field names and allowed enum values in English.
 
 Return ONLY valid JSON with these fields:
 

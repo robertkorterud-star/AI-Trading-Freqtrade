@@ -13,8 +13,8 @@ from atlas.models.analysis_result import AnalysisResult
 class NewsAnalyst(BaseAgent):
     """AI-powered financial news analyst."""
 
-    def __init__(self) -> None:
-        super().__init__("News Analyst")
+    def __init__(self, config=None) -> None:
+        super().__init__("News Analyst", config=config)
 
         self.news = NewsAdapter()
 
@@ -91,7 +91,11 @@ class NewsAnalyst(BaseAgent):
                 ],
             )
 
-        ai = AIAdapter()
+        try:
+            ai = AIAdapter(language=self.config.language)
+        except TypeError:
+            # Keep compatibility with simple test/fake adapters.
+            ai = AIAdapter()
 
         analysis = ai.analyze_news(
             symbol,

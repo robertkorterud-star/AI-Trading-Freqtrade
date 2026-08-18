@@ -26,4 +26,14 @@ class EvidenceAggregator:
         return {
             "evidence": evidence,
             "confidence": confidence,
+            "analyst_breakdown": [
+                {
+                    "analyst": result.analyst,
+                    "action": result.action.value,
+                    "confidence": result.confidence,
+                    "evidence": result.evidence,
+                    "reasoning": result.reasoning,
+                }
+                for result in results
+            ],
         }
