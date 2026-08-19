@@ -4,12 +4,7 @@ Decision Engine
 
 from atlas.decision.aggregator import EvidenceAggregator
 from atlas.decision.intelligence_layer import IntelligenceLayer
-from atlas.decision.policies import (
-    BUY_THRESHOLD,
-    HOLD_THRESHOLD,
-)
-
-from atlas.models.action import Action
+from atlas.decision.policy import determine_action
 from atlas.models.analysis_result import AnalysisResult
 from atlas.models.decision_result import DecisionResult
 
@@ -36,35 +31,14 @@ class DecisionEngine:
             results
         )
 
-        if summary["evidence"] >= BUY_THRESHOLD:
-
-            action = Action.BUY
-
-        elif summary["evidence"] >= HOLD_THRESHOLD:
-
-            action = Action.HOLD
-
-        else:
-
-            action = Action.SELL
-
-        # Conflicting analyst signals require confirmation.
-        # Do not allow high evidence alone to produce BUY
-        # when the analysts disagree.
-        if (
-            action == Action.BUY
-            and intelligence.conflict
-        ):
-            action = Action.HOLD
-
-        # Likewise, avoid an automatic SELL when the
-        # analysts are clearly leaning toward BUY.
-        if (
-            action == Action.SELL
-            and intelligence.conflict
-            and intelligence.buy_count > intelligence.sell_count
-        ):
-            action = Action.HOLD
+        action = determine_action(
+            evidence=summary["evidence"],
+            agreement=intelligence.agreement,
+            conflict=intelligence.conflict,
+            buy_count=intelligence.buy_count,
+            hold_count=intelligence.hold_count,
+            sell_count=intelligence.sell_count,
+        )
 
         reasoning = [
             "Decision based on combined analyst evidence.",
