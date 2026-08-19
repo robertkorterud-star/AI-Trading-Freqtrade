@@ -8,6 +8,7 @@ from atlas.agents.base_agent import BaseAgent
 from atlas.adapters.news import NewsAdapter
 from atlas.models.action import Action
 from atlas.models.analysis_result import AnalysisResult
+from atlas.core.ai_provider_factory import AIProviderFactory
 
 
 class NewsAnalyst(BaseAgent):
@@ -89,32 +90,9 @@ class NewsAnalyst(BaseAgent):
                 ],
             )
 
-        provider = getattr(
-            self.config,
-            "ai_provider",
-            "openai",
-        ).lower()
-
-        if provider == "ollama":
-            from atlas.adapters.ollama import OllamaAdapter
-
-            try:
-                ai = OllamaAdapter(
-                    language=self.config.language,
-                )
-            except TypeError:
-                # Keep compatibility with simple test/fake adapters.
-                ai = OllamaAdapter()
-        else:
-            from atlas.adapters.ai import AIAdapter
-
-            try:
-                ai = AIAdapter(
-                    language=self.config.language,
-                )
-            except TypeError:
-                # Keep compatibility with simple test/fake adapters.
-                ai = AIAdapter()
+        ai = AIProviderFactory.create(
+            config=self.config,
+        )
 
         analysis = ai.analyze_news(
             symbol,
