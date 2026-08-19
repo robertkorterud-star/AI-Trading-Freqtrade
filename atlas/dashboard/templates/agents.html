@@ -70,6 +70,28 @@ ATLAS - Agents
 
                     </div>
 
+                    <div class="agent-learning-status">
+
+                        <span>
+                            Learning
+                        </span>
+
+                        {% if agent.predictions >= 20 %}
+
+                            <strong>
+                                ● Adaptive
+                            </strong>
+
+                        {% else %}
+
+                            <strong>
+                                ● Building history
+                            </strong>
+
+                        {% endif %}
+
+                    </div>
+
                 </div>
 
             {% endfor %}
