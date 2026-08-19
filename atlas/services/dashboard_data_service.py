@@ -31,9 +31,9 @@ from atlas.trading.agent_weight_engine import AgentWeightEngine
 class DashboardDataService:
     """Collects dashboard data."""
 
-    def __init__(self):
+    def __init__(self, config=None):
 
-        self.config = AtlasConfig()
+        self.config = config or AtlasConfig()
 
         self.settings = SettingsService(
             config=self.config,
