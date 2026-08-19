@@ -86,37 +86,3 @@ def test_decision_engine_includes_agent_weights():
         "Technical Analyst": 0.60,
         "News Analyst": 0.40,
     }
-
-
-def test_decision_engine_includes_agent_weights():
-
-    from atlas.models.analysis_result import AnalysisResult
-
-    class FakeWeightEngine:
-
-        def calculate(self):
-            return {
-                "Technical Analyst": 0.60,
-                "News Analyst": 0.40,
-            }
-
-    result = AnalysisResult(
-        symbol="BTC-USD",
-        analyst="Technical Analyst",
-        action=Action.BUY,
-        confidence=90.0,
-        evidence=90.0,
-        reasoning=["Strong technical evidence."],
-    )
-
-    engine = DecisionEngine()
-    engine.agent_weight_engine = FakeWeightEngine()
-
-    decision = engine.evaluate(
-        [result]
-    )
-
-    assert decision.agent_weights == {
-        "Technical Analyst": 0.60,
-        "News Analyst": 0.40,
-    }
