@@ -3,8 +3,8 @@ ATLAS Agent Weight Engine
 
 Calculates adaptive weights for ATLAS analysts.
 
-Weights are informational only.
-They do not affect trading decisions yet.
+Weights are adaptive and influence analyst evidence
+aggregation in decision-making.
 """
 
 from atlas.trading.agent_performance_tracker import (
@@ -44,13 +44,44 @@ class AgentWeightEngine:
                 for item in history
             }
 
-        scores = {
-            item["analyst"]: max(
-                0.0,
-                float(item["accuracy"]),
+        # Stabilize accuracy before converting it into
+        # adaptive weights. This prevents a small number
+        # of new predictions from causing large changes.
+        scores = {}
+
+        for item in history:
+            predictions = int(
+                item["predictions"]
             )
-            for item in history
-        }
+
+            accuracy = max(
+                0.0,
+                min(
+                    100.0,
+                    float(item["accuracy"]),
+                ),
+            )
+
+            # Shrink observed accuracy toward a neutral
+            # 50% baseline until enough history exists.
+            #
+            # This makes early performance changes less
+            # influential while preserving long-term learning.
+            stabilized_accuracy = (
+                (
+                    accuracy * predictions
+                )
+                + (
+                    50.0 * self.MIN_PREDICTIONS
+                )
+            ) / (
+                predictions
+                + self.MIN_PREDICTIONS
+            )
+
+            scores[item["analyst"]] = (
+                stabilized_accuracy
+            )
 
         count = len(scores)
 
@@ -118,8 +149,29 @@ class AgentWeightEngine:
 
             remaining = 0.0
 
-        return {
+        # Round weights for stable output, then correct the
+        # largest weight so the returned weights always sum
+        # to exactly 1.0.
+        rounded = {
             analyst: round(weight, 4)
             for analyst, weight in weights.items()
         }
+
+        difference = round(
+            1.0 - sum(rounded.values()),
+            4,
+        )
+
+        if rounded and difference != 0.0:
+            largest = max(
+                rounded,
+                key=rounded.get,
+            )
+
+            rounded[largest] = round(
+                rounded[largest] + difference,
+                4,
+            )
+
+        return rounded
 
