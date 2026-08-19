@@ -133,6 +133,27 @@ class AtlasEngine:
 
         symbol = "BTC-USD"
 
+        # Evaluate predictions from previous runs before
+        # creating today's new prediction.
+        evaluation_snapshot = self._get_market_snapshot(
+            symbol
+        )
+
+        evaluation_results = (
+            self.prediction_evaluator.evaluate_ready(
+                current_prices_usd={
+                    symbol: evaluation_snapshot.price,
+                }
+            )
+        )
+
+        if evaluation_results:
+            self.logger.info(
+                f"Evaluated "
+                f"{len(evaluation_results)} "
+                f"previous prediction(s)."
+            )
+
         results = self.analysis_service.analyze(
             symbol
         )
@@ -145,9 +166,7 @@ class AtlasEngine:
 
         if self.config.trading_mode == "paper":
 
-            snapshot = self._get_market_snapshot(
-                symbol
-            )
+            snapshot = evaluation_snapshot
 
             exchange = self._get_usd_nok_rate()
 

@@ -250,3 +250,110 @@ def test_atlas_config_supports_paper_mode():
     assert config.trading_mode == "paper"
     assert config.paper_trading is True
     assert config.capital_limit == 5000.0
+
+
+def test_atlas_engine_start_evaluates_previous_predictions(monkeypatch):
+
+    from datetime import datetime, timedelta
+
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.prediction_record import PredictionRecord
+
+    engine = AtlasEngine()
+
+    old_prediction = PredictionRecord(
+        symbol="BTC-USD",
+        action="BUY",
+        confidence=90.0,
+        evidence=90.0,
+        price_usd=60000.0,
+        timestamp=datetime.now() - timedelta(hours=25),
+        analysts=[
+            "Technical Analyst",
+            "Company Analyst",
+        ],
+        reason="Test prediction",
+    )
+
+    engine.prediction_tracker._predictions.append(
+        old_prediction
+    )
+
+    calls = []
+
+    def fake_snapshot(symbol):
+        calls.append("snapshot")
+        return type(
+            "Snapshot",
+            (),
+            {"price": 61000.0},
+        )()
+
+    def fake_analyze(symbol):
+        calls.append("analyze")
+        return []
+
+    def fake_evaluate(results):
+        calls.append("decision")
+        return DecisionResult(
+            symbol="BTC-USD",
+            action=Action.HOLD,
+            confidence=70.0,
+            evidence=70.0,
+        )
+
+    def fake_print_decision(decision):
+        calls.append("report")
+
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        fake_analyze,
+    )
+
+    monkeypatch.setattr(
+        engine.decision_engine,
+        "evaluate",
+        fake_evaluate,
+    )
+
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        fake_print_decision,
+    )
+
+    engine.start()
+
+    assert "snapshot" in calls
+    assert "analyze" in calls
+    assert "decision" in calls
+
+    assert calls.index("snapshot") < calls.index("analyze")
+
+    outcomes = engine.outcome_tracker.history()
+
+    assert len(outcomes) == 1
+    assert outcomes[0]["symbol"] == "BTC-USD"
+    assert outcomes[0]["correct"] is True
+
+    technical = engine.agent_performance.get(
+        "Technical Analyst"
+    )
+
+    company = engine.agent_performance.get(
+        "Company Analyst"
+    )
+
+    assert technical.predictions == 1
+    assert technical.correct == 1
+
+    assert company.predictions == 1
+    assert company.correct == 1
