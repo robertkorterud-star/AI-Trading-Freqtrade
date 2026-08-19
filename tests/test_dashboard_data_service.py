@@ -91,3 +91,80 @@ def test_dashboard_reports_intelligence_summary():
 
     assert intelligence["analysts"]
     assert intelligence["reasoning"]
+
+
+def test_dashboard_decision_contains_agent_weights(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.core.config import AtlasConfig
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(
+            tmp_path / "agent_performance.json"
+        )
+    )
+
+    service = DashboardDataService(
+        config=config
+    )
+
+    def fake_analyze(symbol, exclude=None):
+        return [
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Technical Analyst",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Strong technical evidence."],
+            ),
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Company Analyst",
+                action=Action.BUY,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Positive company evidence."],
+            ),
+        ]
+
+    def fake_analyze_with_news(symbol, news):
+        return fake_analyze(symbol)
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze",
+        fake_analyze,
+    )
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze_with_news",
+        fake_analyze_with_news,
+    )
+
+    data = service.get_dashboard_data(
+        selected_symbol="BTC-USD"
+    )
+
+    decision = data["decision"]
+
+    assert decision.agent_weights
+
+    assert (
+        "Technical Analyst"
+        in decision.agent_weights
+    )
+
+    assert (
+        "Company Analyst"
+        in decision.agent_weights
+    )
+
+    assert round(
+        sum(decision.agent_weights.values()),
+        4,
+    ) == 1.0

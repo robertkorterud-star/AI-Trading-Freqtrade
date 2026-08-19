@@ -39,10 +39,30 @@ class AgentWeightEngine:
         ):
             equal_weight = 1.0 / len(history)
 
-            return {
-                item["analyst"]: round(equal_weight, 4)
+            rounded = {
+                item["analyst"]: round(
+                    equal_weight,
+                    4,
+                )
                 for item in history
             }
+
+            difference = round(
+                1.0 - sum(rounded.values()),
+                4,
+            )
+
+            if rounded and difference != 0.0:
+                largest = next(
+                    iter(rounded)
+                )
+
+                rounded[largest] = round(
+                    rounded[largest] + difference,
+                    4,
+                )
+
+            return rounded
 
         # Stabilize accuracy before converting it into
         # adaptive weights. This prevents a small number

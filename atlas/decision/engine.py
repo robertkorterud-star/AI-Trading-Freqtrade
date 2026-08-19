@@ -79,5 +79,6 @@ class DecisionEngine:
             confidence=summary["confidence"],
             evidence=summary["evidence"],
             analysts=[r.analyst for r in results],
+            agent_weights=weights or {},
             reasoning=reasoning,
         )

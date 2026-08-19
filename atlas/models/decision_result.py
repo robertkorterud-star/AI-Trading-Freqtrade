@@ -25,4 +25,8 @@ class DecisionResult:
 
     analysts: list[str] = field(default_factory=list)
 
+    agent_weights: dict[str, float] = field(
+        default_factory=dict
+    )
+
     reasoning: list[str] = field(default_factory=list)

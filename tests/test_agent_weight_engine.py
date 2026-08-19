@@ -47,9 +47,22 @@ def test_weights_are_equal_with_insufficient_history():
 
     weights = engine.calculate()
 
-    assert weights["Technical Analyst"] == 0.3333
-    assert weights["News Analyst"] == 0.3333
-    assert weights["Company Analyst"] == 0.3333
+    assert sum(weights.values()) == 1.0
+
+    assert weights["Technical Analyst"] in (
+        0.3333,
+        0.3334,
+    )
+
+    assert weights["News Analyst"] in (
+        0.3333,
+        0.3334,
+    )
+
+    assert weights["Company Analyst"] in (
+        0.3333,
+        0.3334,
+    )
 
 
 def test_weights_follow_accuracy_after_minimum_history():
