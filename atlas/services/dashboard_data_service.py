@@ -66,6 +66,10 @@ class DashboardDataService:
             self.agent_performance
         )
 
+        self.decision.agent_weight_engine = (
+            self.agent_weight_engine
+        )
+
         for agent in self.registry.get_all():
             self.agent_performance.ensure(agent.name)
 
