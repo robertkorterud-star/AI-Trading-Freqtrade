@@ -28,3 +28,7 @@ class AtlasConfig:
     max_open_trades: int = 3
 
     capital_limit: float = 5000.0
+
+    agent_performance_storage: str = (
+        "atlas/data/agent_performance.json"
+    )

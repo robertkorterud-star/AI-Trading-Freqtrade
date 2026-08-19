@@ -6,6 +6,7 @@ from atlas.decision.aggregator import EvidenceAggregator
 from atlas.decision.intelligence_layer import IntelligenceLayer
 from atlas.decision.policy import determine_action
 from atlas.models.analysis_result import AnalysisResult
+from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.models.decision_result import DecisionResult
 
 
@@ -16,6 +17,7 @@ class DecisionEngine:
 
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
+        self.agent_weight_engine = None
 
     def evaluate(
         self,
@@ -25,7 +27,15 @@ class DecisionEngine:
         if not results:
             raise ValueError("No analysis results provided.")
 
-        summary = self.aggregator.summarize(results)
+        weights = None
+
+        if self.agent_weight_engine is not None:
+            weights = self.agent_weight_engine.calculate()
+
+        summary = self.aggregator.summarize(
+            results,
+            weights=weights,
+        )
 
         intelligence = self.intelligence.summarize(
             results

@@ -25,8 +25,11 @@ from atlas.trading.trading_runtime import TradingRuntime
 from atlas.trading.trading_service import TradingService
 from atlas.trading.prediction_tracker import PredictionTracker
 from atlas.trading.outcome_tracker import OutcomeTracker
+from pathlib import Path
+
 from atlas.trading.prediction_evaluator import PredictionEvaluator
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
+from atlas.trading.agent_weight_engine import AgentWeightEngine
 
 
 def build_config_from_args(args=None):
@@ -91,7 +94,21 @@ class AtlasEngine:
 
         self.outcome_tracker = OutcomeTracker()
 
-        self.agent_performance = AgentPerformanceTracker()
+        performance_path = Path(
+            self.config.agent_performance_storage
+        )
+
+        self.agent_performance = AgentPerformanceTracker(
+            storage_path=performance_path
+        )
+
+        self.agent_weight_engine = AgentWeightEngine(
+            self.agent_performance
+        )
+
+        self.decision_engine.agent_weight_engine = (
+            self.agent_weight_engine
+        )
 
         self.prediction_evaluator = PredictionEvaluator(
             predictions=self.prediction_tracker,

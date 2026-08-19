@@ -252,7 +252,10 @@ def test_atlas_config_supports_paper_mode():
     assert config.capital_limit == 5000.0
 
 
-def test_atlas_engine_start_evaluates_previous_predictions(monkeypatch):
+def test_atlas_engine_start_evaluates_previous_predictions(
+    monkeypatch,
+    tmp_path,
+):
 
     from datetime import datetime, timedelta
 
@@ -260,7 +263,15 @@ def test_atlas_engine_start_evaluates_previous_predictions(monkeypatch):
     from atlas.models.decision_result import DecisionResult
     from atlas.trading.prediction_record import PredictionRecord
 
-    engine = AtlasEngine()
+    config = AtlasConfig(
+        agent_performance_storage=(
+            str(tmp_path / "agent_performance.json")
+        )
+    )
+
+    engine = AtlasEngine(
+        config=config
+    )
 
     old_prediction = PredictionRecord(
         symbol="BTC-USD",

@@ -11,6 +11,7 @@ class EvidenceAggregator:
     def summarize(
         self,
         results: list[AnalysisResult],
+        weights: dict[str, float] | None = None,
     ) -> dict:
 
         if not results:
@@ -19,9 +20,43 @@ class EvidenceAggregator:
                 "confidence": 0.0,
             }
 
-        evidence = sum(r.evidence for r in results) / len(results)
+        if weights is None:
+            weights = {}
 
-        confidence = sum(r.confidence for r in results) / len(results)
+        effective_weights = {
+            result.analyst: max(
+                0.0,
+                float(weights.get(result.analyst, 0.0)),
+            )
+            for result in results
+        }
+
+        total_weight = sum(
+            effective_weights.values()
+        )
+
+        # Unknown or incomplete weights fall back to
+        # equal weighting rather than silently discarding
+        # analysts.
+        if total_weight <= 0:
+            effective_weights = {
+                result.analyst: 1.0
+                for result in results
+            }
+
+            total_weight = float(len(results))
+
+        evidence = sum(
+            result.evidence
+            * effective_weights[result.analyst]
+            for result in results
+        ) / total_weight
+
+        confidence = sum(
+            result.confidence
+            * effective_weights[result.analyst]
+            for result in results
+        ) / total_weight
 
         return {
             "evidence": evidence,
