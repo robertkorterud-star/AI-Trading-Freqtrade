@@ -3,6 +3,7 @@ Decision Engine
 """
 
 from atlas.decision.aggregator import EvidenceAggregator
+from atlas.decision.intelligence_layer import IntelligenceLayer
 from atlas.decision.policies import (
     BUY_THRESHOLD,
     HOLD_THRESHOLD,
@@ -19,6 +20,7 @@ class DecisionEngine:
     def __init__(self):
 
         self.aggregator = EvidenceAggregator()
+        self.intelligence = IntelligenceLayer()
 
     def evaluate(
         self,
@@ -29,6 +31,10 @@ class DecisionEngine:
             raise ValueError("No analysis results provided.")
 
         summary = self.aggregator.summarize(results)
+
+        intelligence = self.intelligence.summarize(
+            results
+        )
 
         if summary["evidence"] >= BUY_THRESHOLD:
 
@@ -42,11 +48,36 @@ class DecisionEngine:
 
             action = Action.SELL
 
+        # Conflicting analyst signals require confirmation.
+        # Do not allow high evidence alone to produce BUY
+        # when the analysts disagree.
+        if (
+            action == Action.BUY
+            and intelligence.conflict
+        ):
+            action = Action.HOLD
+
+        # Likewise, avoid an automatic SELL when the
+        # analysts are clearly leaning toward BUY.
+        if (
+            action == Action.SELL
+            and intelligence.conflict
+            and intelligence.buy_count > intelligence.sell_count
+        ):
+            action = Action.HOLD
+
         reasoning = [
             "Decision based on combined analyst evidence.",
             f"Overall evidence: {summary['evidence']:.1f}/100.",
             f"Overall confidence: {summary['confidence']:.1f}/100.",
+            f"Analyst agreement: {intelligence.agreement:.1f}%.",
         ]
+
+        if intelligence.conflict:
+            reasoning.append(
+                "Decision downgraded to HOLD because "
+                "analyst signals conflict."
+            )
 
         for analyst in summary.get("analyst_breakdown", []):
             reasoning.append(
