@@ -34,9 +34,17 @@ class DashboardDataService:
 
         self.config = AtlasConfig()
 
+        self.settings = SettingsService(
+            config=self.config,
+        )
+
         self.registry = AgentRegistry()
 
-        self.registry.register(NewsAnalyst())
+        self.registry.register(
+            NewsAnalyst(
+                config=self.config,
+            )
+        )
         self.registry.register(TechnicalAnalyst())
         self.registry.register(CompanyAnalyst())
 
@@ -47,7 +55,6 @@ class DashboardDataService:
         self.exchange = ExchangeRateService()
         self.portfolio = PortfolioService()
         self.trading = TradingService()
-        self.settings = SettingsService()
 
         self.agent_performance = AgentPerformanceTracker()
         self.agent_weight_engine = AgentWeightEngine(
@@ -198,7 +205,9 @@ class DashboardDataService:
 
             "mode": self.settings.get_trading_status()["mode"],
 
-        "language": self.settings.get_language(),
+            "language": self.settings.get_language(),
+
+            "ai_provider": self.settings.get_ai_provider(),
 
             "paper_trading": (
                 self.settings.get_trading_status()["paper_trading"]

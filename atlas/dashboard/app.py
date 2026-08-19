@@ -251,6 +251,7 @@ async def update_settings(request: Request):
 
     trading_mode = form.get("trading_mode")
     language = form.get("language")
+    ai_provider = form.get("ai_provider")
 
     if trading_mode is not None:
         settings_service.set_trading_mode(
@@ -260,6 +261,11 @@ async def update_settings(request: Request):
     if language is not None:
         settings_service.set_language(
             language
+        )
+
+    if ai_provider is not None:
+        settings_service.set_ai_provider(
+            ai_provider
         )
 
     return RedirectResponse(

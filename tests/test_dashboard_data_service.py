@@ -40,3 +40,19 @@ def test_dashboard_reports_agent_performance():
         performance["weights"],
         dict,
     )
+
+
+def test_dashboard_news_analyst_uses_selected_ai_provider():
+
+    service = DashboardDataService()
+
+    service.settings.set_ai_provider("ollama")
+
+    news_analyst = next(
+        agent
+        for agent in service.registry.get_all()
+        if agent.name == "News Analyst"
+    )
+
+    assert news_analyst.config is service.settings.get_config()
+    assert news_analyst.config.ai_provider == "ollama"

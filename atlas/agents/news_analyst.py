@@ -77,8 +77,6 @@ class NewsAnalyst(BaseAgent):
         AnalysisResult format.
         """
 
-        from atlas.adapters.ai import AIAdapter
-
         if not articles:
             return AnalysisResult(
                 analyst=self.name,
@@ -91,11 +89,32 @@ class NewsAnalyst(BaseAgent):
                 ],
             )
 
-        try:
-            ai = AIAdapter(language=self.config.language)
-        except TypeError:
-            # Keep compatibility with simple test/fake adapters.
-            ai = AIAdapter()
+        provider = getattr(
+            self.config,
+            "ai_provider",
+            "openai",
+        ).lower()
+
+        if provider == "ollama":
+            from atlas.adapters.ollama import OllamaAdapter
+
+            try:
+                ai = OllamaAdapter(
+                    language=self.config.language,
+                )
+            except TypeError:
+                # Keep compatibility with simple test/fake adapters.
+                ai = OllamaAdapter()
+        else:
+            from atlas.adapters.ai import AIAdapter
+
+            try:
+                ai = AIAdapter(
+                    language=self.config.language,
+                )
+            except TypeError:
+                # Keep compatibility with simple test/fake adapters.
+                ai = AIAdapter()
 
         analysis = ai.analyze_news(
             symbol,

@@ -44,3 +44,43 @@ def test_settings_service_returns_trading_status():
     assert status["mode"] == "advisor"
     assert status["paper_trading"] is True
     assert status["live_orders"] is False
+
+
+def test_settings_service_defaults_to_openai_ai_provider():
+
+    service = SettingsService()
+
+    assert service.get_ai_provider() == "openai"
+
+
+def test_settings_service_can_set_ollama_ai_provider():
+
+    service = SettingsService()
+
+    service.set_ai_provider("ollama")
+
+    assert service.get_ai_provider() == "ollama"
+
+
+def test_settings_service_can_set_openai_ai_provider():
+
+    service = SettingsService()
+
+    service.set_ai_provider("ollama")
+    service.set_ai_provider("openai")
+
+    assert service.get_ai_provider() == "openai"
+
+
+def test_settings_service_rejects_unknown_ai_provider():
+
+    service = SettingsService()
+
+    try:
+        service.set_ai_provider("unknown")
+    except ValueError:
+        return
+
+    raise AssertionError(
+        "Unknown AI provider must be rejected"
+    )

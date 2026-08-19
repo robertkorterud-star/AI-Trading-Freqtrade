@@ -8,8 +8,8 @@ from atlas.core.config import AtlasConfig
 class SettingsService:
     """Manage safe ATLAS trading settings."""
 
-    def __init__(self):
-        self.config = AtlasConfig()
+    def __init__(self, config=None):
+        self.config = config or AtlasConfig()
 
     def get_config(self):
         return self.config
@@ -31,6 +31,22 @@ class SettingsService:
             )
 
         self.config.language = language
+
+    def get_ai_provider(self):
+        return getattr(
+            self.config,
+            "ai_provider",
+            "openai",
+        )
+
+    def set_ai_provider(self, provider):
+        if provider not in ("openai", "ollama"):
+            raise ValueError(
+                "Unsupported AI provider. "
+                "Use 'openai' or 'ollama'."
+            )
+
+        self.config.ai_provider = provider
 
     def set_trading_mode(self, mode):
         if mode == "advisor":

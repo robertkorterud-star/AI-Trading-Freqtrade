@@ -127,6 +127,66 @@
 
     </div>
 
+
+    <!-- AI PROVIDER -->
+
+    <div class="card settings-dashboard-card">
+
+        <h2>🤖 AI Provider</h2>
+
+        <p>
+            Active provider:
+            <strong>
+                {{ dashboard.trading.ai_provider.upper() }}
+            </strong>
+        </p>
+
+        <div class="settings-option">
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="ai_provider"
+                    value="openai"
+                    {% if dashboard.trading.ai_provider == "openai" %}checked{% endif %}
+                >
+
+                OpenAI
+
+            </label>
+
+            <small>
+                Use OpenAI for ATLAS AI analysis.
+            </small>
+
+        </div>
+
+
+        <div class="settings-option">
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="ai_provider"
+                    value="ollama"
+                    {% if dashboard.trading.ai_provider == "ollama" %}checked{% endif %}
+                >
+
+                Ollama
+
+            </label>
+
+            <small>
+                Use local Ollama with qwen3:4b.
+            </small>
+
+        </div>
+
+    </div>
+
+
         <!-- PAPER TRADING -->
 
         <div class="card settings-dashboard-card">

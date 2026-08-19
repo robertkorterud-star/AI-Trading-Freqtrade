@@ -9,3 +9,17 @@ def test_settings_route_exists():
     }
 
     assert "/settings" in routes
+
+
+def test_settings_route_supports_ai_provider():
+    from atlas.dashboard.app import settings_service
+
+    settings_service.set_ai_provider("openai")
+
+    settings_service.set_ai_provider("ollama")
+
+    assert settings_service.get_ai_provider() == "ollama"
+
+    settings_service.set_ai_provider("openai")
+
+    assert settings_service.get_ai_provider() == "openai"

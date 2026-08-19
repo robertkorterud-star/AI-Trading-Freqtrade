@@ -19,6 +19,8 @@ class AtlasConfig:
 
     language: str = "no"
 
+    ai_provider: str = "openai"
+
     paper_trading: bool = True
 
     debug: bool = True

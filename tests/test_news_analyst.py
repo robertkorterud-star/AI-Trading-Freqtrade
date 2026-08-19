@@ -56,3 +56,112 @@ def test_news_analyst_returns_analysis_result(monkeypatch):
     assert result.confidence == 92
     assert result.evidence == 95
     assert result.reasoning
+
+
+def test_news_analyst_can_use_ollama_provider(monkeypatch):
+    from atlas.core.config import AtlasConfig
+
+    class FakeOllamaAdapter:
+
+        def __init__(self, language="en"):
+            self.language = language
+
+        def analyze_news(self, symbol, articles):
+            return {
+                "symbol": symbol,
+                "relevance": 80,
+                "sentiment": "POSITIVE",
+                "impact": "HIGH",
+                "time_horizon": "SHORT",
+                "action": "BUY",
+                "confidence": 85,
+                "reason": "Ollama test analysis.",
+            }
+
+    import atlas.adapters.ollama
+
+    monkeypatch.setattr(
+        atlas.adapters.ollama,
+        "OllamaAdapter",
+        FakeOllamaAdapter,
+    )
+
+    config = AtlasConfig(
+        language="no",
+        ai_provider="ollama",
+    )
+
+    analyst = NewsAnalyst(
+        config=config,
+    )
+
+    articles = [
+        {
+            "title": "Positive test news",
+            "summary": "Strong positive development.",
+            "source": "ATLAS TEST",
+        }
+    ]
+
+    result = analyst.analyze_news(
+        "NVDA",
+        articles,
+    )
+
+    assert result.symbol == "NVDA"
+    assert result.action == Action.BUY
+    assert result.confidence == 85
+    assert result.reasoning
+
+
+def test_news_analyst_selects_ollama_adapter(monkeypatch):
+    from atlas.core.config import AtlasConfig
+
+    calls = []
+
+    class FakeOllamaAdapter:
+
+        def __init__(self, language="en"):
+            calls.append(("init", language))
+
+        def analyze_news(self, symbol, articles):
+            calls.append(("analyze", symbol))
+
+            return {
+                "symbol": symbol,
+                "relevance": 80,
+                "sentiment": "POSITIVE",
+                "impact": "HIGH",
+                "time_horizon": "SHORT",
+                "action": "BUY",
+                "confidence": 85,
+                "reason": "Ollama provider test.",
+            }
+
+    monkeypatch.setattr(
+        "atlas.adapters.ollama.OllamaAdapter",
+        FakeOllamaAdapter,
+    )
+
+    analyst = NewsAnalyst(
+        config=AtlasConfig(
+            language="no",
+            ai_provider="ollama",
+        )
+    )
+
+    result = analyst.analyze_news(
+        "NVDA",
+        [
+            {
+                "title": "Positive test",
+                "summary": "Strong development.",
+                "source": "ATLAS TEST",
+            }
+        ],
+    )
+
+    assert result.action == Action.BUY
+    assert result.confidence == 85
+    assert ("init", "no") in calls
+    assert ("analyze", "NVDA") in calls
