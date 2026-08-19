@@ -32,9 +32,18 @@ class MarketDataAdapter:
 
         history = ticker.history(period="3mo")
 
-        ma20 = history["Close"].rolling(20).mean().iloc[-1]
+        close = history["Close"].dropna()
 
-        ma50 = history["Close"].rolling(50).mean().iloc[-1]
+        if len(close) < 50:
+            raise ValueError(
+                f"Insufficient market history for {symbol}: "
+                f"need at least 50 valid closes, "
+                f"got {len(close)}."
+            )
+
+        ma20 = close.rolling(20).mean().iloc[-1]
+
+        ma50 = close.rolling(50).mean().iloc[-1]
 
         info = ticker.fast_info
 

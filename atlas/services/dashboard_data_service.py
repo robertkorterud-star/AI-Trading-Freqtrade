@@ -14,6 +14,7 @@ from atlas.agents.technical_analyst import TechnicalAnalyst
 from atlas.agents.company_analyst import CompanyAnalyst
 
 from atlas.decision.engine import DecisionEngine
+from atlas.decision.intelligence_layer import IntelligenceLayer
 from atlas.adapters.news import NewsAdapter
 
 from atlas.services.technical_service import TechnicalService
@@ -50,6 +51,7 @@ class DashboardDataService:
 
         self.analysis = AnalysisService(self.registry)
         self.decision = DecisionEngine()
+        self.intelligence = IntelligenceLayer()
         self.news = NewsAdapter()
         self.technical = TechnicalService()
         self.exchange = ExchangeRateService()
@@ -90,6 +92,7 @@ class DashboardDataService:
 
         latest_results = None
         latest_decision = None
+        latest_intelligence = None
         latest_news = []
         latest_snapshot = None
 
@@ -171,6 +174,12 @@ class DashboardDataService:
                 latest_results = results
 
                 latest_decision = decision
+
+                latest_intelligence = (
+                    self.intelligence.summarize(
+                        results
+                    )
+                )
 
                 latest_snapshot = snapshot
 
@@ -270,6 +279,29 @@ class DashboardDataService:
         },
 
         "decision": latest_decision,
+
+        "intelligence": {
+            "symbol": latest_intelligence.symbol,
+            "action": latest_intelligence.action.value,
+            "evidence": round(
+                latest_intelligence.evidence,
+                1,
+            ),
+            "confidence": round(
+                latest_intelligence.confidence,
+                1,
+            ),
+            "buy_count": latest_intelligence.buy_count,
+            "hold_count": latest_intelligence.hold_count,
+            "sell_count": latest_intelligence.sell_count,
+            "agreement": round(
+                latest_intelligence.agreement,
+                1,
+            ),
+            "conflict": latest_intelligence.conflict,
+            "analysts": latest_intelligence.analysts,
+            "reasoning": latest_intelligence.reasoning,
+        },
 
         "analysts": latest_results,
 

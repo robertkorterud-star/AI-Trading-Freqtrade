@@ -83,6 +83,7 @@ async def dashboard_api(request: Request):
             "version": dashboard["version"],
             "currency": dashboard["currency"],
             "technical": dashboard["technical"],
+            "intelligence": dashboard["intelligence"],
             "decision": {
                 "action": (
                     dashboard["decision"].action.value

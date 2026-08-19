@@ -56,3 +56,38 @@ def test_dashboard_news_analyst_uses_selected_ai_provider():
 
     assert news_analyst.config is service.settings.get_config()
     assert news_analyst.config.ai_provider == "ollama"
+
+
+def test_dashboard_reports_intelligence_summary():
+
+    service = DashboardDataService()
+
+    data = service.get_dashboard_data(
+        selected_symbol="NVDA"
+    )
+
+    intelligence = data["intelligence"]
+
+    assert intelligence["symbol"] == "NVDA"
+
+    assert intelligence["action"] in (
+        "BUY",
+        "HOLD",
+        "SELL",
+    )
+
+    assert 0 <= intelligence["agreement"] <= 100
+    assert 0 <= intelligence["evidence"] <= 100
+    assert 0 <= intelligence["confidence"] <= 100
+
+    assert intelligence["buy_count"] >= 0
+    assert intelligence["hold_count"] >= 0
+    assert intelligence["sell_count"] >= 0
+
+    assert isinstance(
+        intelligence["conflict"],
+        bool,
+    )
+
+    assert intelligence["analysts"]
+    assert intelligence["reasoning"]
