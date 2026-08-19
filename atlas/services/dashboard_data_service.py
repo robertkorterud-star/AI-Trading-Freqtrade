@@ -58,7 +58,10 @@ class DashboardDataService:
         self.portfolio = PortfolioService()
         self.trading = TradingService()
 
-        self.agent_performance = AgentPerformanceTracker()
+        self.agent_performance = AgentPerformanceTracker(
+            storage_path=self.config.agent_performance_storage
+        )
+
         self.agent_weight_engine = AgentWeightEngine(
             self.agent_performance
         )
