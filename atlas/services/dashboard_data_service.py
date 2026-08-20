@@ -184,7 +184,8 @@ class DashboardDataService:
 
                 latest_intelligence = (
                     self.intelligence.summarize(
-                        results
+                        results,
+                        weights=decision.agent_weights,
                     )
                 )
 
@@ -309,6 +310,25 @@ class DashboardDataService:
                 1,
             ),
             "conflict": latest_intelligence.conflict,
+            "weighted_buy": round(
+                latest_intelligence.weighted_buy,
+                1,
+            ),
+            "weighted_hold": round(
+                latest_intelligence.weighted_hold,
+                1,
+            ),
+            "weighted_sell": round(
+                latest_intelligence.weighted_sell,
+                1,
+            ),
+            "weighted_agreement": round(
+                latest_intelligence.weighted_agreement,
+                1,
+            ),
+            "weighted_conflict": (
+                latest_intelligence.weighted_conflict
+            ),
             "analysts": latest_intelligence.analysts,
             "reasoning": latest_intelligence.reasoning,
         },

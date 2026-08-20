@@ -168,6 +168,72 @@
 
             </div>
 
+
+            <div class="decision-intelligence">
+
+                <h3>Weighted Intelligence</h3>
+
+                <div class="decision-weight-metrics">
+
+                    <div>
+                        <span>BUY influence</span>
+                        <strong>
+                            {{ dashboard.intelligence.weighted_buy }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>HOLD influence</span>
+                        <strong>
+                            {{ dashboard.intelligence.weighted_hold }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>SELL influence</span>
+                        <strong>
+                            {{ dashboard.intelligence.weighted_sell }}%
+                        </strong>
+                    </div>
+
+                </div>
+
+                <div class="decision-agreement">
+
+                    <div>
+                        <span>Weighted Agreement</span>
+                        <strong>
+                            {{ dashboard.intelligence.weighted_agreement }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Weighted Conflict</span>
+
+                        {% if dashboard.intelligence.weighted_conflict %}
+                            <strong>Yes</strong>
+                        {% else %}
+                            <strong>No</strong>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="decision-reasoning">
+
+                <h3>Why ATLAS decided this</h3>
+
+                {% for reason in dashboard.decision.reasoning %}
+
+                    <p>{{ reason }}</p>
+
+                {% endfor %}
+
+            </div>
+
         </section>
 
 
