@@ -192,3 +192,103 @@ def test_high_weight_agent_can_influence_final_decision():
     assert decision.confidence == 100.0
 
     assert decision.action == Action.BUY
+
+def test_decision_explains_adaptive_weighted_buy():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    class FakeWeightEngine:
+
+        def calculate(self):
+            return {
+                "Technical Analyst": 0.85,
+                "News Analyst": 0.10,
+                "Company Analyst": 0.05,
+            }
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Very strong technical BUY signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=0.0,
+            reasoning=["Negative news signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=0.0,
+            reasoning=["Negative company signal."],
+        ),
+    ]
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = FakeWeightEngine()
+
+    decision = engine.evaluate(results)
+
+    assert decision.action == Action.BUY
+
+    assert any(
+        "85.0%" in reason
+        for reason in decision.reasoning
+    )
+
+    assert any(
+        "adaptive" in reason.lower()
+        for reason in decision.reasoning
+    )
+
+
+def test_decision_explains_normal_aligned_buy():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=90.0,
+            reasoning=["Strong technical BUY signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=85.0,
+            reasoning=["Positive news signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=85.0,
+            reasoning=["Positive company signal."],
+        ),
+    ]
+
+    engine = DecisionEngine()
+
+    decision = engine.evaluate(results)
+
+    assert decision.action == Action.BUY
+
+    assert any(
+        "combined analyst evidence" in reason.lower()
+        for reason in decision.reasoning
+    )

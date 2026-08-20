@@ -91,6 +91,37 @@ class DecisionEngine:
             f"Analyst agreement: {intelligence.agreement:.1f}%.",
         ]
 
+        if weights:
+            weighted_signals = {
+                Action.BUY: intelligence.weighted_buy,
+                Action.HOLD: intelligence.weighted_hold,
+                Action.SELL: intelligence.weighted_sell,
+            }
+
+            dominant_action = max(
+                weighted_signals,
+                key=weighted_signals.get,
+            )
+
+            dominant_weight = weighted_signals[
+                dominant_action
+            ]
+
+            reasoning.append(
+                f"Adaptive weighting: "
+                f"{dominant_action.value} has "
+                f"{dominant_weight:.1f}% weighted influence."
+            )
+
+            if (
+                action == dominant_action
+                and intelligence.weighted_conflict
+            ):
+                reasoning.append(
+                    "Adaptive weighting allowed the dominant "
+                    "signal to overcome the opposing analyst signals."
+                )
+
         if intelligence.conflict:
             reasoning.append(
                 "Decision downgraded to HOLD because "
