@@ -86,3 +86,109 @@ def test_decision_engine_includes_agent_weights():
         "Technical Analyst": 0.60,
         "News Analyst": 0.40,
     }
+
+
+def test_decision_engine_uses_adaptive_weights_in_evidence():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    class FakeWeightEngine:
+
+        def calculate(self):
+            return {
+                "Technical Analyst": 0.85,
+                "News Analyst": 0.10,
+                "Company Analyst": 0.05,
+            }
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Very strong technical evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.HOLD,
+            confidence=20.0,
+            evidence=20.0,
+            reasoning=["Weak news evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.HOLD,
+            confidence=20.0,
+            evidence=20.0,
+            reasoning=["Weak company evidence."],
+        ),
+    ]
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = FakeWeightEngine()
+
+    decision = engine.evaluate(results)
+
+    assert decision.evidence == 88.0
+    assert decision.confidence == 88.0
+
+    assert decision.agent_weights == {
+        "Technical Analyst": 0.85,
+        "News Analyst": 0.10,
+        "Company Analyst": 0.05,
+    }
+
+
+def test_high_weight_agent_can_influence_final_decision():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    class FakeWeightEngine:
+
+        def calculate(self):
+            return {
+                "Technical Analyst": 0.85,
+                "News Analyst": 0.10,
+                "Company Analyst": 0.05,
+            }
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Very strong technical BUY signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=0.0,
+            reasoning=["Strong negative news signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=0.0,
+            reasoning=["Negative company signal."],
+        ),
+    ]
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = FakeWeightEngine()
+
+    decision = engine.evaluate(results)
+
+    assert decision.evidence == 85.0
+    assert decision.confidence == 100.0
+
+    assert decision.action == Action.BUY

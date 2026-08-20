@@ -97,3 +97,76 @@ def test_intelligence_layer_rejects_empty_results():
     raise AssertionError(
         "IntelligenceLayer must reject empty results"
     )
+
+
+def test_intelligence_layer_calculates_weighted_signals():
+
+    layer = IntelligenceLayer()
+
+    results = [
+        result(
+            "Technical Analyst",
+            Action.BUY,
+            100,
+            100,
+        ),
+        result(
+            "News Analyst",
+            Action.SELL,
+            100,
+            0,
+        ),
+        result(
+            "Company Analyst",
+            Action.SELL,
+            100,
+            0,
+        ),
+    ]
+
+    weights = {
+        "Technical Analyst": 0.60,
+        "News Analyst": 0.20,
+        "Company Analyst": 0.20,
+    }
+
+    summary = layer.summarize(
+        results,
+        weights=weights,
+    )
+
+    assert summary.weighted_buy == 60.0
+    assert summary.weighted_hold == 0.0
+    assert summary.weighted_sell == 40.0
+
+    assert summary.weighted_agreement == 60.0
+    assert summary.weighted_conflict is True
+
+
+def test_intelligence_layer_weighted_signals_fallback_to_equal():
+
+    layer = IntelligenceLayer()
+
+    results = [
+        result(
+            "Technical Analyst",
+            Action.BUY,
+            100,
+            100,
+        ),
+        result(
+            "News Analyst",
+            Action.SELL,
+            100,
+            0,
+        ),
+    ]
+
+    summary = layer.summarize(results)
+
+    assert summary.weighted_buy == 50.0
+    assert summary.weighted_hold == 0.0
+    assert summary.weighted_sell == 50.0
+
+    assert summary.weighted_agreement == 50.0
+    assert summary.weighted_conflict is True

@@ -6,6 +6,7 @@ from atlas.decision.aggregator import EvidenceAggregator
 from atlas.decision.intelligence_layer import IntelligenceLayer
 from atlas.decision.policy import determine_action
 from atlas.models.analysis_result import AnalysisResult
+from atlas.models.action import Action
 from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.models.decision_result import DecisionResult
 
@@ -38,7 +39,8 @@ class DecisionEngine:
         )
 
         intelligence = self.intelligence.summarize(
-            results
+            results,
+            weights=weights,
         )
 
         action = determine_action(
@@ -49,6 +51,38 @@ class DecisionEngine:
             hold_count=intelligence.hold_count,
             sell_count=intelligence.sell_count,
         )
+
+        # Adaptive weights may override a normal conflict only
+        # when one weighted signal is clearly dominant.
+        if weights:
+            weighted_buy = intelligence.weighted_buy
+            weighted_hold = intelligence.weighted_hold
+            weighted_sell = intelligence.weighted_sell
+
+            weighted_agreement = (
+                intelligence.weighted_agreement
+            )
+
+            if (
+                weighted_agreement >= 80.0
+                and summary["evidence"] >= 80.0
+            ):
+                if (
+                    weighted_buy
+                    == weighted_agreement
+                    and weighted_buy > weighted_sell
+                    and weighted_buy > weighted_hold
+                ):
+                    action = Action.BUY
+
+                elif (
+                    weighted_sell
+                    == weighted_agreement
+                    and weighted_sell > weighted_buy
+                    and weighted_sell > weighted_hold
+                    and summary["evidence"] < 60.0
+                ):
+                    action = Action.SELL
 
         reasoning = [
             "Decision based on combined analyst evidence.",

@@ -31,6 +31,16 @@ class IntelligenceSummary:
 
     conflict: bool
 
+    weighted_buy: float = 0.0
+
+    weighted_hold: float = 0.0
+
+    weighted_sell: float = 0.0
+
+    weighted_agreement: float = 0.0
+
+    weighted_conflict: bool = False
+
     analysts: list[str] = field(default_factory=list)
 
     reasoning: list[str] = field(default_factory=list)

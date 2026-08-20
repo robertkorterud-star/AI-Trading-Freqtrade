@@ -18,6 +18,7 @@ class IntelligenceLayer:
     def summarize(
         self,
         results: list[AnalysisResult],
+        weights: dict[str, float] | None = None,
     ) -> IntelligenceSummary:
 
         if not results:
@@ -74,6 +75,74 @@ class IntelligenceLayer:
             > 1
         )
 
+        if weights is None:
+            weights = {}
+
+        effective_weights = {
+            result.analyst: max(
+                0.0,
+                float(weights.get(result.analyst, 0.0)),
+            )
+            for result in results
+        }
+
+        total_weight = sum(
+            effective_weights.values()
+        )
+
+        if total_weight <= 0:
+            effective_weights = {
+                result.analyst: 1.0
+                for result in results
+            }
+
+            total_weight = float(total)
+
+        weighted_buy = (
+            sum(
+                effective_weights[result.analyst]
+                for result in results
+                if result.action == Action.BUY
+            )
+            / total_weight
+        ) * 100.0
+
+        weighted_hold = (
+            sum(
+                effective_weights[result.analyst]
+                for result in results
+                if result.action == Action.HOLD
+            )
+            / total_weight
+        ) * 100.0
+
+        weighted_sell = (
+            sum(
+                effective_weights[result.analyst]
+                for result in results
+                if result.action == Action.SELL
+            )
+            / total_weight
+        ) * 100.0
+
+        weighted_agreement = max(
+            weighted_buy,
+            weighted_hold,
+            weighted_sell,
+        )
+
+        weighted_conflict = (
+            sum(
+                value > 0.0
+                for value in (
+                    weighted_buy,
+                    weighted_hold,
+                    weighted_sell,
+                )
+            )
+            > 1
+        )
+
         if buy_count >= hold_count and buy_count >= sell_count:
             action = Action.BUY
         elif hold_count >= buy_count and hold_count >= sell_count:
@@ -109,6 +178,11 @@ class IntelligenceLayer:
             sell_count=sell_count,
             agreement=agreement,
             conflict=conflict,
+            weighted_buy=weighted_buy,
+            weighted_hold=weighted_hold,
+            weighted_sell=weighted_sell,
+            weighted_agreement=weighted_agreement,
+            weighted_conflict=weighted_conflict,
             analysts=[
                 result.analyst
                 for result in results
