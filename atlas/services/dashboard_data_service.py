@@ -102,6 +102,7 @@ class DashboardDataService:
         latest_decision = None
         latest_intelligence = None
         latest_explanation = None
+        latest_news_explanation = None
         latest_news = []
         latest_snapshot = None
 
@@ -194,6 +195,23 @@ class DashboardDataService:
                 latest_explanation = explain_decision(
                     decision,
                     agreement=latest_intelligence.agreement,
+                )
+
+                news_analyst = next(
+                    (
+                        agent
+                        for agent in self.registry.get_all()
+                        if agent.name == "News Analyst"
+                    ),
+                    None,
+                )
+
+                latest_news_explanation = (
+                    getattr(
+                        news_analyst,
+                        "news_explanation",
+                        None,
+                    )
                 )
 
                 latest_snapshot = snapshot
@@ -299,6 +317,8 @@ class DashboardDataService:
         "decision": latest_decision,
 
         "decision_explanation": latest_explanation,
+
+        "news_explanation": latest_news_explanation,
 
         "decision_robustness": {
             "margin": round(
