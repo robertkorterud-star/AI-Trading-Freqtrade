@@ -57,6 +57,13 @@ def test_news_analyst_returns_analysis_result(monkeypatch):
     assert result.evidence == 95
     assert result.reasoning
 
+    reasoning = " ".join(result.reasoning)
+
+    assert "POSITIVE" in reasoning
+    assert "HIGH" in reasoning
+    assert "SHORT" in reasoning
+    assert "Strong positive market evidence." in reasoning
+
 
 def test_news_analyst_can_use_ollama_provider(monkeypatch):
     from atlas.core.config import AtlasConfig
@@ -241,3 +248,104 @@ def test_news_analyst_uses_ai_provider_factory(monkeypatch):
         "analyze",
         "NVDA",
     ) in calls
+
+def test_news_analyst_reasoning_contains_structured_market_context():
+
+    from atlas.agents.news_analyst import NewsAnalyst
+
+    class FakeAIAdapter:
+
+        def analyze_news(self, symbol, articles):
+            return {
+                "symbol": symbol,
+                "relevance": 85,
+                "sentiment": "NEGATIVE",
+                "impact": "HIGH",
+                "time_horizon": "SHORT",
+                "action": "SELL",
+                "confidence": 84,
+                "reason": "Strong negative market evidence.",
+            }
+
+    import atlas.adapters.ai
+
+    atlas.adapters.ai.AIAdapter = FakeAIAdapter
+
+    analyst = NewsAnalyst()
+
+    result = analyst.analyze_news(
+        "BTC-USD",
+        [
+            {
+                "title": "Bitcoin faces strong selling pressure",
+                "summary": "Market conditions deteriorate.",
+                "source": "ATLAS TEST",
+            }
+        ],
+    )
+
+    reasoning = " ".join(result.reasoning)
+
+    assert "NEGATIVE" in reasoning
+    assert "HIGH" in reasoning
+    assert "SHORT" in reasoning
+    assert "Strong negative market evidence." in reasoning
+    assert result.action.value == "SELL"
+
+
+
+def test_news_analyst_exposes_structured_explanation(monkeypatch):
+
+    class FakeAIAdapter:
+
+        def analyze_news(self, symbol, articles):
+            return {
+                "symbol": symbol,
+                "relevance": 90,
+                "sentiment": "POSITIVE",
+                "impact": "HIGH",
+                "time_horizon": "SHORT",
+                "action": "BUY",
+                "confidence": 92,
+                "reason": "Strong positive market evidence.",
+            }
+
+    import atlas.adapters.ai
+
+    monkeypatch.setattr(
+        atlas.adapters.ai,
+        "AIAdapter",
+        FakeAIAdapter,
+    )
+
+    analyst = NewsAnalyst()
+
+    result = analyst.analyze_news(
+        "BTC-USD",
+        [
+            {
+                "title": "Bitcoin rallies",
+                "summary": "Strong demand.",
+                "source": "ATLAS TEST",
+            }
+        ],
+    )
+
+    explanation = analyst.news_explanation
+
+    assert explanation is not None
+    assert explanation.symbol == "BTC-USD"
+    assert explanation.sentiment == "POSITIVE"
+    assert explanation.relevance == 90.0
+    assert explanation.impact == "HIGH"
+    assert explanation.time_horizon == "SHORT"
+    assert explanation.action == "BUY"
+    assert explanation.confidence == 92.0
+    assert explanation.reason == (
+        "Strong positive market evidence."
+    )
+
+    # Existing AnalysisResult contract remains unchanged.
+    assert result.action == Action.BUY
+    assert result.confidence == 92
+    assert result.evidence == 95
