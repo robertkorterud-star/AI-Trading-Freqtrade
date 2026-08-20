@@ -291,6 +291,17 @@ class DashboardDataService:
 
         "decision": latest_decision,
 
+        "decision_robustness": {
+            "margin": round(
+                latest_decision.decision_margin,
+                1,
+            ),
+            "robustness": round(
+                latest_decision.robustness,
+                1,
+            ),
+        },
+
         "decision_influence": {
             "dominant_action": (
                 latest_decision.dominant_action.value

@@ -39,4 +39,8 @@ class DecisionResult:
 
     adaptive_override: bool = False
 
+    decision_margin: float = 0.0
+
+    robustness: float = 0.0
+
     reasoning: list[str] = field(default_factory=list)

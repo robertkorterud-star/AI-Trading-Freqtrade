@@ -2045,3 +2045,48 @@ main .dashboard-layout > .dashboard-right {
     }
 
 }
+
+
+/* =====================================================
+   AI DECISION - ROBUSTNESS
+   ===================================================== */
+
+.decision-robustness {
+    margin-top: 20px;
+}
+
+.decision-robustness h3 {
+    margin-bottom: 12px;
+}
+
+.decision-robustness-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.decision-robustness-metrics > div {
+    padding: 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.decision-robustness-metrics span {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.decision-robustness-metrics strong {
+    font-size: 20px;
+    color: #e2e8f0;
+}
+
+@media (max-width: 600px) {
+
+    .decision-robustness-metrics {
+        grid-template-columns: 1fr;
+    }
+
+}

@@ -95,6 +95,8 @@ class DecisionEngine:
         dominant_weight = 0.0
         opposing_analysts = []
         adaptive_override = False
+        decision_margin = 0.0
+        robustness = 0.0
 
         if weights:
             weighted_signals = {
@@ -103,14 +105,24 @@ class DecisionEngine:
                 Action.SELL: intelligence.weighted_sell,
             }
 
-            dominant_action = max(
-                weighted_signals,
-                key=weighted_signals.get,
+            ranked_signals = sorted(
+                weighted_signals.items(),
+                key=lambda item: item[1],
+                reverse=True,
             )
 
-            dominant_weight = weighted_signals[
-                dominant_action
-            ]
+            dominant_action = ranked_signals[0][0]
+            dominant_weight = ranked_signals[0][1]
+
+            second_weight = (
+                ranked_signals[1][1]
+                if len(ranked_signals) > 1
+                else 0.0
+            )
+
+            decision_margin = (
+                dominant_weight - second_weight
+            )
 
             opposing_analysts = [
                 result.analyst
@@ -121,6 +133,16 @@ class DecisionEngine:
             adaptive_override = (
                 intelligence.weighted_conflict
                 and action == dominant_action
+            )
+
+            robustness = min(
+                100.0,
+                (
+                    decision_margin
+                    * 0.7
+                    + summary["evidence"]
+                    * 0.3
+                ),
             )
 
             reasoning.append(
@@ -175,5 +197,7 @@ class DecisionEngine:
             dominant_weight=dominant_weight,
             opposing_analysts=opposing_analysts,
             adaptive_override=adaptive_override,
+            decision_margin=decision_margin,
+            robustness=robustness,
             reasoning=reasoning,
         )
