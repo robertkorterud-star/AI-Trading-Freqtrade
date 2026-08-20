@@ -158,6 +158,67 @@
             </p>
 
 
+            <div class="decision-summary">
+
+                <div class="decision-summary-header">
+
+                    <div>
+                        <span>Decision</span>
+                        <strong class="decision-action-{{ dashboard.decision.action.value | lower }}">
+                            {{ dashboard.decision.action.value }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Strength</span>
+                        <strong class="robustness-level-{{ dashboard.decision_robustness.level | lower }}">
+                            {{ dashboard.decision_robustness.level }}
+                        </strong>
+                    </div>
+
+                </div>
+
+                <div class="decision-summary-metrics">
+
+                    <div>
+                        <span>Evidence</span>
+                        <strong>
+                            {{ dashboard.decision.evidence }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Agreement</span>
+                        <strong>
+                            {{ dashboard.intelligence.agreement }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Decision Margin</span>
+                        <strong>
+                            {{ dashboard.decision_robustness.margin }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Dominant Influence</span>
+                        <strong>
+                            {{ dashboard.decision_influence.dominant_weight }}%
+                        </strong>
+                    </div>
+
+                </div>
+
+                {% if dashboard.decision_influence.adaptive_override %}
+                    <div class="decision-summary-override">
+                        Adaptive weighting influenced the final decision.
+                    </div>
+                {% endif %}
+
+            </div>
+
+
             <div class="confidence-bar">
 
                 <div
