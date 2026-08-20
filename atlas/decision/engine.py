@@ -91,88 +91,6 @@ class DecisionEngine:
             f"Analyst agreement: {intelligence.agreement:.1f}%.",
         ]
 
-        if weights:
-            weighted_signals = {
-                Action.BUY: intelligence.weighted_buy,
-                Action.HOLD: intelligence.weighted_hold,
-                Action.SELL: intelligence.weighted_sell,
-            }
-
-            dominant_action = max(
-                weighted_signals,
-                key=weighted_signals.get,
-            )
-
-            dominant_weight = weighted_signals[
-                dominant_action
-            ]
-
-            opposing_analysts = [
-                result.analyst
-                for result in results
-                if result.action != dominant_action
-            ]
-
-            reasoning.append(
-                f"Dominant signal: "
-                f"{dominant_action.value} with "
-                f"{dominant_weight:.1f}% weighted influence."
-            )
-
-            if opposing_analysts:
-                reasoning.append(
-                    "Opposing analysts: "
-                    + ", ".join(opposing_analysts)
-                    + "."
-                )
-
-        if weights:
-            weighted_signals = {
-                Action.BUY: intelligence.weighted_buy,
-                Action.HOLD: intelligence.weighted_hold,
-                Action.SELL: intelligence.weighted_sell,
-            }
-
-            dominant_action = max(
-                weighted_signals,
-                key=weighted_signals.get,
-            )
-
-            dominant_weight = weighted_signals[
-                dominant_action
-            ]
-
-            reasoning.append(
-                f"Adaptive weighting: "
-                f"{dominant_action.value} has "
-                f"{dominant_weight:.1f}% weighted influence."
-            )
-
-            if (
-                action == dominant_action
-                and intelligence.weighted_conflict
-            ):
-                reasoning.append(
-                    "Adaptive weighting allowed the dominant "
-                    "signal to overcome the opposing analyst signals."
-                )
-
-        if intelligence.conflict:
-            reasoning.append(
-                "Decision downgraded to HOLD because "
-                "analyst signals conflict."
-            )
-
-        for analyst in summary.get("analyst_breakdown", []):
-            reasoning.append(
-                f"{analyst['analyst']}: {analyst['action']} "
-                f"(evidence {analyst['evidence']:.1f}, "
-                f"confidence {analyst['confidence']:.1f})."
-            )
-
-            for detail in analyst.get("reasoning", []):
-                reasoning.append(f"  {detail}")
-
         dominant_action = None
         dominant_weight = 0.0
         opposing_analysts = []
@@ -204,6 +122,47 @@ class DecisionEngine:
                 intelligence.weighted_conflict
                 and action == dominant_action
             )
+
+            reasoning.append(
+                f"Dominant signal: "
+                f"{dominant_action.value} with "
+                f"{dominant_weight:.1f}% weighted influence."
+            )
+
+            if opposing_analysts:
+                reasoning.append(
+                    "Opposing analysts: "
+                    + ", ".join(opposing_analysts)
+                    + "."
+                )
+
+            reasoning.append(
+                f"Adaptive weighting: "
+                f"{dominant_action.value} has "
+                f"{dominant_weight:.1f}% weighted influence."
+            )
+
+            if adaptive_override:
+                reasoning.append(
+                    "Adaptive weighting allowed the dominant "
+                    "signal to overcome the opposing analyst signals."
+                )
+
+        if intelligence.conflict:
+            reasoning.append(
+                "Decision downgraded to HOLD because "
+                "analyst signals conflict."
+            )
+
+        for analyst in summary.get("analyst_breakdown", []):
+            reasoning.append(
+                f"{analyst['analyst']}: {analyst['action']} "
+                f"(evidence {analyst['evidence']:.1f}, "
+                f"confidence {analyst['confidence']:.1f})."
+            )
+
+            for detail in analyst.get("reasoning", []):
+                reasoning.append(f"  {detail}")
 
         return DecisionResult(
             symbol=results[0].symbol,
