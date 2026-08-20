@@ -427,3 +427,196 @@ def test_decision_robustness_level_weak():
     assert decision.robustness < 60.0
     assert decision.robustness_level == "WEAK"
 
+def test_realistic_unanimous_buy_is_strong():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=92.0,
+            evidence=90.0,
+            reasoning=["Strong bullish technical structure."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=88.0,
+            evidence=85.0,
+            reasoning=["Positive market news."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.BUY,
+            confidence=86.0,
+            evidence=82.0,
+            reasoning=["Positive fundamental conditions."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action == Action.BUY
+    assert decision.dominant_action == Action.BUY
+    assert decision.robustness_level == "STRONG"
+    assert decision.robustness >= 80.0
+
+
+def test_realistic_unanimous_sell_is_strong():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.SELL,
+            confidence=92.0,
+            evidence=85.0,
+            reasoning=["Strong bearish structure."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=90.0,
+            evidence=82.0,
+            reasoning=["Negative market news."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.SELL,
+            confidence=88.0,
+            evidence=80.0,
+            reasoning=["Negative fundamental conditions."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action == Action.SELL
+    assert decision.dominant_action == Action.SELL
+    assert decision.robustness_level == "STRONG"
+
+
+def test_realistic_buy_hold_becomes_hold_when_conflicted():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=85.0,
+            reasoning=["Bullish technical setup."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.HOLD,
+            confidence=70.0,
+            evidence=60.0,
+            reasoning=["News remains uncertain."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.HOLD,
+            confidence=68.0,
+            evidence=58.0,
+            reasoning=["Fundamentals are neutral."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action == Action.HOLD
+    assert decision.opposing_analysts
+    assert decision.robustness_level in {
+        "WEAK",
+        "MODERATE",
+    }
+
+
+def test_realistic_buy_sell_conflict_is_safe_hold():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            reasoning=["Strong bullish momentum."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=90.0,
+            evidence=85.0,
+            reasoning=["Major negative news risk."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.HOLD,
+            confidence=70.0,
+            evidence=55.0,
+            reasoning=["Fundamentals are uncertain."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action == Action.HOLD
+    assert decision.adaptive_override is False
+    assert decision.opposing_analysts
+
+
+def test_realistic_low_evidence_does_not_create_strong_decision():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=55.0,
+            evidence=40.0,
+            reasoning=["Weak bullish signal."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=52.0,
+            evidence=35.0,
+            reasoning=["Limited positive news."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.BUY,
+            confidence=50.0,
+            evidence=30.0,
+            reasoning=["Limited fundamental evidence."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action == Action.BUY
+    assert decision.robustness_level == "WEAK"
+    assert decision.robustness < 60.0
+

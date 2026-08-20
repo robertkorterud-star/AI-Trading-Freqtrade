@@ -43,61 +43,6 @@ class DecisionEngine:
             weights=weights,
         )
 
-        action = determine_action(
-            evidence=summary["evidence"],
-            agreement=intelligence.agreement,
-            conflict=intelligence.conflict,
-            buy_count=intelligence.buy_count,
-            hold_count=intelligence.hold_count,
-            sell_count=intelligence.sell_count,
-        )
-
-        # Adaptive weights may override a normal conflict only
-        # when one weighted signal is clearly dominant.
-        if weights:
-            weighted_buy = intelligence.weighted_buy
-            weighted_hold = intelligence.weighted_hold
-            weighted_sell = intelligence.weighted_sell
-
-            weighted_agreement = (
-                intelligence.weighted_agreement
-            )
-
-            if (
-                weighted_agreement >= 80.0
-                and summary["evidence"] >= 80.0
-            ):
-                if (
-                    weighted_buy
-                    == weighted_agreement
-                    and weighted_buy > weighted_sell
-                    and weighted_buy > weighted_hold
-                ):
-                    action = Action.BUY
-
-                elif (
-                    weighted_sell
-                    == weighted_agreement
-                    and weighted_sell > weighted_buy
-                    and weighted_sell > weighted_hold
-                    and summary["evidence"] < 60.0
-                ):
-                    action = Action.SELL
-
-        reasoning = [
-            "Decision based on combined analyst evidence.",
-            f"Overall evidence: {summary['evidence']:.1f}/100.",
-            f"Overall confidence: {summary['confidence']:.1f}/100.",
-            f"Analyst agreement: {intelligence.agreement:.1f}%.",
-        ]
-
-        dominant_action = None
-        dominant_weight = 0.0
-        opposing_analysts = []
-        adaptive_override = False
-        decision_margin = 0.0
-        robustness = 0.0
-
         weighted_signals = {
             Action.BUY: intelligence.weighted_buy,
             Action.HOLD: intelligence.weighted_hold,
@@ -129,26 +74,80 @@ class DecisionEngine:
             if result.action != dominant_action
         ]
 
-        adaptive_override = (
-            bool(weights)
-            and intelligence.weighted_conflict
-            and action == dominant_action
+        unanimous = (
+            intelligence.buy_count == len(results)
+            or intelligence.hold_count == len(results)
+            or intelligence.sell_count == len(results)
         )
 
+        policy_action = determine_action(
+            evidence=summary["evidence"],
+            agreement=intelligence.agreement,
+            conflict=intelligence.conflict,
+            buy_count=intelligence.buy_count,
+            hold_count=intelligence.hold_count,
+            sell_count=intelligence.sell_count,
+        )
+
+        action = policy_action
+        adaptive_override = False
+
+        # A unanimous analyst decision must never be reversed
+        # by an unrelated policy threshold.
+        if unanimous:
+            action = dominant_action
+
+        # Adaptive weights may resolve a genuine conflict only
+        # when the dominant BUY/SELL signal is clearly strong.
+        elif (
+            weights
+            and intelligence.weighted_conflict
+            and dominant_action in {
+                Action.BUY,
+                Action.SELL,
+            }
+            and dominant_weight >= 70.0
+        ):
+            action = dominant_action
+            adaptive_override = True
+
+        raw_robustness = (
+            decision_margin * 0.7
+            + summary["evidence"] * 0.3
+        )
+
+        # Evidence is the ceiling for robustness when the
+        # underlying evidence is weak. Strong agreement alone
+        # must not manufacture a strong decision.
         robustness = min(
             100.0,
-            (
-                decision_margin * 0.7
-                + summary["evidence"] * 0.3
-            ),
+            raw_robustness,
+            summary["evidence"],
         )
 
-        if robustness >= 80.0:
+        # Evidence limits the robustness classification.
+        # Agreement alone must never create a STRONG decision.
+        if summary["evidence"] < 60.0:
+            robustness_level = "WEAK"
+        elif summary["evidence"] < 80.0:
+            robustness_level = (
+                "MODERATE"
+                if robustness >= 60.0
+                else "WEAK"
+            )
+        elif robustness >= 80.0:
             robustness_level = "STRONG"
         elif robustness >= 60.0:
             robustness_level = "MODERATE"
         else:
             robustness_level = "WEAK"
+
+        reasoning = [
+            "Decision based on combined analyst evidence.",
+            f"Overall evidence: {summary['evidence']:.1f}/100.",
+            f"Overall confidence: {summary['confidence']:.1f}/100.",
+            f"Analyst agreement: {intelligence.agreement:.1f}%.",
+        ]
 
         reasoning.append(
             f"Dominant signal: "
@@ -163,11 +162,12 @@ class DecisionEngine:
                 + "."
             )
 
-        reasoning.append(
-            f"Adaptive weighting: "
-            f"{dominant_action.value} has "
-            f"{dominant_weight:.1f}% weighted influence."
-        )
+        if weights:
+            reasoning.append(
+                f"Adaptive weighting: "
+                f"{dominant_action.value} has "
+                f"{dominant_weight:.1f}% weighted influence."
+            )
 
         if adaptive_override:
             reasoning.append(
@@ -175,10 +175,9 @@ class DecisionEngine:
                 "signal to overcome the opposing analyst signals."
             )
 
-        if intelligence.conflict:
+        if intelligence.conflict and not adaptive_override:
             reasoning.append(
-                "Decision downgraded to HOLD because "
-                "analyst signals conflict."
+                "Decision held because analyst signals conflict."
             )
 
         for analyst in summary.get("analyst_breakdown", []):
@@ -189,14 +188,9 @@ class DecisionEngine:
             )
 
             for detail in analyst.get("reasoning", []):
-                reasoning.append(f"  {detail}")
-
-        if robustness >= 80.0:
-            robustness_level = "STRONG"
-        elif robustness >= 60.0:
-            robustness_level = "MODERATE"
-        else:
-            robustness_level = "WEAK"
+                reasoning.append(
+                    f"  {detail}"
+                )
 
         reasoning.append(
             f"Decision robustness: "
@@ -219,3 +213,4 @@ class DecisionEngine:
             robustness_level=robustness_level,
             reasoning=reasoning,
         )
+
