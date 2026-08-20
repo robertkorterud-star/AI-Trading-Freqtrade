@@ -195,3 +195,159 @@ class AgentWeightEngine:
 
         return rounded
 
+
+    def explain(self):
+        """Explain why each analyst currently has its weight."""
+
+        history = self.performance.history()
+
+        if not history:
+            return {}
+
+        weights = self.calculate()
+
+        if any(
+            item["predictions"] < self.MIN_PREDICTIONS
+            for item in history
+        ):
+            return {
+                item["analyst"]: {
+                    "weight": weights.get(
+                        item["analyst"],
+                        0.0,
+                    ),
+                    "predictions": int(
+                        item["predictions"]
+                    ),
+                    "accuracy": float(
+                        item["accuracy"]
+                    ),
+                    "stabilized_accuracy": None,
+                    "average_stabilized_accuracy": None,
+                    "comparison": None,
+                    "limit": None,
+                    "status": "building_history",
+                    "reason": (
+                        "Building history. "
+                        f"ATLAS requires at least "
+                        f"{self.MIN_PREDICTIONS} predictions "
+                        "before adaptive weighting begins."
+                    ),
+                }
+                for item in history
+            }
+
+        scores = {}
+
+        for item in history:
+            predictions = int(
+                item["predictions"]
+            )
+
+            accuracy = max(
+                0.0,
+                min(
+                    100.0,
+                    float(item["accuracy"]),
+                ),
+            )
+
+            stabilized_accuracy = (
+                (
+                    accuracy * predictions
+                )
+                + (
+                    50.0 * self.MIN_PREDICTIONS
+                )
+            ) / (
+                predictions
+                + self.MIN_PREDICTIONS
+            )
+
+            scores[item["analyst"]] = (
+                stabilized_accuracy
+            )
+
+        average_score = (
+            sum(scores.values())
+            / len(scores)
+        )
+
+        explanations = {}
+
+        for item in history:
+            analyst = item["analyst"]
+            score = scores[analyst]
+            weight = weights.get(
+                analyst,
+                0.0,
+            )
+
+            predictions = int(
+                item["predictions"]
+            )
+
+            accuracy = float(
+                item["accuracy"]
+            )
+
+            if score > average_score:
+                reason = (
+                    "Higher weight because stabilized "
+                    "historical performance is above "
+                    "the analyst average."
+                )
+                comparison = "above_average"
+
+            elif score < average_score:
+                reason = (
+                    "Lower weight because stabilized "
+                    "historical performance is below "
+                    "the analyst average."
+                )
+                comparison = "below_average"
+
+            else:
+                reason = (
+                    "Weight reflects stabilized historical "
+                    "performance close to the analyst average."
+                )
+                comparison = "average"
+
+            if weight <= self.MIN_WEIGHT:
+                reason += (
+                    " The weight is constrained by "
+                    "the minimum safety limit."
+                )
+                limit = "minimum"
+
+            elif weight >= self.MAX_WEIGHT:
+                reason += (
+                    " The weight is constrained by "
+                    "the maximum safety limit."
+                )
+                limit = "maximum"
+
+            else:
+                limit = None
+
+            explanations[analyst] = {
+                "weight": weight,
+                "predictions": predictions,
+                "accuracy": accuracy,
+                "stabilized_accuracy": round(
+                    score,
+                    2,
+                ),
+                "average_stabilized_accuracy": round(
+                    average_score,
+                    2,
+                ),
+                "comparison": comparison,
+                "limit": limit,
+                "status": "adaptive",
+                "reason": reason,
+            }
+
+        return explanations
+

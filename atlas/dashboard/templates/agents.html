@@ -92,6 +92,57 @@ ATLAS - Agents
 
                     </div>
 
+                    {% set explanation = (
+                        dashboard.agent_performance
+                        .weight_explanations
+                        .get(agent.analyst)
+                    ) %}
+
+                    {% if explanation %}
+
+                        <div class="agent-weight-explanation">
+
+                            <div class="agent-explanation-title">
+                                Why this weight?
+                            </div>
+
+                            <p>
+                                {{ explanation.reason }}
+                            </p>
+
+                            {% if explanation.stabilized_accuracy is not none %}
+
+                                <div class="agent-explanation-metrics">
+
+                                    <span>
+                                        Accuracy:
+                                        {{ explanation.accuracy | round(1) }}%
+                                    </span>
+
+                                    <span>
+                                        Stabilized:
+                                        {{ explanation.stabilized_accuracy }}%
+                                    </span>
+
+                                    <span>
+                                        Average:
+                                        {{ explanation.average_stabilized_accuracy }}%
+                                    </span>
+
+                                </div>
+
+                            {% else %}
+
+                                <p class="agent-explanation-building">
+                                    {{ explanation.reason }}
+                                </p>
+
+                            {% endif %}
+
+                        </div>
+
+                    {% endif %}
+
                 </div>
 
             {% endfor %}

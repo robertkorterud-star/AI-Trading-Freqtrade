@@ -270,6 +270,9 @@ class DashboardDataService:
         "agent_performance": {
         "history": self.agent_performance.history(),
         "weights": self.agent_weight_engine.calculate(),
+        "weight_explanations": (
+            self.agent_weight_engine.explain()
+        ),
         },
 
         "currency": {

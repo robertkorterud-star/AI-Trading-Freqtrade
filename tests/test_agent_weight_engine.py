@@ -347,3 +347,171 @@ def test_weights_sum_to_exactly_one_after_rounding():
     weights = AgentWeightEngine(tracker).calculate()
 
     assert sum(weights.values()) == 1.0
+
+
+def test_weight_explanations_are_empty_without_history():
+
+    tracker = AgentPerformanceTracker()
+
+    explanations = AgentWeightEngine(
+        tracker
+    ).explain()
+
+    assert explanations == {}
+
+
+def test_weight_explanations_show_building_history():
+
+    tracker = AgentPerformanceTracker()
+
+    add_predictions(
+        tracker,
+        "Technical Analyst",
+        True,
+        10,
+    )
+
+    add_predictions(
+        tracker,
+        "Company Analyst",
+        False,
+        10,
+    )
+
+    add_predictions(
+        tracker,
+        "News Analyst",
+        True,
+        10,
+    )
+
+    explanations = AgentWeightEngine(
+        tracker
+    ).explain()
+
+    technical = explanations[
+        "Technical Analyst"
+    ]
+
+    assert technical["status"] == "building_history"
+    assert technical["predictions"] == 10
+    assert technical["stabilized_accuracy"] is None
+    assert technical["weight"] == 0.3333 or (
+        technical["weight"] == 0.3334
+    )
+    assert "20 predictions" in technical["reason"]
+
+
+def test_weight_explanations_show_adaptive_reason():
+
+    tracker = AgentPerformanceTracker()
+
+    add_predictions(
+        tracker,
+        "Technical Analyst",
+        True,
+        18,
+    )
+
+    add_predictions(
+        tracker,
+        "Technical Analyst",
+        False,
+        2,
+    )
+
+    add_predictions(
+        tracker,
+        "Company Analyst",
+        True,
+        10,
+    )
+
+    add_predictions(
+        tracker,
+        "Company Analyst",
+        False,
+        10,
+    )
+
+    add_predictions(
+        tracker,
+        "News Analyst",
+        True,
+        6,
+    )
+
+    add_predictions(
+        tracker,
+        "News Analyst",
+        False,
+        14,
+    )
+
+    explanations = AgentWeightEngine(
+        tracker
+    ).explain()
+
+    technical = explanations[
+        "Technical Analyst"
+    ]
+
+    news = explanations[
+        "News Analyst"
+    ]
+
+    assert technical["status"] == "adaptive"
+    assert news["status"] == "adaptive"
+
+    assert technical["comparison"] == "above_average"
+    assert news["comparison"] == "below_average"
+
+    assert (
+        technical["stabilized_accuracy"]
+        > news["stabilized_accuracy"]
+    )
+
+    assert (
+        technical["weight"]
+        > news["weight"]
+    )
+
+    assert technical["average_stabilized_accuracy"] is not None
+    assert "Higher weight" in technical["reason"]
+    assert "Lower weight" in news["reason"]
+
+
+def test_weight_explanation_reports_safety_limit():
+
+    tracker = AgentPerformanceTracker()
+
+    add_predictions(
+        tracker,
+        "Technical Analyst",
+        True,
+        20,
+    )
+
+    add_predictions(
+        tracker,
+        "Company Analyst",
+        False,
+        20,
+    )
+
+    engine = AgentWeightEngine(
+        tracker
+    )
+
+    explanations = engine.explain()
+
+    technical = explanations[
+        "Technical Analyst"
+    ]
+
+    assert technical["status"] == "adaptive"
+    assert technical["weight"] <= engine.MAX_WEIGHT
+    assert technical["limit"] in (
+        None,
+        "maximum",
+    )

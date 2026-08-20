@@ -1933,3 +1933,42 @@ main .dashboard-layout > .dashboard-right {
     color: #a1a1aa !important;
 }
 
+
+/* =====================================================
+   AI AGENTS - ADAPTIVE WEIGHT EXPLANATION
+   ===================================================== */
+
+.agent-weight-explanation {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.agent-explanation-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.agent-weight-explanation p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.agent-explanation-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-top: 12px;
+}
+
+.agent-explanation-metrics span {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.agent-explanation-building {
+    margin-top: 8px !important;
+}
