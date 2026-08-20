@@ -100,7 +100,23 @@ def test_ollama_adapter_parses_json_response():
 
     assert payload["model"] == "qwen3:4b"
     assert payload["stream"] is False
-    assert payload["format"] == "json"
+
+    schema = payload["format"]
+
+    assert schema["type"] == "object"
+    assert schema["properties"]["symbol"]["type"] == "string"
+    assert schema["properties"]["relevance"]["type"] == "number"
+    assert schema["properties"]["confidence"]["type"] == "number"
+    assert schema["properties"]["reason"]["type"] == "string"
+
+    assert "symbol" in schema["required"]
+    assert "relevance" in schema["required"]
+    assert "sentiment" in schema["required"]
+    assert "impact" in schema["required"]
+    assert "time_horizon" in schema["required"]
+    assert "action" in schema["required"]
+    assert "confidence" in schema["required"]
+    assert "reason" in schema["required"]
 
 
 def test_ollama_adapter_supports_article_objects():

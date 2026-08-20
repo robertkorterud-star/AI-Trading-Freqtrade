@@ -131,18 +131,25 @@ If the language is "en":
 - Write the "reason" field in English.
 - Keep all JSON field names and allowed enum values in English.
 
-Return ONLY valid JSON with these fields:
+Return ONLY a JSON object.
 
-{{
-  "symbol": "{symbol}",
-  "relevance": 0,
-  "sentiment": "POSITIVE",
-  "impact": "HIGH",
-  "time_horizon": "SHORT",
-  "action": "BUY",
-  "confidence": 0,
-  "reason": "short explanation"
-}}
+The JSON object MUST contain exactly these fields:
+
+- symbol: string
+- relevance: number from 0 to 100
+- sentiment: POSITIVE, NEGATIVE, MIXED or NEUTRAL
+- impact: HIGH, MEDIUM or LOW
+- time_horizon: SHORT, MEDIUM or LONG
+- action: BUY, HOLD or SELL
+- confidence: number from 0 to 100
+- reason: a normal text string
+
+IMPORTANT:
+- Do not omit any field.
+- Do not add extra fields.
+- The "reason" field MUST contain normal text.
+- Never use ":" as a JSON field name.
+- Never output malformed JSON.
 
 Allowed values:
 
@@ -175,7 +182,70 @@ NEWS:
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
-                "format": "json",
+                "format": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {
+                            "type": "string"
+                        },
+                        "relevance": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                        },
+                        "sentiment": {
+                            "type": "string",
+                            "enum": [
+                                "POSITIVE",
+                                "NEGATIVE",
+                                "MIXED",
+                                "NEUTRAL"
+                            ]
+                        },
+                        "impact": {
+                            "type": "string",
+                            "enum": [
+                                "HIGH",
+                                "MEDIUM",
+                                "LOW"
+                            ]
+                        },
+                        "time_horizon": {
+                            "type": "string",
+                            "enum": [
+                                "SHORT",
+                                "MEDIUM",
+                                "LONG"
+                            ]
+                        },
+                        "action": {
+                            "type": "string",
+                            "enum": [
+                                "BUY",
+                                "HOLD",
+                                "SELL"
+                            ]
+                        },
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                        },
+                        "reason": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "symbol",
+                        "relevance",
+                        "sentiment",
+                        "impact",
+                        "time_horizon",
+                        "action",
+                        "confidence",
+                        "reason"
+                    ]
+                },
             },
             timeout=120,
         )

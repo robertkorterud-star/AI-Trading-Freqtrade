@@ -10,6 +10,11 @@ from atlas.intelligence.volume import (
     analyze_volume,
 )
 
+from atlas.intelligence.volume_confirmation import (
+    VolumeConfirmation,
+    confirm_volume,
+)
+
 from atlas.models.action import Action
 from atlas.models.analysis_result import AnalysisResult
 
@@ -22,6 +27,11 @@ class TechnicalAnalyst(BaseAgent):
         super().__init__("Technical Analyst", config=config)
 
         self.market = MarketDataAdapter()
+
+        # Latest volume confirmation is exposed separately
+        # from AnalysisResult so the existing contract remains
+        # unchanged.
+        self.volume_confirmation = None
 
     def analyze(self, symbol: str) -> AnalysisResult:
 
@@ -112,6 +122,23 @@ class TechnicalAnalyst(BaseAgent):
             reasoning.append(
                 volume.interpretation
             )
+
+        # -------------------------------------------------
+        # Volume Confirmation
+        #
+        # Volume confirms or weakens the existing technical
+        # direction. It never creates the direction.
+        # -------------------------------------------------
+
+        self.volume_confirmation = confirm_volume(
+            action=action.value,
+            volume_level=volume.level,
+            volume_ratio=volume.volume_ratio,
+        )
+
+        reasoning.append(
+            self.volume_confirmation.interpretation
+        )
 
         return AnalysisResult(
 

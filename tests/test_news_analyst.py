@@ -21,20 +21,15 @@ def test_news_analyst_returns_analysis_result(monkeypatch):
 
     analyst = NewsAnalyst()
 
-    monkeypatch.setattr(
-        "atlas.agents.news_analyst.AIAdapter",
-        FakeAIAdapter,
-        raising=False,
-    )
+    class FakeFactory:
 
-    # AIAdapter is imported inside analyze_news(), so patch
-    # the module where it is actually imported.
-    import atlas.adapters.ai
+        @classmethod
+        def create(cls, config=None):
+            return FakeAIAdapter()
 
     monkeypatch.setattr(
-        atlas.adapters.ai,
-        "AIAdapter",
-        FakeAIAdapter,
+        "atlas.agents.news_analyst.AIProviderFactory",
+        FakeFactory,
     )
 
     articles = [
@@ -267,9 +262,15 @@ def test_news_analyst_reasoning_contains_structured_market_context():
                 "reason": "Strong negative market evidence.",
             }
 
-    import atlas.adapters.ai
+    class FakeFactory:
 
-    atlas.adapters.ai.AIAdapter = FakeAIAdapter
+        @classmethod
+        def create(cls, config=None):
+            return FakeAIAdapter()
+
+    import atlas.agents.news_analyst
+
+    atlas.agents.news_analyst.AIProviderFactory = FakeFactory
 
     analyst = NewsAnalyst()
 
@@ -310,12 +311,15 @@ def test_news_analyst_exposes_structured_explanation(monkeypatch):
                 "reason": "Strong positive market evidence.",
             }
 
-    import atlas.adapters.ai
+    class FakeFactory:
+
+        @classmethod
+        def create(cls, config=None):
+            return FakeAIAdapter()
 
     monkeypatch.setattr(
-        atlas.adapters.ai,
-        "AIAdapter",
-        FakeAIAdapter,
+        "atlas.agents.news_analyst.AIProviderFactory",
+        FakeFactory,
     )
 
     analyst = NewsAnalyst()

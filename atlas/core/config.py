@@ -19,7 +19,7 @@ class AtlasConfig:
 
     language: str = "no"
 
-    ai_provider: str = "openai"
+    ai_provider: str = "ollama"
 
     paper_trading: bool = True
 

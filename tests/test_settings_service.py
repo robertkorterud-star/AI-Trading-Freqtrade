@@ -46,11 +46,11 @@ def test_settings_service_returns_trading_status():
     assert status["live_orders"] is False
 
 
-def test_settings_service_defaults_to_openai_ai_provider():
+def test_settings_service_defaults_to_ollama_ai_provider():
 
     service = SettingsService()
 
-    assert service.get_ai_provider() == "openai"
+    assert service.get_ai_provider() == "ollama"
 
 
 def test_settings_service_can_set_ollama_ai_provider():

@@ -620,3 +620,97 @@ def test_realistic_low_evidence_does_not_create_strong_decision():
     assert decision.robustness_level == "WEAK"
     assert decision.robustness < 60.0
 
+
+
+def test_decision_preserves_technical_volume_confirmation():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    technical = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.BUY,
+        confidence=88.0,
+        evidence=85.0,
+        reasoning=[
+            "Price is above MA20.",
+            "MA20 is above MA50.",
+            "Volume level: STRONG (2.00x average volume).",
+            "BUY signal has strong volume confirmation.",
+        ],
+    )
+
+    news = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="News Analyst",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        reasoning=["Positive market news."],
+    )
+
+    company = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Company Analyst",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        reasoning=["Positive fundamentals."],
+    )
+
+    decision = DecisionEngine().evaluate(
+        [technical, news, company]
+    )
+
+    reasoning = " ".join(decision.reasoning)
+
+    assert "Volume level: STRONG" in reasoning
+    assert "2.00x" in reasoning
+    assert "strong volume confirmation" in reasoning.lower()
+
+
+def test_decision_preserves_low_volume_confirmation():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    technical = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.BUY,
+        confidence=88.0,
+        evidence=85.0,
+        reasoning=[
+            "Price is above MA20.",
+            "MA20 is above MA50.",
+            "Volume level: WEAK (0.50x average volume).",
+            "BUY signal has weak volume confirmation.",
+        ],
+    )
+
+    news = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="News Analyst",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        reasoning=["Positive market news."],
+    )
+
+    company = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Company Analyst",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        reasoning=["Positive fundamentals."],
+    )
+
+    decision = DecisionEngine().evaluate(
+        [technical, news, company]
+    )
+
+    reasoning = " ".join(decision.reasoning)
+
+    assert "Volume level: WEAK" in reasoning
+    assert "0.50x" in reasoning
+    assert "weak volume confirmation" in reasoning.lower()

@@ -2,7 +2,7 @@ from atlas.core.config import AtlasConfig
 from atlas.core.ai_provider_factory import AIProviderFactory
 
 
-def test_factory_defaults_to_openai():
+def test_factory_defaults_to_ollama():
 
     config = AtlasConfig()
 
@@ -10,7 +10,7 @@ def test_factory_defaults_to_openai():
         config=config,
     )
 
-    assert adapter.__class__.__name__ == "AIAdapter"
+    assert adapter.__class__.__name__ == "OllamaAdapter"
 
 
 def test_factory_creates_ollama_adapter():
