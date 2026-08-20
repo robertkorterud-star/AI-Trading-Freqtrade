@@ -5,6 +5,10 @@ Technical Analyst
 from atlas.agents.base_agent import BaseAgent
 
 from atlas.adapters.market_data import MarketDataAdapter
+from atlas.intelligence.volume import (
+    VolumeIntelligence,
+    analyze_volume,
+)
 
 from atlas.models.action import Action
 from atlas.models.analysis_result import AnalysisResult
@@ -76,41 +80,37 @@ class TechnicalAnalyst(BaseAgent):
             ]
 
         # -------------------------------------------------
-        # Volume classification
+        # Volume Intelligence
         #
-        # Volume is explanatory only.
+        # Volume remains explanatory only.
         # It does not change action, confidence or evidence.
         # -------------------------------------------------
 
-        volume_ratio = float(
-            getattr(data, "volume_ratio", 0.0)
+        self.volume_intelligence = analyze_volume(
+            volume=getattr(data, "volume", 0.0),
+            average_volume=getattr(
+                data,
+                "average_volume",
+                0.0,
+            ),
+            volume_ratio=getattr(
+                data,
+                "volume_ratio",
+                None,
+            ),
         )
 
-        if volume_ratio >= 3.0:
+        volume = self.volume_intelligence
 
-            volume_level = "EXTREME"
-
-        elif volume_ratio >= 1.5:
-
-            volume_level = "STRONG"
-
-        elif volume_ratio >= 0.75:
-
-            volume_level = "NORMAL"
-
-        elif volume_ratio > 0:
-
-            volume_level = "LOW"
-
-        else:
-
-            volume_level = "UNKNOWN"
-
-        if volume_ratio > 0:
+        if volume.level != "UNKNOWN":
 
             reasoning.append(
-                f"Volume level: {volume_level} "
-                f"({volume_ratio:.2f}x average volume)."
+                f"Volume level: {volume.level} "
+                f"({volume.volume_ratio:.2f}x average volume)."
+            )
+
+            reasoning.append(
+                volume.interpretation
             )
 
         return AnalysisResult(
