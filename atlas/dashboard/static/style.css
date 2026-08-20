@@ -2090,3 +2090,20 @@ main .dashboard-layout > .dashboard-right {
     }
 
 }
+
+
+/* =====================================================
+   DECISION ROBUSTNESS LEVEL
+   ===================================================== */
+
+.robustness-level-strong {
+    color: #22c55e;
+}
+
+.robustness-level-moderate {
+    color: #f59e0b;
+}
+
+.robustness-level-weak {
+    color: #ef4444;
+}

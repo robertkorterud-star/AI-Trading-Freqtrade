@@ -300,6 +300,7 @@ class DashboardDataService:
                 latest_decision.robustness,
                 1,
             ),
+            "level": latest_decision.robustness_level,
         },
 
         "decision_influence": {
