@@ -2200,3 +2200,113 @@ main .dashboard-layout > .dashboard-right {
     }
 
 }
+
+
+/* =====================================================
+   AI DECISION - STRUCTURED EXPLANATION
+   ===================================================== */
+
+.decision-explanation {
+    margin-top: 22px;
+    padding: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.decision-explanation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.decision-explanation-header span {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.decision-explanation-header strong {
+    font-size: 22px;
+}
+
+.decision-explanation-summary {
+    margin: 14px 0 18px;
+    color: #cbd5e1;
+    line-height: 1.55;
+}
+
+.decision-explanation-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.decision-explanation-metrics > div {
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.decision-explanation-metrics span,
+.decision-explanation-opposing span {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.decision-explanation-metrics strong,
+.decision-explanation-opposing strong {
+    font-size: 16px;
+}
+
+.decision-explanation-opposing {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.decision-explanation-override {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(34, 197, 94, 0.08);
+    color: #cbd5e1;
+    font-size: 13px;
+}
+
+.decision-explanation-reasons {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.decision-explanation-reasons h4 {
+    margin: 0 0 10px;
+}
+
+.decision-explanation-reasons p {
+    margin: 7px 0;
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+
+    .decision-explanation-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .decision-explanation-metrics {
+        grid-template-columns: 1fr;
+    }
+
+}

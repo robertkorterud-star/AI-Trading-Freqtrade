@@ -314,6 +314,112 @@
 
             </div>
 
+            <div class="decision-explanation">
+
+                <div class="decision-explanation-header">
+
+                    <div>
+                        <span>ATLAS Explanation</span>
+                        <strong>
+                            {{ dashboard.decision_explanation.headline }}
+                        </strong>
+                    </div>
+
+                </div>
+
+                <p class="decision-explanation-summary">
+                    {{ dashboard.decision_explanation.summary }}
+                </p>
+
+                <div class="decision-explanation-metrics">
+
+                    <div>
+                        <span>Evidence</span>
+                        <strong>
+                            {{ dashboard.decision_explanation.evidence }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Confidence</span>
+                        <strong>
+                            {{ dashboard.decision_explanation.confidence }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Agreement</span>
+                        <strong>
+                            {{ dashboard.decision_explanation.agreement }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Decision Margin</span>
+                        <strong>
+                            {{ dashboard.decision_explanation.decision_margin }}%
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Dominant Signal</span>
+                        <strong>
+                            {% if dashboard.decision_explanation.dominant_action %}
+                                {{ dashboard.decision_explanation.dominant_action.value }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Dominant Influence</span>
+                        <strong>
+                            {{ dashboard.decision_explanation.dominant_weight }}%
+                        </strong>
+                    </div>
+
+                </div>
+
+                {% if dashboard.decision_explanation.opposing_analysts %}
+
+                    <div class="decision-explanation-opposing">
+
+                        <span>Opposing Analysts</span>
+
+                        <strong>
+                            {{ dashboard.decision_explanation.opposing_analysts | join(", ") }}
+                        </strong>
+
+                    </div>
+
+                {% endif %}
+
+                {% if dashboard.decision_explanation.adaptive_override %}
+
+                    <div class="decision-explanation-override">
+                        Adaptive weighting influenced the final decision.
+                    </div>
+
+                {% endif %}
+
+                <div class="decision-explanation-reasons">
+
+                    <h4>Key Reasons</h4>
+
+                    {% for reason in dashboard.decision_explanation.key_reasons %}
+
+                        <p>
+                            • {{ reason }}
+                        </p>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+
             <div class="decision-reasoning">
 
                 <h3>Why ATLAS decided this</h3>

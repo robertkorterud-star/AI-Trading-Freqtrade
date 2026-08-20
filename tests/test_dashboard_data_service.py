@@ -168,3 +168,95 @@ def test_dashboard_decision_contains_agent_weights(
         sum(decision.agent_weights.values()),
         4,
     ) == 1.0
+
+
+def test_dashboard_decision_contains_structured_explanation(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.core.config import AtlasConfig
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.decision_explanation import (
+        DecisionExplanation,
+    )
+
+    config = AtlasConfig(
+        agent_performance_storage=str(
+            tmp_path / "agent_performance.json"
+        )
+    )
+
+    service = DashboardDataService(
+        config=config
+    )
+
+    def fake_analyze(symbol, exclude=None):
+        return [
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Technical Analyst",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Strong technical evidence."],
+            ),
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Company Analyst",
+                action=Action.BUY,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Positive company evidence."],
+            ),
+        ]
+
+    def fake_analyze_with_news(symbol, news):
+        return fake_analyze(symbol)
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze",
+        fake_analyze,
+    )
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze_with_news",
+        fake_analyze_with_news,
+    )
+
+    data = service.get_dashboard_data(
+        selected_symbol="BTC-USD"
+    )
+
+    decision = data["decision"]
+    explanation = data["decision_explanation"]
+
+    assert isinstance(
+        explanation,
+        DecisionExplanation,
+    )
+
+    assert explanation.action == decision.action
+    assert explanation.evidence == decision.evidence
+    assert explanation.confidence == decision.confidence
+    assert explanation.dominant_action == (
+        decision.dominant_action
+    )
+    assert explanation.dominant_weight == (
+        decision.dominant_weight
+    )
+    assert explanation.decision_margin == (
+        decision.decision_margin
+    )
+    assert explanation.robustness == (
+        decision.robustness
+    )
+    assert explanation.robustness_level == (
+        decision.robustness_level
+    )
+
+    assert explanation.headline
+    assert explanation.summary
+    assert explanation.key_reasons

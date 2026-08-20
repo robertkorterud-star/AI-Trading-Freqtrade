@@ -15,6 +15,7 @@ from atlas.agents.company_analyst import CompanyAnalyst
 
 from atlas.decision.engine import DecisionEngine
 from atlas.decision.intelligence_layer import IntelligenceLayer
+from atlas.decision.explanation import explain_decision
 from atlas.adapters.news import NewsAdapter
 
 from atlas.services.technical_service import TechnicalService
@@ -100,6 +101,7 @@ class DashboardDataService:
         latest_results = None
         latest_decision = None
         latest_intelligence = None
+        latest_explanation = None
         latest_news = []
         latest_snapshot = None
 
@@ -187,6 +189,11 @@ class DashboardDataService:
                         results,
                         weights=decision.agent_weights,
                     )
+                )
+
+                latest_explanation = explain_decision(
+                    decision,
+                    agreement=latest_intelligence.agreement,
                 )
 
                 latest_snapshot = snapshot
@@ -290,6 +297,8 @@ class DashboardDataService:
         },
 
         "decision": latest_decision,
+
+        "decision_explanation": latest_explanation,
 
         "decision_robustness": {
             "margin": round(
