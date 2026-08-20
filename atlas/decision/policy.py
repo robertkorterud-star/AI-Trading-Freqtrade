@@ -46,7 +46,7 @@ def determine_action(
 
     # Strong unanimous/majority SELL.
     if (
-        evidence < HOLD_THRESHOLD
+        evidence >= HOLD_THRESHOLD
         and agreement >= SELL_AGREEMENT_THRESHOLD
         and sell_count > buy_count
         and sell_count > hold_count
