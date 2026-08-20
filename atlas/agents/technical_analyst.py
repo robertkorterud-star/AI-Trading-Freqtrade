@@ -75,6 +75,32 @@ class TechnicalAnalyst(BaseAgent):
 
             ]
 
+        # -------------------------------------------------
+        # Volume confirmation
+        #
+        # Volume is currently explanatory only.
+        # It does not change the existing action,
+        # confidence or evidence policy.
+        # -------------------------------------------------
+
+        volume_ratio = float(
+            getattr(data, "volume_ratio", 0.0)
+        )
+
+        if volume_ratio >= 1.5:
+
+            reasoning.append(
+                f"Volume is elevated at {volume_ratio:.2f}x "
+                "the average volume."
+            )
+
+        elif volume_ratio > 0:
+
+            reasoning.append(
+                f"Volume is relatively low at {volume_ratio:.2f}x "
+                "the average volume."
+            )
+
         return AnalysisResult(
 
             analyst=self.name,

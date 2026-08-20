@@ -22,6 +22,12 @@ class MarketData:
 
     ma50: float
 
+    volume: float
+
+    average_volume: float
+
+    volume_ratio: float
+
 
 class MarketDataAdapter:
     """Fetches market data."""
@@ -45,6 +51,42 @@ class MarketDataAdapter:
 
         ma50 = close.rolling(50).mean().iloc[-1]
 
+        if "Volume" not in history.columns:
+
+            # Volume is unavailable. Keep technical analysis
+            # functional and treat volume as neutral.
+            volume = 0.0
+            average_volume = 0.0
+            volume_ratio = 1.0
+
+        else:
+
+            volume_series = history["Volume"].dropna()
+
+            if len(volume_series) < 20:
+                # Some providers may return price history
+                # without enough usable volume data.
+                volume = 0.0
+                average_volume = 0.0
+                volume_ratio = 1.0
+
+            else:
+
+                volume = float(
+                    volume_series.iloc[-1]
+                )
+
+                average_volume = float(
+                    volume_series.tail(20).mean()
+                )
+
+                if average_volume <= 0:
+                    volume_ratio = 1.0
+                else:
+                    volume_ratio = (
+                        volume / average_volume
+                    )
+
         info = ticker.fast_info
 
         price = float(info["lastPrice"])
@@ -66,5 +108,11 @@ class MarketDataAdapter:
             ma20=float(ma20),
 
             ma50=float(ma50),
+
+            volume=volume,
+
+            average_volume=average_volume,
+
+            volume_ratio=float(volume_ratio),
 
         )

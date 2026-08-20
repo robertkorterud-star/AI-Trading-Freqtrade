@@ -16,6 +16,9 @@ class TechnicalSnapshot:
     ma20: float
     ma50: float
     trend: str
+    volume: float
+    average_volume: float
+    volume_ratio: float
 
 
 class TechnicalService:
@@ -39,6 +42,9 @@ class TechnicalService:
             ma20=data.ma20,
             ma50=data.ma50,
             trend=trend,
+            volume=data.volume,
+            average_volume=data.average_volume,
+            volume_ratio=data.volume_ratio,
         )
 
     def _trend(self, data):
