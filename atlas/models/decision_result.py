@@ -29,4 +29,14 @@ class DecisionResult:
         default_factory=dict
     )
 
+    dominant_action: Action | None = None
+
+    dominant_weight: float = 0.0
+
+    opposing_analysts: list[str] = field(
+        default_factory=list
+    )
+
+    adaptive_override: bool = False
+
     reasoning: list[str] = field(default_factory=list)

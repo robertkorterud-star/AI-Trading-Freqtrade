@@ -291,6 +291,24 @@ class DashboardDataService:
 
         "decision": latest_decision,
 
+        "decision_influence": {
+            "dominant_action": (
+                latest_decision.dominant_action.value
+                if latest_decision.dominant_action
+                else None
+            ),
+            "dominant_weight": round(
+                latest_decision.dominant_weight,
+                1,
+            ),
+            "opposing_analysts": (
+                latest_decision.opposing_analysts
+            ),
+            "adaptive_override": (
+                latest_decision.adaptive_override
+            ),
+        },
+
         "intelligence": {
             "symbol": latest_intelligence.symbol,
             "action": latest_intelligence.action.value,

@@ -107,6 +107,41 @@ class DecisionEngine:
                 dominant_action
             ]
 
+            opposing_analysts = [
+                result.analyst
+                for result in results
+                if result.action != dominant_action
+            ]
+
+            reasoning.append(
+                f"Dominant signal: "
+                f"{dominant_action.value} with "
+                f"{dominant_weight:.1f}% weighted influence."
+            )
+
+            if opposing_analysts:
+                reasoning.append(
+                    "Opposing analysts: "
+                    + ", ".join(opposing_analysts)
+                    + "."
+                )
+
+        if weights:
+            weighted_signals = {
+                Action.BUY: intelligence.weighted_buy,
+                Action.HOLD: intelligence.weighted_hold,
+                Action.SELL: intelligence.weighted_sell,
+            }
+
+            dominant_action = max(
+                weighted_signals,
+                key=weighted_signals.get,
+            )
+
+            dominant_weight = weighted_signals[
+                dominant_action
+            ]
+
             reasoning.append(
                 f"Adaptive weighting: "
                 f"{dominant_action.value} has "
@@ -138,6 +173,38 @@ class DecisionEngine:
             for detail in analyst.get("reasoning", []):
                 reasoning.append(f"  {detail}")
 
+        dominant_action = None
+        dominant_weight = 0.0
+        opposing_analysts = []
+        adaptive_override = False
+
+        if weights:
+            weighted_signals = {
+                Action.BUY: intelligence.weighted_buy,
+                Action.HOLD: intelligence.weighted_hold,
+                Action.SELL: intelligence.weighted_sell,
+            }
+
+            dominant_action = max(
+                weighted_signals,
+                key=weighted_signals.get,
+            )
+
+            dominant_weight = weighted_signals[
+                dominant_action
+            ]
+
+            opposing_analysts = [
+                result.analyst
+                for result in results
+                if result.action != dominant_action
+            ]
+
+            adaptive_override = (
+                intelligence.weighted_conflict
+                and action == dominant_action
+            )
+
         return DecisionResult(
             symbol=results[0].symbol,
             action=action,
@@ -145,5 +212,9 @@ class DecisionEngine:
             evidence=summary["evidence"],
             analysts=[r.analyst for r in results],
             agent_weights=weights or {},
+            dominant_action=dominant_action,
+            dominant_weight=dominant_weight,
+            opposing_analysts=opposing_analysts,
+            adaptive_override=adaptive_override,
             reasoning=reasoning,
         )
