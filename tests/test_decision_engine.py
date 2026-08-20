@@ -292,3 +292,138 @@ def test_decision_explains_normal_aligned_buy():
         "combined analyst evidence" in reason.lower()
         for reason in decision.reasoning
     )
+
+def test_decision_robustness_level_strong():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Strong BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Positive news."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Positive company signal."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.robustness >= 80.0
+    assert decision.robustness_level == "STRONG"
+
+
+def test_decision_robustness_level_moderate():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    class FakeWeightEngine:
+
+        def calculate(self):
+            return {
+                "Technical Analyst": 0.70,
+                "News Analyst": 0.20,
+                "Company Analyst": 0.10,
+            }
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=70.0,
+            reasoning=["BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.HOLD,
+            confidence=70.0,
+            evidence=50.0,
+            reasoning=["HOLD."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.HOLD,
+            confidence=70.0,
+            evidence=50.0,
+            reasoning=["HOLD."],
+        ),
+    ]
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = FakeWeightEngine()
+
+    decision = engine.evaluate(results)
+
+    assert decision.robustness == 47.2
+    assert decision.robustness_level == "WEAK"
+
+
+def test_decision_robustness_level_weak():
+
+    from atlas.models.analysis_result import AnalysisResult
+
+    class FakeWeightEngine:
+
+        def calculate(self):
+            return {
+                "Technical Analyst": 0.40,
+                "News Analyst": 0.30,
+                "Company Analyst": 0.30,
+            }
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=60.0,
+            evidence=40.0,
+            reasoning=["Weak BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=60.0,
+            evidence=40.0,
+            reasoning=["Negative news."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.HOLD,
+            confidence=60.0,
+            evidence=40.0,
+            reasoning=["Uncertain."],
+        ),
+    ]
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = FakeWeightEngine()
+
+    decision = engine.evaluate(results)
+
+    assert decision.robustness < 60.0
+    assert decision.robustness_level == "WEAK"
+

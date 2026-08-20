@@ -98,77 +98,82 @@ class DecisionEngine:
         decision_margin = 0.0
         robustness = 0.0
 
-        if weights:
-            weighted_signals = {
-                Action.BUY: intelligence.weighted_buy,
-                Action.HOLD: intelligence.weighted_hold,
-                Action.SELL: intelligence.weighted_sell,
-            }
+        weighted_signals = {
+            Action.BUY: intelligence.weighted_buy,
+            Action.HOLD: intelligence.weighted_hold,
+            Action.SELL: intelligence.weighted_sell,
+        }
 
-            ranked_signals = sorted(
-                weighted_signals.items(),
-                key=lambda item: item[1],
-                reverse=True,
-            )
+        ranked_signals = sorted(
+            weighted_signals.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
 
-            dominant_action = ranked_signals[0][0]
-            dominant_weight = ranked_signals[0][1]
+        dominant_action = ranked_signals[0][0]
+        dominant_weight = ranked_signals[0][1]
 
-            second_weight = (
-                ranked_signals[1][1]
-                if len(ranked_signals) > 1
-                else 0.0
-            )
+        second_weight = (
+            ranked_signals[1][1]
+            if len(ranked_signals) > 1
+            else 0.0
+        )
 
-            decision_margin = (
-                dominant_weight - second_weight
-            )
+        decision_margin = (
+            dominant_weight - second_weight
+        )
 
-            opposing_analysts = [
-                result.analyst
-                for result in results
-                if result.action != dominant_action
-            ]
+        opposing_analysts = [
+            result.analyst
+            for result in results
+            if result.action != dominant_action
+        ]
 
-            adaptive_override = (
-                intelligence.weighted_conflict
-                and action == dominant_action
-            )
+        adaptive_override = (
+            bool(weights)
+            and intelligence.weighted_conflict
+            and action == dominant_action
+        )
 
-            robustness = min(
-                100.0,
-                (
-                    decision_margin
-                    * 0.7
-                    + summary["evidence"]
-                    * 0.3
-                ),
-            )
+        robustness = min(
+            100.0,
+            (
+                decision_margin * 0.7
+                + summary["evidence"] * 0.3
+            ),
+        )
 
+        if robustness >= 80.0:
+            robustness_level = "STRONG"
+        elif robustness >= 60.0:
+            robustness_level = "MODERATE"
+        else:
+            robustness_level = "WEAK"
+
+        reasoning.append(
+            f"Dominant signal: "
+            f"{dominant_action.value} with "
+            f"{dominant_weight:.1f}% weighted influence."
+        )
+
+        if opposing_analysts:
             reasoning.append(
-                f"Dominant signal: "
-                f"{dominant_action.value} with "
-                f"{dominant_weight:.1f}% weighted influence."
+                "Opposing analysts: "
+                + ", ".join(opposing_analysts)
+                + "."
             )
 
-            if opposing_analysts:
-                reasoning.append(
-                    "Opposing analysts: "
-                    + ", ".join(opposing_analysts)
-                    + "."
-                )
+        reasoning.append(
+            f"Adaptive weighting: "
+            f"{dominant_action.value} has "
+            f"{dominant_weight:.1f}% weighted influence."
+        )
 
+        if adaptive_override:
             reasoning.append(
-                f"Adaptive weighting: "
-                f"{dominant_action.value} has "
-                f"{dominant_weight:.1f}% weighted influence."
+                "Adaptive weighting allowed the dominant "
+                "signal to overcome the opposing analyst signals."
             )
-
-            if adaptive_override:
-                reasoning.append(
-                    "Adaptive weighting allowed the dominant "
-                    "signal to overcome the opposing analyst signals."
-                )
 
         if intelligence.conflict:
             reasoning.append(
@@ -186,6 +191,18 @@ class DecisionEngine:
             for detail in analyst.get("reasoning", []):
                 reasoning.append(f"  {detail}")
 
+        if robustness >= 80.0:
+            robustness_level = "STRONG"
+        elif robustness >= 60.0:
+            robustness_level = "MODERATE"
+        else:
+            robustness_level = "WEAK"
+
+        reasoning.append(
+            f"Decision robustness: "
+            f"{robustness:.1f}% ({robustness_level})."
+        )
+
         return DecisionResult(
             symbol=results[0].symbol,
             action=action,
@@ -199,5 +216,6 @@ class DecisionEngine:
             adaptive_override=adaptive_override,
             decision_margin=decision_margin,
             robustness=robustness,
+            robustness_level=robustness_level,
             reasoning=reasoning,
         )

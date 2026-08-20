@@ -43,4 +43,6 @@ class DecisionResult:
 
     robustness: float = 0.0
 
+    robustness_level: str = "WEAK"
+
     reasoning: list[str] = field(default_factory=list)
