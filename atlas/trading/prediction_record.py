@@ -21,6 +21,14 @@ class PredictionRecord:
     analysts: list[str] = field(default_factory=list)
     reason: str = ""
 
+    # Outcome fields are populated after the prediction
+    # has been evaluated.
+    evaluated: bool = False
+    correct: bool | None = None
+    evaluated_price_usd: float | None = None
+    price_change_percent: float | None = None
+    evaluated_at: datetime | None = None
+
     def as_dict(self):
         return {
             "symbol": self.symbol,
@@ -33,4 +41,23 @@ class PredictionRecord:
             ),
             "analysts": self.analysts,
             "reason": self.reason,
+            "evaluated": self.evaluated,
+            "correct": self.correct,
+            "evaluated_price_usd": (
+                round(self.evaluated_price_usd, 2)
+                if self.evaluated_price_usd is not None
+                else None
+            ),
+            "price_change_percent": (
+                round(self.price_change_percent, 2)
+                if self.price_change_percent is not None
+                else None
+            ),
+            "evaluated_at": (
+                self.evaluated_at.isoformat(
+                    timespec="seconds"
+                )
+                if self.evaluated_at is not None
+                else None
+            ),
         }

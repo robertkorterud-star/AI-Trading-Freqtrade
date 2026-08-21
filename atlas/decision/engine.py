@@ -97,8 +97,13 @@ class DecisionEngine:
         if unanimous:
             action = dominant_action
 
-        # Adaptive weights may resolve a genuine conflict only
-        # when the dominant BUY/SELL signal is clearly strong.
+        # Adaptive learning may resolve a genuine BUY/SELL
+        # conflict when the learned dominant signal is strong
+        # enough in both weight and underlying evidence.
+        #
+        # MAX_WEIGHT is intentionally capped at 60%, so the
+        # override threshold must never require an impossible
+        # weight above that safety limit.
         elif (
             weights
             and intelligence.weighted_conflict
@@ -106,7 +111,9 @@ class DecisionEngine:
                 Action.BUY,
                 Action.SELL,
             }
-            and dominant_weight >= 70.0
+            and dominant_weight >= 60.0
+            and decision_margin >= 20.0
+            and summary["evidence"] >= 80.0
         ):
             action = dominant_action
             adaptive_override = True

@@ -63,6 +63,21 @@ class PredictionEvaluator:
             current_price_usd=current_price_usd,
         )
 
+        prediction.evaluated = True
+        prediction.correct = outcome.correct
+        prediction.evaluated_price_usd = current_price_usd
+        prediction.evaluated_at = datetime.now()
+
+        if prediction.price_usd:
+            prediction.price_change_percent = (
+                (
+                    current_price_usd
+                    - prediction.price_usd
+                )
+                / prediction.price_usd
+                * 100
+            )
+
         for analyst in prediction.analysts:
             self.agent_performance.record(
                 analyst=analyst,

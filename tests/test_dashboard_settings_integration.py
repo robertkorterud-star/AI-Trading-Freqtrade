@@ -28,9 +28,65 @@ def test_dashboard_status_reflects_selected_paper_mode():
     assert status["live_orders"] is False
 
 
-def test_dashboard_data_uses_settings_service_trading_mode():
+def test_dashboard_data_uses_settings_service_trading_mode(monkeypatch):
 
     from atlas.services.dashboard_data_service import DashboardDataService
+
+    from atlas.adapters.market_data import MarketData
+
+    market_data = MarketData(
+        symbol="NVDA",
+        price=100.0,
+        previous_close=99.0,
+        change_percent=1.01,
+        ma20=98.0,
+        ma50=95.0,
+        volume=1_000_000,
+        average_volume=1_000_000,
+        volume_ratio=1.0,
+    )
+
+    monkeypatch.setattr(
+        "atlas.agents.technical_analyst.MarketDataAdapter",
+        lambda: type(
+            "FakeMarketDataAdapter",
+            (),
+            {
+                "get": lambda self, symbol: MarketData(
+                    symbol=symbol,
+                    price=market_data.price,
+                    previous_close=market_data.previous_close,
+                    change_percent=market_data.change_percent,
+                    ma20=market_data.ma20,
+                    ma50=market_data.ma50,
+                    volume=market_data.volume,
+                    average_volume=market_data.average_volume,
+                    volume_ratio=market_data.volume_ratio,
+                )
+            },
+        )(),
+    )
+
+    monkeypatch.setattr(
+        "atlas.services.technical_service.MarketDataAdapter",
+        lambda: type(
+            "FakeTechnicalMarketDataAdapter",
+            (),
+            {
+                "get": lambda self, symbol: MarketData(
+                    symbol=symbol,
+                    price=market_data.price,
+                    previous_close=market_data.previous_close,
+                    change_percent=market_data.change_percent,
+                    ma20=market_data.ma20,
+                    ma50=market_data.ma50,
+                    volume=market_data.volume,
+                    average_volume=market_data.average_volume,
+                    volume_ratio=market_data.volume_ratio,
+                )
+            },
+        )(),
+    )
 
     service = DashboardDataService()
 
@@ -42,7 +98,7 @@ def test_dashboard_data_uses_settings_service_trading_mode():
     assert dashboard["trading"]["paper_trading"] is True
     assert dashboard["trading"]["live_orders"] is False
 
-def test_dashboard_exposes_paper_trading_summary():
+def test_dashboard_exposes_paper_trading_summary(monkeypatch):
 
     from atlas.services.dashboard_data_service import DashboardDataService
 
