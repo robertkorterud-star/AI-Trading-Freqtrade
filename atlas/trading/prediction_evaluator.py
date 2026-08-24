@@ -78,6 +78,8 @@ class PredictionEvaluator:
                 * 100
             )
 
+        self.predictions.save()
+
         for analyst in prediction.analysts:
             self.agent_performance.record(
                 analyst=analyst,
