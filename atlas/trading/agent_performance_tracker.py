@@ -5,6 +5,8 @@ Tracks how accurate each ATLAS analyst is over time.
 """
 
 import json
+import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -115,13 +117,37 @@ class AgentPerformanceTracker:
             in self._performance.items()
         }
 
-        self.storage_path.write_text(
-            json.dumps(
-                data,
-                indent=2,
-                ensure_ascii=False,
-            )
+        serialized = json.dumps(
+            data,
+            indent=2,
+            ensure_ascii=False,
         )
+
+        temporary_path = None
+
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.storage_path.parent,
+                prefix=f".{self.storage_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary_file:
+                temporary_path = Path(temporary_file.name)
+                temporary_file.write(serialized)
+                temporary_file.flush()
+                os.fsync(temporary_file.fileno())
+
+            os.replace(
+                temporary_path,
+                self.storage_path,
+            )
+            temporary_path = None
+        except Exception:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+            raise
 
     def ensure(self, analyst: str):
         """Ensure an analyst exists without recording a prediction."""

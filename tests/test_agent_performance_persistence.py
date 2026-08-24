@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from atlas.trading.agent_performance_tracker import (
     AgentPerformanceTracker,
 )
@@ -107,3 +109,42 @@ def test_tracker_without_storage_is_in_memory():
     )
 
     assert tracker.count() == 1
+
+
+def test_failed_atomic_replace_preserves_existing_json(
+    monkeypatch,
+    tmp_path,
+):
+    path = tmp_path / "agent_performance.json"
+    tracker = AgentPerformanceTracker(
+        storage_path=path
+    )
+
+    tracker.record(
+        analyst="Technical Analyst",
+        correct=True,
+    )
+
+    original_content = path.read_text()
+
+    def fail_replace(*args, **kwargs):
+        raise OSError("Atomic replacement failed.")
+
+    monkeypatch.setattr(
+        "atlas.trading.agent_performance_tracker.os.replace",
+        fail_replace,
+    )
+
+    with pytest.raises(
+        OSError,
+        match="Atomic replacement failed.",
+    ):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=False,
+        )
+
+    assert path.read_text() == original_content
+    assert list(
+        tmp_path.glob(".agent_performance.json.*.tmp")
+    ) == []
