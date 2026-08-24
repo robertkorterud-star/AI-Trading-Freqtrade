@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from atlas.models.action import Action
 from atlas.models.decision_result import DecisionResult
 from atlas.trading.prediction_tracker import PredictionTracker
@@ -33,23 +31,6 @@ def test_prediction_tracker_persists_and_reloads(tmp_path):
         reason="AI BUY prediction.",
     )
 
-    prediction.evaluated = True
-    prediction.correct = True
-    prediction.evaluated_price_usd = 184.0
-    prediction.price_change_percent = (
-        (184.0 - 180.25) / 180.25 * 100
-    )
-    prediction.evaluated_at = datetime.now()
-
-    # Persist the updated evaluation state through a fresh
-    # record save cycle. This mirrors the normal tracker API.
-    tracker.clear()
-    tracker.record(
-        decision=make_decision(),
-        price_usd=180.25,
-        reason="AI BUY prediction.",
-    )
-
     reloaded = PredictionTracker(storage_path=storage_path)
 
     assert reloaded.count() == 1
@@ -58,6 +39,36 @@ def test_prediction_tracker_persists_and_reloads(tmp_path):
     assert history[0]["action"] == "BUY"
     assert history[0]["price_usd"] == 180.25
     assert history[0]["reason"] == "AI BUY prediction."
+    assert prediction.as_dict() == history[0]
+
+
+def test_prediction_tracker_persists_evaluated_state(tmp_path):
+    storage_path = tmp_path / "predictions.json"
+
+    tracker = PredictionTracker(storage_path=storage_path)
+    prediction = tracker.record(
+        decision=make_decision(),
+        price_usd=180.25,
+    )
+
+    prediction.evaluated = True
+    prediction.correct = True
+    prediction.evaluated_price_usd = 184.0
+    prediction.price_change_percent = (
+        (184.0 - 180.25) / 180.25 * 100
+    )
+    tracker.save()
+
+    reloaded = PredictionTracker(storage_path=storage_path)
+    loaded = reloaded.history()[0]
+
+    assert loaded["evaluated"] is True
+    assert loaded["correct"] is True
+    assert loaded["evaluated_price_usd"] == 184.0
+    assert loaded["price_change_percent"] == round(
+        prediction.price_change_percent,
+        2,
+    )
 
 
 def test_prediction_tracker_persists_clear(tmp_path):
