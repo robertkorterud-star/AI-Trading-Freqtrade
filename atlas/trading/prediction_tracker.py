@@ -88,6 +88,11 @@ class PredictionTracker:
 
             self._predictions.append(prediction)
 
+    def save(self):
+        """Persist the current prediction history."""
+
+        self._save()
+
     def _save(self):
         """Save prediction history to JSON storage."""
 
