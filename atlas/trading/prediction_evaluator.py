@@ -49,6 +49,18 @@ class PredictionEvaluator:
                 )
             )
 
+        self._reconcile_agent_performance()
+
+    def _reconcile_agent_performance(self):
+        """Rebuild persistent performance from evaluated predictions."""
+
+        if self.prediction_repository is None:
+            return
+
+        self.agent_performance.rebuild_from_predictions(
+            self.prediction_repository.get_evaluated()
+        )
+
     def ready_predictions(
         self,
         hours: int = 24,
@@ -112,6 +124,11 @@ class PredictionEvaluator:
             None,
         )
 
+        persisted_prediction = (
+            prediction_id is not None
+            and self.prediction_repository is not None
+        )
+
         if prediction_id is not None:
 
             if (
@@ -147,11 +164,14 @@ class PredictionEvaluator:
                     outcome=outcome,
                 )
 
-        for analyst in prediction.analysts:
-            self.agent_performance.record(
-                analyst=analyst,
-                correct=outcome.correct,
-            )
+        if persisted_prediction:
+            self._reconcile_agent_performance()
+        else:
+            for analyst in prediction.analysts:
+                self.agent_performance.record(
+                    analyst=analyst,
+                    correct=outcome.correct,
+                )
 
         return outcome
 

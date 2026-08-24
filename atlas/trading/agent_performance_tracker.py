@@ -200,6 +200,38 @@ class AgentPerformanceTracker:
 
         return performance
 
+    def rebuild_from_predictions(self, predictions):
+        """Replace performance aggregates from evaluated predictions."""
+
+        rebuilt = {}
+
+        for prediction in predictions:
+            if (
+                not prediction.evaluated
+                or prediction.correct is None
+            ):
+                continue
+
+            for analyst in dict.fromkeys(prediction.analysts):
+                if not analyst:
+                    continue
+
+                performance = rebuilt.get(analyst)
+
+                if performance is None:
+                    performance = AgentPerformance(
+                        analyst=analyst
+                    )
+                    rebuilt[analyst] = performance
+
+                performance.predictions += 1
+
+                if prediction.correct:
+                    performance.correct += 1
+
+        self._performance = rebuilt
+        self._save()
+
     def get(self, analyst: str):
         """Return performance for one analyst."""
 

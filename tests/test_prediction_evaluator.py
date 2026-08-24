@@ -187,8 +187,10 @@ def test_evaluator_updates_agent_performance():
 
 def test_evaluated_prediction_persists_outcome(tmp_path):
     database_path = tmp_path / "atlas.db"
+    performance_path = tmp_path / "agent_performance.json"
     tracker, prediction = _persisted_old_prediction(
-        database_path
+        database_path,
+        analysts=["Technical Analyst"],
     )
     outcome_repository = OutcomeRepository(
         tracker.database
@@ -196,6 +198,9 @@ def test_evaluated_prediction_persists_outcome(tmp_path):
     evaluator = PredictionEvaluator(
         predictions=tracker,
         outcomes=OutcomeTracker(),
+        agent_performance=AgentPerformanceTracker(
+            storage_path=performance_path,
+        ),
         outcome_repository=outcome_repository,
     )
 
@@ -216,6 +221,9 @@ def test_evaluated_prediction_persists_outcome(tmp_path):
 
     assert stored_prediction.evaluated is True
     assert stored_prediction.correct is True
+    assert evaluator.agent_performance.get(
+        "Technical Analyst"
+    ).predictions == 1
 
 
 def test_failed_outcome_persistence_rolls_back_prediction_update(
@@ -345,3 +353,56 @@ def test_agent_performance_is_not_double_counted_after_restart(
 
     assert technical.predictions == 1
     assert technical.correct == 1
+
+
+def test_evaluator_rebuilds_missing_performance_on_restart(
+    tmp_path,
+):
+    database_path = tmp_path / "atlas.db"
+    performance_path = tmp_path / "agent_performance.json"
+    tracker, prediction = _persisted_old_prediction(
+        database_path,
+        analysts=["Technical Analyst", "News Analyst"],
+    )
+
+    prediction.evaluated = True
+    prediction.correct = True
+    prediction.evaluated_price_usd = 190.0
+    prediction.evaluated_at = datetime.now()
+    tracker.repository.update(
+        prediction.database_id,
+        prediction,
+    )
+
+    performance = AgentPerformanceTracker(
+        storage_path=performance_path,
+    )
+
+    evaluator = PredictionEvaluator(
+        predictions=PredictionTracker(
+            storage_path=database_path,
+        ),
+        outcomes=OutcomeTracker(),
+        agent_performance=performance,
+        outcome_repository=OutcomeRepository(tracker.database),
+    )
+
+    technical = evaluator.agent_performance.get(
+        "Technical Analyst"
+    )
+    news = evaluator.agent_performance.get("News Analyst")
+
+    assert technical.predictions == 1
+    assert technical.correct == 1
+    assert news.predictions == 1
+    assert news.correct == 1
+
+    evaluator._reconcile_agent_performance()
+
+    rebuilt_technical = evaluator.agent_performance.get(
+        "Technical Analyst"
+    )
+    rebuilt_news = evaluator.agent_performance.get("News Analyst")
+
+    assert rebuilt_technical.predictions == 1
+    assert rebuilt_news.predictions == 1

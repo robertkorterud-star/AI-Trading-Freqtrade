@@ -172,6 +172,24 @@ class PredictionRepository:
             for row in rows
         ]
 
+    def get_evaluated(self):
+        """Return evaluated predictions for performance reconciliation."""
+
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT *
+                FROM predictions
+                WHERE evaluated = 1
+                ORDER BY timestamp ASC, id ASC
+                """
+            ).fetchall()
+
+        return [
+            self._row_to_prediction(row)
+            for row in rows
+        ]
+
     def count(self):
         """Return number of stored predictions."""
 

@@ -1,10 +1,12 @@
 import json
+from datetime import datetime
 
 import pytest
 
 from atlas.trading.agent_performance_tracker import (
     AgentPerformanceTracker,
 )
+from atlas.trading.prediction_record import PredictionRecord
 
 
 def test_tracker_persists_performance(tmp_path):
@@ -148,3 +150,63 @@ def test_failed_atomic_replace_preserves_existing_json(
     assert list(
         tmp_path.glob(".agent_performance.json.*.tmp")
     ) == []
+
+
+def test_rebuild_replaces_performance_from_evaluated_predictions(
+    tmp_path,
+):
+    path = tmp_path / "agent_performance.json"
+    tracker = AgentPerformanceTracker(
+        storage_path=path
+    )
+
+    tracker.record(
+        analyst="Stale Analyst",
+        correct=True,
+    )
+
+    predictions = [
+        PredictionRecord(
+            symbol="NVDA",
+            action="BUY",
+            confidence=90.0,
+            evidence=90.0,
+            price_usd=100.0,
+            timestamp=datetime.now(),
+            analysts=["Technical Analyst", "News Analyst"],
+            evaluated=True,
+            correct=True,
+        ),
+        PredictionRecord(
+            symbol="NVDA",
+            action="SELL",
+            confidence=80.0,
+            evidence=80.0,
+            price_usd=100.0,
+            timestamp=datetime.now(),
+            analysts=["Technical Analyst", "News Analyst"],
+            evaluated=True,
+            correct=False,
+        ),
+    ]
+
+    tracker.rebuild_from_predictions(predictions)
+
+    technical = tracker.get("Technical Analyst")
+    news = tracker.get("News Analyst")
+
+    assert tracker.get("Stale Analyst") is None
+    assert technical.predictions == 2
+    assert technical.correct == 1
+    assert news.predictions == 2
+    assert news.correct == 1
+    assert json.loads(path.read_text()) == {
+        "Technical Analyst": {
+            "predictions": 2,
+            "correct": 1,
+        },
+        "News Analyst": {
+            "predictions": 2,
+            "correct": 1,
+        },
+    }
