@@ -266,7 +266,10 @@ def test_atlas_engine_start_evaluates_previous_predictions(
     config = AtlasConfig(
         agent_performance_storage=(
             str(tmp_path / "agent_performance.json")
-        )
+        ),
+        database_path=(
+            str(tmp_path / "atlas_test.db")
+        ),
     )
 
     engine = AtlasEngine(
@@ -287,7 +290,7 @@ def test_atlas_engine_start_evaluates_previous_predictions(
         reason="Test prediction",
     )
 
-    engine.prediction_tracker._predictions.append(
+    engine.prediction_tracker.repository.save(
         old_prediction
     )
 

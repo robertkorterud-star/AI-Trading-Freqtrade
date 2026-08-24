@@ -19,6 +19,7 @@ class DecisionEngine:
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
         self.agent_weight_engine = None
+        self.last_intelligence = None
 
     def evaluate(
         self,
@@ -42,6 +43,8 @@ class DecisionEngine:
             results,
             weights=weights,
         )
+
+        self.last_intelligence = intelligence
 
         weighted_signals = {
             Action.BUY: intelligence.weighted_buy,

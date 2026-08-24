@@ -89,3 +89,5 @@ htmlcov/
 # ATLAS Runtime Data
 # -----------------------------------------------------------------------------
 atlas/data/*.json
+
+atlas/data/*.db

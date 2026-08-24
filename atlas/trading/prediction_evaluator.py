@@ -12,6 +12,8 @@ from atlas.trading.agent_performance_tracker import (
 )
 from atlas.trading.outcome_tracker import OutcomeTracker
 from atlas.trading.prediction_tracker import PredictionTracker
+from atlas.database.outcome_repository import OutcomeRepository
+from atlas.database.prediction_repository import PredictionRepository
 
 
 class PredictionEvaluator:
@@ -22,6 +24,7 @@ class PredictionEvaluator:
         predictions: PredictionTracker,
         outcomes: OutcomeTracker,
         agent_performance: AgentPerformanceTracker | None = None,
+        outcome_repository: OutcomeRepository | None = None,
     ):
         self.predictions = predictions
         self.outcomes = outcomes
@@ -30,7 +33,21 @@ class PredictionEvaluator:
             or AgentPerformanceTracker()
         )
 
-        self._evaluated_predictions = set()
+        self.outcome_repository = (
+            outcome_repository
+        )
+
+        self.prediction_repository = None
+
+        if (
+            self.predictions.repository is not None
+            and self.predictions.database is not None
+        ):
+            self.prediction_repository = (
+                PredictionRepository(
+                    self.predictions.database
+                )
+            )
 
     def ready_predictions(
         self,
@@ -43,13 +60,19 @@ class PredictionEvaluator:
 
         cutoff = now - timedelta(hours=hours)
 
-        ready = []
+        if self.prediction_repository is not None:
+            predictions = self.prediction_repository.get_pending()
+        else:
+            predictions = self.predictions._predictions
 
-        for prediction in self.predictions._predictions:
-            if prediction.timestamp <= cutoff:
-                ready.append(prediction)
-
-        return ready
+        return [
+            prediction
+            for prediction in predictions
+            if (
+                not prediction.evaluated
+                and prediction.timestamp <= cutoff
+            )
+        ]
 
     def evaluate(
         self,
@@ -57,6 +80,9 @@ class PredictionEvaluator:
         current_price_usd: float,
     ):
         """Evaluate one prediction against the current price."""
+
+        if prediction.evaluated:
+            return None
 
         outcome = self.outcomes.evaluate(
             prediction=prediction,
@@ -78,15 +104,35 @@ class PredictionEvaluator:
                 * 100
             )
 
+        # Persist the evaluated prediction and its
+        # outcome when a database repository is present.
+        prediction_id = getattr(
+            prediction,
+            "database_id",
+            None,
+        )
+
+        if prediction_id is not None:
+
+            if self.prediction_repository is not None:
+                self.prediction_repository.update(
+                    prediction_id=prediction_id,
+                    prediction=prediction,
+                )
+
+            if (
+                self.outcome_repository is not None
+            ):
+                self.outcome_repository.save(
+                    prediction_id=prediction_id,
+                    outcome=outcome,
+                )
+
         for analyst in prediction.analysts:
             self.agent_performance.record(
                 analyst=analyst,
                 correct=outcome.correct,
             )
-
-        self._evaluated_predictions.add(
-            id(prediction)
-        )
 
         return outcome
 
@@ -104,9 +150,6 @@ class PredictionEvaluator:
             hours=hours,
             now=now,
         ):
-            if id(prediction) in self._evaluated_predictions:
-                continue
-
             price = current_prices_usd.get(
                 prediction.symbol
             )

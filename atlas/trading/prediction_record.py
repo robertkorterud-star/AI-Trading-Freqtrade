@@ -18,6 +18,7 @@ class PredictionRecord:
     evidence: float
     price_usd: float
     timestamp: datetime
+    database_id: int | None = None
     analysts: list[str] = field(default_factory=list)
     reason: str = ""
 

@@ -32,3 +32,7 @@ class AtlasConfig:
     agent_performance_storage: str = (
         "atlas/data/agent_performance.json"
     )
+
+    database_path: str = (
+        "atlas/data/atlas.db"
+    )

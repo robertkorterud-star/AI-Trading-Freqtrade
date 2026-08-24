@@ -31,6 +31,16 @@ from atlas.trading.prediction_evaluator import PredictionEvaluator
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
 from atlas.trading.agent_weight_engine import AgentWeightEngine
 
+from atlas.database.connection import Database
+from atlas.database.schema import initialize_database
+from atlas.database.outcome_repository import OutcomeRepository
+from atlas.database.analysis_snapshot_repository import (
+    AnalysisSnapshotRepository,
+)
+from atlas.services.analysis_snapshot_builder import (
+    AnalysisSnapshotBuilder,
+)
+
 
 def build_config_from_args(args=None):
     """Build ATLAS configuration from command-line arguments."""
@@ -90,9 +100,32 @@ class AtlasEngine:
 
         trading = TradingService()
 
-        self.prediction_tracker = PredictionTracker()
+        self.prediction_tracker = PredictionTracker(
+            storage_path=self.config.database_path
+        )
+
+        self.database = Database(
+            self.config.database_path
+        )
+
+        initialize_database(
+            self.database
+        )
+
+        self.analysis_snapshot_repository = (
+            AnalysisSnapshotRepository(
+                self.database
+            )
+        )
+
+        self.analysis_snapshot_builder = (
+            AnalysisSnapshotBuilder()
+        )
 
         self.outcome_tracker = OutcomeTracker()
+        self.outcome_repository = OutcomeRepository(
+            self.database
+        )
 
         performance_path = Path(
             self.config.agent_performance_storage
@@ -114,6 +147,7 @@ class AtlasEngine:
             predictions=self.prediction_tracker,
             outcomes=self.outcome_tracker,
             agent_performance=self.agent_performance,
+            outcome_repository=self.outcome_repository,
         )
 
         trader = PaperTradingEngine(
@@ -177,6 +211,21 @@ class AtlasEngine:
 
         decision = self.decision_engine.evaluate(
             results
+        )
+
+        snapshot = self.analysis_snapshot_builder.build(
+            symbol=symbol,
+            results=results,
+            decision=decision,
+            intelligence=(
+                self.decision_engine.last_intelligence
+            ),
+            provider=self.config.ai_provider,
+            model="qwen3:4b",
+        )
+
+        self.analysis_snapshot_repository.save(
+            snapshot
         )
 
         self.report.print_decision(decision)

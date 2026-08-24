@@ -9,6 +9,11 @@ from atlas.core.config import AtlasConfig
 from atlas.core.registry import AgentRegistry
 from atlas.core.analysis_service import AnalysisService
 
+from atlas.models.action import Action
+from atlas.models.analysis_result import AnalysisResult
+from atlas.models.decision_result import DecisionResult
+from atlas.models.intelligence_summary import IntelligenceSummary
+
 from atlas.agents.news_analyst import NewsAnalyst
 from atlas.agents.technical_analyst import TechnicalAnalyst
 from atlas.agents.company_analyst import CompanyAnalyst
@@ -27,6 +32,11 @@ from atlas.trading.agent_performance_tracker import (
     AgentPerformanceTracker,
 )
 from atlas.trading.agent_weight_engine import AgentWeightEngine
+
+from atlas.database.connection import Database
+from atlas.database.analysis_snapshot_repository import (
+    AnalysisSnapshotRepository,
+)
 
 
 class DashboardDataService:
@@ -59,6 +69,14 @@ class DashboardDataService:
         self.portfolio = PortfolioService()
         self.trading = TradingService()
 
+        self.snapshot_repository = (
+            AnalysisSnapshotRepository(
+                Database(
+                    self.config.database_path
+                )
+            )
+        )
+
         self.agent_performance = AgentPerformanceTracker(
             storage_path=self.config.agent_performance_storage
         )
@@ -73,6 +91,113 @@ class DashboardDataService:
 
         for agent in self.registry.get_all():
             self.agent_performance.ensure(agent.name)
+
+    @staticmethod
+    def _snapshot_results(snapshot):
+        """Rebuild AnalysisResult objects from a snapshot."""
+
+        return [
+            AnalysisResult(
+                analyst=result["analyst"],
+                symbol=result["symbol"],
+                action=Action(result["action"]),
+                confidence=float(result["confidence"]),
+                evidence=float(result["evidence"]),
+                reasoning=list(
+                    result.get("reasoning", [])
+                ),
+            )
+            for result in snapshot.results
+        ]
+
+    @staticmethod
+    def _snapshot_decision(snapshot):
+        """Rebuild DecisionResult from a snapshot."""
+
+        data = snapshot.decision
+
+        dominant_action = data.get(
+            "dominant_action"
+        )
+
+        return DecisionResult(
+            symbol=data["symbol"],
+            action=Action(data["action"]),
+            confidence=float(data["confidence"]),
+            evidence=float(data["evidence"]),
+            analysts=list(
+                data.get("analysts", [])
+            ),
+            agent_weights=dict(
+                data.get("agent_weights", {})
+            ),
+            dominant_action=(
+                Action(dominant_action)
+                if dominant_action
+                else None
+            ),
+            dominant_weight=float(
+                data.get("dominant_weight", 0.0)
+            ),
+            opposing_analysts=list(
+                data.get("opposing_analysts", [])
+            ),
+            adaptive_override=bool(
+                data.get("adaptive_override", False)
+            ),
+            decision_margin=float(
+                data.get("decision_margin", 0.0)
+            ),
+            robustness=float(
+                data.get("robustness", 0.0)
+            ),
+            robustness_level=data.get(
+                "robustness_level",
+                "WEAK",
+            ),
+            reasoning=list(
+                data.get("reasoning", [])
+            ),
+        )
+
+    @staticmethod
+    def _snapshot_intelligence(snapshot):
+        """Rebuild IntelligenceSummary from a snapshot."""
+
+        data = snapshot.intelligence
+
+        return IntelligenceSummary(
+            symbol=data["symbol"],
+            action=Action(data["action"]),
+            evidence=float(data["evidence"]),
+            confidence=float(data["confidence"]),
+            buy_count=int(data["buy_count"]),
+            hold_count=int(data["hold_count"]),
+            sell_count=int(data["sell_count"]),
+            agreement=float(data["agreement"]),
+            conflict=bool(data["conflict"]),
+            weighted_buy=float(
+                data.get("weighted_buy", 0.0)
+            ),
+            weighted_hold=float(
+                data.get("weighted_hold", 0.0)
+            ),
+            weighted_sell=float(
+                data.get("weighted_sell", 0.0)
+            ),
+            weighted_agreement=float(
+                data.get("weighted_agreement", 0.0)
+            ),
+            weighted_conflict=bool(
+                data.get("weighted_conflict", False)
+            ),
+            analysts=list(
+                data.get("analysts", [])
+            ),
+            reasoning=list(
+                data.get("reasoning", [])
+            ),
+        )
 
     def get_dashboard_data(self, selected_symbol=None):
 
@@ -106,27 +231,59 @@ class DashboardDataService:
         latest_news = []
         latest_snapshot = None
 
+
         for symbol in watchlist:
 
-            if symbol == selected_symbol:
+            stored_snapshot = (
+                self.snapshot_repository.get_latest_valid(
+                    symbol
+                )
+            )
 
-                news = self.news.latest(symbol)
+            if stored_snapshot is not None:
 
-                results = self.analysis.analyze_with_news(
-                    symbol,
-                    news,
+                results = self._snapshot_results(
+                    stored_snapshot
+                )
+
+                decision = self._snapshot_decision(
+                    stored_snapshot
+                )
+
+                latest_snapshot_intelligence = (
+                    self._snapshot_intelligence(
+                        stored_snapshot
+                    )
                 )
 
             else:
 
-                results = self.analysis.analyze(
-                    symbol,
-                    exclude={"News Analyst"},
+                if symbol == selected_symbol:
+
+                    news = self.news.latest(symbol)
+
+                    results = self.analysis.analyze_with_news(
+                        symbol,
+                        news,
+                    )
+
+                else:
+
+                    results = self.analysis.analyze(
+                        symbol,
+                        exclude={"News Analyst"},
+                    )
+
+                decision = self.decision.evaluate(
+                    results
                 )
 
-            decision = self.decision.evaluate(
-                results
-            )
+                latest_snapshot_intelligence = (
+                    self.intelligence.summarize(
+                        results,
+                        weights=decision.agent_weights,
+                    )
+                )
 
             snapshot = self.technical.get_snapshot(
                 symbol
@@ -186,10 +343,7 @@ class DashboardDataService:
                 latest_decision = decision
 
                 latest_intelligence = (
-                    self.intelligence.summarize(
-                        results,
-                        weights=decision.agent_weights,
-                    )
+                    latest_snapshot_intelligence
                 )
 
                 latest_explanation = explain_decision(
