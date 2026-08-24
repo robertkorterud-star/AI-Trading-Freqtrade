@@ -78,42 +78,64 @@ class PredictionRepository:
 
             return cursor.lastrowid
 
-    def update(self, prediction_id: int, prediction):
+    def update(
+        self,
+        prediction_id: int,
+        prediction,
+        connection=None,
+    ):
         """Update an existing prediction."""
 
-        with self.database.connect() as connection:
-            connection.execute(
-                """
-                UPDATE predictions
-                SET
-                    evaluated = ?,
-                    correct = ?,
-                    evaluated_price_usd = ?,
-                    price_change_percent = ?,
-                    evaluated_at = ?
-                WHERE id = ?
-                """,
-                (
-                    int(prediction.evaluated),
-                    (
-                        int(prediction.correct)
-                        if prediction.correct is not None
-                        else None
-                    ),
-                    prediction.evaluated_price_usd,
-                    prediction.price_change_percent,
-                    (
-                        prediction.evaluated_at.isoformat(
-                            timespec="seconds"
-                        )
-                        if prediction.evaluated_at is not None
-                        else None
-                    ),
-                    prediction_id,
-                ),
+        if connection is not None:
+            self._update(
+                connection,
+                prediction_id,
+                prediction,
             )
+            return
 
-            connection.commit()
+        with self.database.connect() as owned_connection:
+            self._update(
+                owned_connection,
+                prediction_id,
+                prediction,
+            )
+            owned_connection.commit()
+
+    @staticmethod
+    def _update(connection, prediction_id: int, prediction):
+        """Execute an evaluation update using one SQLite connection."""
+
+        connection.execute(
+            """
+            UPDATE predictions
+            SET
+                evaluated = ?,
+                correct = ?,
+                evaluated_price_usd = ?,
+                price_change_percent = ?,
+                evaluated_at = ?
+            WHERE id = ?
+            """,
+            (
+                int(prediction.evaluated),
+                (
+                    int(prediction.correct)
+                    if prediction.correct is not None
+                    else None
+                ),
+                prediction.evaluated_price_usd,
+                prediction.price_change_percent,
+                (
+                    prediction.evaluated_at.isoformat(
+                        timespec="seconds"
+                    )
+                    if prediction.evaluated_at is not None
+                    else None
+                ),
+                prediction_id,
+            ),
+        )
 
     def get_all(self):
         """Return all predictions from newest to oldest."""

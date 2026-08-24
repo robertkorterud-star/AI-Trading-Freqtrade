@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+import pytest
+
 from atlas.models.action import Action
 from atlas.models.decision_result import DecisionResult
 from atlas.database.outcome_repository import OutcomeRepository
@@ -209,6 +211,58 @@ def test_evaluated_prediction_persists_outcome(tmp_path):
     assert outcome is not None
     assert len(stored_outcomes) == 1
     assert stored_outcomes[0].correct is True
+
+    stored_prediction = tracker.repository.get_all()[0]
+
+    assert stored_prediction.evaluated is True
+    assert stored_prediction.correct is True
+
+
+def test_failed_outcome_persistence_rolls_back_prediction_update(
+    monkeypatch,
+    tmp_path,
+):
+    database_path = tmp_path / "atlas.db"
+    performance_path = tmp_path / "agent_performance.json"
+    tracker, prediction = _persisted_old_prediction(
+        database_path,
+        analysts=["Technical Analyst"],
+    )
+    outcome_repository = OutcomeRepository(tracker.database)
+    performance = AgentPerformanceTracker(
+        storage_path=performance_path,
+    )
+    evaluator = PredictionEvaluator(
+        predictions=tracker,
+        outcomes=OutcomeTracker(),
+        agent_performance=performance,
+        outcome_repository=outcome_repository,
+    )
+
+    def fail_save(*args, **kwargs):
+        raise RuntimeError("Outcome persistence failed.")
+
+    monkeypatch.setattr(
+        outcome_repository,
+        "save",
+        fail_save,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Outcome persistence failed.",
+    ):
+        evaluator.evaluate(
+            prediction=prediction,
+            current_price_usd=190.0,
+        )
+
+    stored_prediction = tracker.repository.get_all()[0]
+
+    assert stored_prediction.evaluated is False
+    assert stored_prediction.correct is None
+    assert outcome_repository.count() == 0
+    assert performance.get("Technical Analyst") is None
 
 
 def test_evaluated_prediction_is_not_re_evaluated_after_restart(

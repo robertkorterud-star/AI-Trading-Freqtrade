@@ -114,15 +114,34 @@ class PredictionEvaluator:
 
         if prediction_id is not None:
 
-            if self.prediction_repository is not None:
+            if (
+                self.prediction_repository is not None
+                and self.outcome_repository is not None
+            ):
+                with self.predictions.database.connect() as connection:
+                    try:
+                        self.prediction_repository.update(
+                            prediction_id=prediction_id,
+                            prediction=prediction,
+                            connection=connection,
+                        )
+                        self.outcome_repository.save(
+                            prediction_id=prediction_id,
+                            outcome=outcome,
+                            connection=connection,
+                        )
+                        connection.commit()
+                    except Exception:
+                        connection.rollback()
+                        raise
+
+            elif self.prediction_repository is not None:
                 self.prediction_repository.update(
                     prediction_id=prediction_id,
                     prediction=prediction,
                 )
 
-            if (
-                self.outcome_repository is not None
-            ):
+            elif self.outcome_repository is not None:
                 self.outcome_repository.save(
                     prediction_id=prediction_id,
                     outcome=outcome,

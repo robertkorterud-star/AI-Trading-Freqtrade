@@ -20,41 +20,60 @@ class OutcomeRepository:
         self,
         prediction_id: int,
         outcome: OutcomeRecord,
+        connection=None,
     ):
         """Insert a new prediction outcome."""
 
-        with self.database.connect() as connection:
-            cursor = connection.execute(
-                """
-                INSERT INTO outcomes (
-                    prediction_id,
-                    symbol,
-                    action,
-                    prediction_price_usd,
-                    outcome_price_usd,
-                    change_percent,
-                    correct,
-                    timestamp
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    prediction_id,
-                    outcome.symbol,
-                    outcome.action,
-                    outcome.prediction_price_usd,
-                    outcome.outcome_price_usd,
-                    outcome.change_percent,
-                    int(outcome.correct),
-                    outcome.timestamp.isoformat(
-                        timespec="seconds"
-                    ),
-                ),
+        if connection is not None:
+            return self._save(
+                connection,
+                prediction_id,
+                outcome,
             )
 
-            connection.commit()
+        with self.database.connect() as owned_connection:
+            outcome_id = self._save(
+                owned_connection,
+                prediction_id,
+                outcome,
+            )
+            owned_connection.commit()
 
-            return cursor.lastrowid
+            return outcome_id
+
+    @staticmethod
+    def _save(connection, prediction_id: int, outcome: OutcomeRecord):
+        """Execute an outcome insert using one SQLite connection."""
+
+        cursor = connection.execute(
+            """
+            INSERT INTO outcomes (
+                prediction_id,
+                symbol,
+                action,
+                prediction_price_usd,
+                outcome_price_usd,
+                change_percent,
+                correct,
+                timestamp
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                prediction_id,
+                outcome.symbol,
+                outcome.action,
+                outcome.prediction_price_usd,
+                outcome.outcome_price_usd,
+                outcome.change_percent,
+                int(outcome.correct),
+                outcome.timestamp.isoformat(
+                    timespec="seconds"
+                ),
+            ),
+        )
+
+        return cursor.lastrowid
 
     def get_all(self):
         """Return all outcomes, newest first."""
