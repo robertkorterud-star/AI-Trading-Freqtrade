@@ -171,6 +171,7 @@ class PredictionEvaluator:
                 self.agent_performance.record(
                     analyst=analyst,
                     correct=outcome.correct,
+                    action=prediction.action,
                 )
 
         return outcome
