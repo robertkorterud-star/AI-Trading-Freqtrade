@@ -30,9 +30,14 @@ class DecisionEngine:
         if self.agent_weight_engine is None:
             return None
 
-        weights = self.agent_weight_engine.calculate(
-            action=action.value,
-        )
+        try:
+            weights = self.agent_weight_engine.calculate(
+                action=action.value,
+            )
+        except TypeError:
+            # Preserve compatibility with simpler weight-engine
+            # implementations that only expose calculate().
+            weights = self.agent_weight_engine.calculate()
 
         if not weights:
             return None
@@ -47,6 +52,33 @@ class DecisionEngine:
             "weight": weight,
             "action": action.value,
         }
+
+    def _strongest_learned_action_support(self):
+        """Return the strongest learned directional support."""
+
+        if self.agent_weight_engine is None:
+            return None
+
+        supports = []
+
+        for action in (
+            Action.BUY,
+            Action.SELL,
+        ):
+            support = self._strongest_action_support(
+                action,
+            )
+
+            if support is not None:
+                supports.append(support)
+
+        if not supports:
+            return None
+
+        return max(
+            supports,
+            key=lambda item: item["weight"],
+        )
 
     def evaluate(
         self,
@@ -87,6 +119,12 @@ class DecisionEngine:
 
         dominant_action = ranked_signals[0][0]
         dominant_weight = ranked_signals[0][1]
+
+        initial_dominant_action = dominant_action
+
+        action_support = (
+            self._strongest_learned_action_support()
+        )
 
         second_weight = (
             ranked_signals[1][1]
@@ -243,6 +281,21 @@ class DecisionEngine:
             agent_weights=weights or {},
             dominant_action=dominant_action,
             dominant_weight=dominant_weight,
+            action_support_analyst=(
+                action_support["analyst"]
+                if action_support
+                else None
+            ),
+            action_support_action=(
+                Action(action_support["action"])
+                if action_support
+                else None
+            ),
+            action_support_weight=(
+                action_support["weight"]
+                if action_support
+                else 0.0
+            ),
             opposing_analysts=opposing_analysts,
             adaptive_override=adaptive_override,
             decision_margin=decision_margin,

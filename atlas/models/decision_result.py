@@ -33,6 +33,12 @@ class DecisionResult:
 
     dominant_weight: float = 0.0
 
+    action_support_analyst: str | None = None
+
+    action_support_action: Action | None = None
+
+    action_support_weight: float = 0.0
+
     opposing_analysts: list[str] = field(
         default_factory=list
     )

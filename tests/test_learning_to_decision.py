@@ -796,3 +796,64 @@ def test_learning_override_requires_strong_action_specific_support():
 
     assert support["analyst"] == "Technical Analyst"
     assert support["weight"] >= 0.40
+
+
+def test_decision_result_reports_strongest_action_support():
+
+    tracker = AgentPerformanceTracker()
+
+    record_action_history(
+        tracker,
+        "Technical Analyst",
+        "BUY",
+        18,
+        2,
+    )
+
+    record_action_history(
+        tracker,
+        "Company Analyst",
+        "BUY",
+        10,
+        10,
+    )
+
+    record_action_history(
+        tracker,
+        "News Analyst",
+        "BUY",
+        6,
+        14,
+    )
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = AgentWeightEngine(
+        tracker
+    )
+
+    decision = engine.evaluate(
+        [
+            make_result(
+                "Technical Analyst",
+                Action.BUY,
+            ),
+            make_result(
+                "Company Analyst",
+                Action.SELL,
+            ),
+            make_result(
+                "News Analyst",
+                Action.SELL,
+            ),
+        ]
+    )
+
+    assert decision.action_support_analyst == (
+        "Technical Analyst"
+    )
+
+    assert decision.action_support_action == (
+        Action.BUY
+    )
+
+    assert decision.action_support_weight == 0.4063
