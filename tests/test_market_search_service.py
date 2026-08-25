@@ -1,3 +1,6 @@
+from atlas.market.asset import Asset
+from atlas.market.asset_type import AssetType
+
 from atlas.services.market_search_service import MarketSearchService
 
 
@@ -101,3 +104,54 @@ def test_search_resolves_common_aliases():
     assert service.search("ethereum")[0]["symbol"] == "ETH-USD"
     assert service.search("sol")[0]["symbol"] == "SOL-USD"
     assert service.search("xrp")[0]["symbol"] == "XRP-USD"
+
+
+def test_search_falls_back_to_internet_resolver(monkeypatch):
+    service = MarketSearchService()
+
+    class FakeResolver:
+        def resolve(self, query):
+            return [
+                Asset(
+                    symbol="PLTR",
+                    name="Palantir Technologies Inc.",
+                    asset_type=AssetType.STOCK,
+                    market="NMS",
+                    currency="USD",
+                )
+            ]
+
+    monkeypatch.setattr(
+        service,
+        "internet_resolver",
+        FakeResolver(),
+        raising=False,
+    )
+
+    results = service.search("Palantir")
+
+    assert results
+    assert results[0]["symbol"] == "PLTR"
+    assert results[0]["type"] == "stock"
+
+
+def test_local_market_match_does_not_need_internet(monkeypatch):
+    service = MarketSearchService()
+
+    class FailingResolver:
+        def resolve(self, query):
+            raise AssertionError(
+                "Internet resolver should not be called."
+            )
+
+    monkeypatch.setattr(
+        service,
+        "internet_resolver",
+        FailingResolver(),
+        raising=False,
+    )
+
+    results = service.search("NVDA")
+
+    assert results
+    assert results[0]["symbol"] == "NVDA"

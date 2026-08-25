@@ -6,6 +6,13 @@ to ATLAS market symbols and enriches results with market data.
 """
 
 from atlas.adapters.market_data import MarketDataAdapter
+from atlas.market.asset_type import AssetType
+from atlas.services.internet_asset_resolver import (
+    InternetAssetResolver,
+)
+from atlas.services.yfinance_search_client import (
+    YFinanceSearchClient,
+)
 
 
 class MarketSearchService:
@@ -87,6 +94,12 @@ class MarketSearchService:
     def __init__(self) -> None:
         self.market = MarketDataAdapter()
 
+        self.internet_resolver = (
+            InternetAssetResolver(
+                search_client=YFinanceSearchClient()
+            )
+        )
+
     def search(self, query: str) -> list[dict]:
         """Return markets matching a name or symbol."""
 
@@ -160,4 +173,59 @@ class MarketSearchService:
 
             results.append(result)
 
-        return results
+        if results:
+            return results
+
+        assets = self.internet_resolver.resolve(
+            normalized
+        )
+
+        resolved_results = []
+
+        for asset in assets:
+
+            result = {
+                "symbol": asset.symbol,
+                "name": asset.name,
+                "type": asset.asset_type.value,
+            }
+
+            try:
+                data = self.market.get(
+                    asset.symbol
+                )
+
+                result.update(
+                    {
+                        "price_usd": round(
+                            data.price,
+                            2,
+                        ),
+                        "change": round(
+                            data.change_percent,
+                            2,
+                        ),
+                        "ma20": round(
+                            data.ma20,
+                            2,
+                        ),
+                        "ma50": round(
+                            data.ma50,
+                            2,
+                        ),
+                    }
+                )
+
+            except Exception:
+                result.update(
+                    {
+                        "price_usd": None,
+                        "change": None,
+                        "ma20": None,
+                        "ma50": None,
+                    }
+                )
+
+            resolved_results.append(result)
+
+        return resolved_results
