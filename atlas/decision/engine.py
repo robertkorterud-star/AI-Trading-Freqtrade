@@ -21,6 +21,33 @@ class DecisionEngine:
         self.agent_weight_engine = None
         self.last_intelligence = None
 
+    def _strongest_action_support(
+        self,
+        action: Action,
+    ):
+        """Return strongest learned support for an action."""
+
+        if self.agent_weight_engine is None:
+            return None
+
+        weights = self.agent_weight_engine.calculate(
+            action=action.value,
+        )
+
+        if not weights:
+            return None
+
+        analyst, weight = max(
+            weights.items(),
+            key=lambda item: item[1],
+        )
+
+        return {
+            "analyst": analyst,
+            "weight": weight,
+            "action": action.value,
+        }
+
     def evaluate(
         self,
         results: list[AnalysisResult],
