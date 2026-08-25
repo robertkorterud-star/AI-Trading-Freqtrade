@@ -153,7 +153,7 @@
             <p>
                 Confidence:
                 <strong>
-                    {{ dashboard.decision.confidence }}%
+                    {{ dashboard.decision.confidence | round(1) }}%
                 </strong>
             </p>
 
@@ -190,21 +190,21 @@
                     <div>
                         <span>Agreement</span>
                         <strong>
-                            {{ dashboard.intelligence.agreement }}%
+                            {{ dashboard.intelligence.agreement | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>Decision Margin</span>
                         <strong>
-                            {{ dashboard.decision_robustness.margin }}%
+                            {{ dashboard.decision_robustness.margin | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>Dominant Influence</span>
                         <strong>
-                            {{ dashboard.decision_influence.dominant_weight }}%
+                            {{ dashboard.decision_influence.dominant_weight | round(1) }}%
                         </strong>
                     </div>
 
@@ -223,7 +223,7 @@
 
                 <div
                     class="confidence-fill"
-                    style="width:{{ dashboard.decision.confidence }}%;"
+                    style="width:{{ dashboard.decision.confidence | round(1) }}%;"
                 >
                 </div>
 
@@ -239,21 +239,21 @@
                     <div>
                         <span>BUY influence</span>
                         <strong>
-                            {{ dashboard.intelligence.weighted_buy }}%
+                            {{ dashboard.intelligence.weighted_buy | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>HOLD influence</span>
                         <strong>
-                            {{ dashboard.intelligence.weighted_hold }}%
+                            {{ dashboard.intelligence.weighted_hold | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>SELL influence</span>
                         <strong>
-                            {{ dashboard.intelligence.weighted_sell }}%
+                            {{ dashboard.intelligence.weighted_sell | round(1) }}%
                         </strong>
                     </div>
 
@@ -264,7 +264,7 @@
                     <div>
                         <span>Weighted Agreement</span>
                         <strong>
-                            {{ dashboard.intelligence.weighted_agreement }}%
+                            {{ dashboard.intelligence.weighted_agreement | round(1) }}%
                         </strong>
                     </div>
 
@@ -379,7 +379,7 @@
                     <div>
                         <span>Decision Margin</span>
                         <strong>
-                            {{ dashboard.decision_robustness.margin }}%
+                            {{ dashboard.decision_robustness.margin | round(1) }}%
                         </strong>
                     </div>
 
@@ -423,28 +423,28 @@
                     <div>
                         <span>Evidence</span>
                         <strong>
-                            {{ dashboard.decision_explanation.evidence }}%
+                            {{ dashboard.decision_explanation.evidence | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>Confidence</span>
                         <strong>
-                            {{ dashboard.decision_explanation.confidence }}%
+                            {{ dashboard.decision_explanation.confidence | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>Agreement</span>
                         <strong>
-                            {{ dashboard.decision_explanation.agreement }}%
+                            {{ dashboard.decision_explanation.agreement | round(1) }}%
                         </strong>
                     </div>
 
                     <div>
                         <span>Decision Margin</span>
                         <strong>
-                            {{ dashboard.decision_explanation.decision_margin }}%
+                            {{ dashboard.decision_explanation.decision_margin | round(1) }}%
                         </strong>
                     </div>
 
@@ -462,7 +462,7 @@
                     <div>
                         <span>Dominant Influence</span>
                         <strong>
-                            {{ dashboard.decision_explanation.dominant_weight }}%
+                            {{ dashboard.decision_explanation.dominant_weight | round(1) }}%
                         </strong>
                     </div>
 

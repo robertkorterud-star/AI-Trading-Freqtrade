@@ -260,3 +260,43 @@ def test_dashboard_decision_contains_structured_explanation(
     assert explanation.headline
     assert explanation.summary
     assert explanation.key_reasons
+
+
+def test_dashboard_reports_market_scan_candidates(monkeypatch):
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    service = DashboardDataService()
+
+    monkeypatch.setattr(
+        service,
+        "market_scan",
+        lambda: [
+            {
+                "symbol": "NVDA",
+                "discovery_score": 92.5,
+                "decision": "BUY",
+                "confidence": 88.0,
+                "selected": True,
+            },
+            {
+                "symbol": "BTC-USD",
+                "discovery_score": 84.0,
+                "decision": "HOLD",
+                "confidence": 78.0,
+                "selected": False,
+            },
+        ],
+    )
+
+    data = service.get_dashboard_data(
+        selected_symbol="NVDA"
+    )
+
+    assert "market_scan" in data
+    assert len(data["market_scan"]) == 2
+
+    assert data["market_scan"][0]["symbol"] == "NVDA"
+    assert data["market_scan"][0]["selected"] is True
+    assert data["market_scan"][0]["discovery_score"] == 92.5
+    assert data["market_scan"][0]["decision"] == "BUY"

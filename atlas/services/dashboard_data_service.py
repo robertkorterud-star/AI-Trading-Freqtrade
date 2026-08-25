@@ -41,6 +41,13 @@ from atlas.database.prediction_repository import (
     PredictionRepository,
 )
 
+from atlas.market.asset_universe import AssetUniverse
+from atlas.market.asset_discovery import AssetDiscoveryService
+from atlas.adapters.market_data import MarketDataAdapter
+from atlas.market.candidate_decision_ranker import (
+    CandidateDecisionRanker,
+)
+
 
 class DashboardDataService:
     """Collects dashboard data."""
@@ -71,6 +78,15 @@ class DashboardDataService:
         self.exchange = ExchangeRateService()
         self.portfolio = PortfolioService()
         self.trading = TradingService()
+
+        self.asset_universe = AssetUniverse()
+        self.market_data = MarketDataAdapter()
+        self.asset_discovery = AssetDiscoveryService(
+            market_data=self.market_data,
+        )
+        self.candidate_decision_ranker = (
+            CandidateDecisionRanker()
+        )
 
         database = Database(
             self.config.database_path
@@ -225,6 +241,84 @@ class DashboardDataService:
             ),
         )
 
+    def market_scan(self, limit=5):
+        'Return a lightweight ranked market scan for the dashboard.'
+
+        discovered = self.asset_discovery.discover(
+            self.asset_universe,
+            limit=limit,
+        )
+
+        candidates = []
+
+        for item in discovered:
+            snapshot = (
+                self.snapshot_repository.get_latest_valid(
+                    item.symbol
+                )
+            )
+
+            if snapshot is None:
+                continue
+
+            decision = self._snapshot_decision(
+                snapshot
+            )
+
+            candidates.append(
+                {
+                    "symbol": item.symbol,
+                    "discovery_score": round(
+                        item.score,
+                        1,
+                    ),
+                    "decision": decision,
+                }
+            )
+
+        ranked = self.candidate_decision_ranker.rank(
+            [
+                item["decision"]
+                for item in candidates
+            ]
+        )
+
+        selected_symbol = (
+            ranked[0].symbol
+            if ranked
+            else None
+        )
+
+        by_symbol = {
+            item["symbol"]: item
+            for item in candidates
+        }
+
+        result = []
+
+        for decision in ranked:
+            item = by_symbol[decision.symbol]
+
+            result.append(
+                {
+                    "symbol": decision.symbol,
+                    "discovery_score": item[
+                        "discovery_score"
+                    ],
+                    "decision": decision.action.value,
+                    "confidence": round(
+                        decision.confidence,
+                        1,
+                    ),
+                    "selected": (
+                        decision.symbol
+                        == selected_symbol
+                    ),
+                }
+            )
+
+        return result
+
     def get_dashboard_data(self, selected_symbol=None):
 
         watchlist = [
@@ -284,36 +378,50 @@ class DashboardDataService:
 
             else:
 
+                try:
+
+                    if symbol == selected_symbol:
+
+                        news = self.news.latest(symbol)
+
+                        results = self.analysis.analyze_with_news(
+                            symbol,
+                            news,
+                        )
+
+                    else:
+
+                        results = self.analysis.analyze(
+                            symbol,
+                            exclude={"News Analyst"},
+                        )
+
+                    decision = self.decision.evaluate(
+                        results
+                    )
+
+                    latest_snapshot_intelligence = (
+                        self.intelligence.summarize(
+                            results,
+                            weights=decision.agent_weights,
+                        )
+                    )
+
+                except Exception:
+                    if symbol == selected_symbol:
+                        raise
+
+                    continue
+
+            try:
+                snapshot = self.technical.get_snapshot(
+                    symbol
+                )
+            except Exception:
                 if symbol == selected_symbol:
+                    raise
 
-                    news = self.news.latest(symbol)
-
-                    results = self.analysis.analyze_with_news(
-                        symbol,
-                        news,
-                    )
-
-                else:
-
-                    results = self.analysis.analyze(
-                        symbol,
-                        exclude={"News Analyst"},
-                    )
-
-                decision = self.decision.evaluate(
-                    results
-                )
-
-                latest_snapshot_intelligence = (
-                    self.intelligence.summarize(
-                        results,
-                        weights=decision.agent_weights,
-                    )
-                )
-
-            snapshot = self.technical.get_snapshot(
-                symbol
-            )
+                continue
 
             price_usd = round(
                 snapshot.price,
@@ -578,6 +686,8 @@ class DashboardDataService:
         "analysts": latest_results,
 
         "market": market,
+
+        "market_scan": self.market_scan(),
 
         "news": latest_news,
 
