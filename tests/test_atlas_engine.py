@@ -432,3 +432,72 @@ def test_atlas_engine_discovers_and_selects_top_candidates(
         "NVDA",
         "BTC-USD",
     ]
+
+
+def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryScore
+    from atlas.market.asset_type import AssetType
+
+    engine = AtlasEngine()
+
+    candidates = [
+        DiscoveryScore(
+            asset=Asset(
+                symbol="NVDA",
+                name="NVIDIA",
+                asset_type=AssetType.STOCK,
+                market="US",
+                currency="USD",
+            ),
+            score=95.0,
+        ),
+        DiscoveryScore(
+            asset=Asset(
+                symbol="BTC-USD",
+                name="Bitcoin",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+            score=90.0,
+        ),
+    ]
+
+    def fake_discover_candidates(
+        limit=3,
+        minimum_score=0.0,
+    ):
+        return candidates[:limit]
+
+    monkeypatch.setattr(
+        engine,
+        "discover_candidates",
+        fake_discover_candidates,
+    )
+
+    analyzed_symbols = []
+
+    def fake_analyze(symbol):
+        analyzed_symbols.append(symbol)
+        return []
+
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        fake_analyze,
+    )
+
+    results = engine.analyze_candidates(
+        limit=2,
+    )
+
+    assert analyzed_symbols == [
+        "NVDA",
+        "BTC-USD",
+    ]
+
+    assert [item["symbol"] for item in results] == [
+        "NVDA",
+        "BTC-USD",
+    ]

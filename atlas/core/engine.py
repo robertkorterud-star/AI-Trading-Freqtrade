@@ -198,6 +198,35 @@ class AtlasEngine:
             minimum_score=minimum_score,
         )
 
+    def analyze_candidates(
+        self,
+        limit: int = 3,
+        minimum_score: float = 0.0,
+    ):
+        """Analyze the selected discovery candidates."""
+
+        candidates = self.discover_candidates(
+            limit=limit,
+            minimum_score=minimum_score,
+        )
+
+        results = []
+
+        for candidate in candidates:
+            analysis = self.analysis_service.analyze(
+                candidate.symbol
+            )
+
+            results.append(
+                {
+                    "symbol": candidate.symbol,
+                    "discovery_score": candidate.score,
+                    "analysis": analysis,
+                }
+            )
+
+        return results
+
     def start(self):
 
         self.logger.info("Starting ATLAS")
