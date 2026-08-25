@@ -132,13 +132,31 @@ class AssetDiscoveryService:
                 "A market data provider is required."
             )
 
-        market_data = {
-            asset.symbol: self.market_input(asset)
+        market_data = {}
+
+        for asset in universe.all():
+            try:
+                market_data[asset.symbol] = (
+                    self.market_input(asset)
+                )
+            except Exception:
+                continue
+
+        available_assets = [
+            asset
             for asset in universe.all()
-        }
+            if asset.symbol in market_data
+        ]
+
+        if not available_assets:
+            return []
+
+        available_universe = AssetUniverse(
+            assets=available_assets
+        )
 
         return self.rank(
-            universe,
+            available_universe,
             market_data,
             limit=limit,
         )

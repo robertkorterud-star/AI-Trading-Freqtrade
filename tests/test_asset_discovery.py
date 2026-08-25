@@ -141,3 +141,86 @@ def test_discovery_defaults_missing_assets_to_zero():
         result.score == 0.0
         for result in results
     )
+
+
+def test_discovery_skips_assets_with_unavailable_market_data(
+    monkeypatch,
+):
+    class FakeMarketData:
+
+        def get(self, symbol):
+            if symbol == "ETH-USD":
+                raise ValueError(
+                    "Insufficient market history"
+                )
+
+            return type(
+                "MarketData",
+                (),
+                {
+                    "price": 120.0,
+                    "ma50": 100.0,
+                    "change_percent": 2.0,
+                    "volume_ratio": 2.0,
+                },
+            )()
+
+    universe = AssetUniverse(
+        [
+            Asset(
+                symbol="BTC-USD",
+                name="Bitcoin",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+            Asset(
+                symbol="ETH-USD",
+                name="Ethereum",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+        ]
+    )
+
+    discovery = AssetDiscoveryService(
+        market_data=FakeMarketData()
+    )
+
+    results = discovery.discover(
+        universe
+    )
+
+    assert [
+        result.symbol
+        for result in results
+    ] == ["BTC-USD"]
+
+
+def test_discovery_returns_empty_when_all_assets_are_unavailable():
+
+    class FakeMarketData:
+
+        def get(self, symbol):
+            raise ValueError(
+                "Insufficient market history"
+            )
+
+    universe = AssetUniverse(
+        [
+            Asset(
+                symbol="BTC-USD",
+                name="Bitcoin",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+        ]
+    )
+
+    discovery = AssetDiscoveryService(
+        market_data=FakeMarketData()
+    )
+
+    assert discovery.discover(universe) == []
