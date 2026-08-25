@@ -154,6 +154,82 @@ ATLAS - Markets
                 {{ strategy_research.symbol }}
             </h2>
 
+            {% if strategy_research.history|length > 1 %}
+
+                <div class="strategy-learning-history">
+
+                    <h3>🧠 ATLAS Learning History</h3>
+
+                    {% for round in strategy_research.history %}
+
+                        <section class="strategy-round">
+
+                            <h4>
+                                Round {{ loop.index }}
+                            </h4>
+
+                            {% for strategy in round.strategies %}
+
+                                {% set backtest = round.backtests[loop.index0] %}
+                                {% set assessment = round.assessments[loop.index0] %}
+
+                                <div class="strategy-round-item">
+
+                                    <div>
+                                        <strong>
+                                            {{ strategy.name }}
+                                        </strong>
+
+                                        <span>
+                                            · {{ strategy.entry_rule }}
+                                        </span>
+                                    </div>
+
+                                    {% if assessment.status == "PASS" %}
+
+                                        <span class="learning-status learning-status-pass">
+                                            ✅ PASS
+                                        </span>
+
+                                    {% elif assessment.status == "REJECT" %}
+
+                                        <span class="learning-status learning-status-reject">
+                                            ❌ REJECT
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="learning-status learning-status-inconclusive">
+                                            ⚠️ INCONCLUSIVE
+                                        </span>
+
+                                    {% endif %}
+
+                                    <div class="strategy-round-stats">
+
+                                        Return:
+                                        {{ backtest.total_return }}%
+
+                                        · PF:
+                                        {{ backtest.profit_factor }}
+
+                                        · DD:
+                                        {{ backtest.max_drawdown }}%
+
+                                    </div>
+
+                                </div>
+
+                            {% endfor %}
+
+                        </section>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
             {% if strategy_research.strategies %}
 
                 <p class="strategy-research-intro">

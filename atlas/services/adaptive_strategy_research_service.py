@@ -33,6 +33,7 @@ class AdaptiveStrategyResearchService:
         )
 
         if not initial.assessments:
+            initial.history = [initial]
             return initial
 
         adaptive_items = []
@@ -53,9 +54,17 @@ class AdaptiveStrategyResearchService:
             )
 
         if not adaptive_items:
+            initial.history = [initial]
             return initial
 
-        return self.strategy_research.research(
+        final = self.strategy_research.research(
             symbol,
             adaptive_items,
         )
+
+        final.history = [
+            initial,
+            final,
+        ]
+
+        return final

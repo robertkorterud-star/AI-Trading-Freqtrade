@@ -2530,3 +2530,130 @@ main .dashboard-layout > .dashboard-right {
 .strategy-assessment-inconclusive {
     border-color: #f59e0b;
 }
+
+/* =====================================================
+   ATLAS STRATEGY LEARNING HISTORY
+   ===================================================== */
+
+.strategy-learning-history {
+    margin: 20px 0 28px;
+    padding: 18px;
+    border: 1px solid #333;
+    border-radius: 12px;
+}
+
+.strategy-learning-history h3 {
+    margin-top: 0;
+}
+
+.strategy-round {
+    padding: 14px 0;
+    border-top: 1px solid #292929;
+}
+
+.strategy-round:first-of-type {
+    border-top: 0;
+}
+
+.strategy-round h4 {
+    margin: 0 0 10px;
+}
+
+.strategy-round-item {
+    padding: 10px 12px;
+    margin-top: 8px;
+    border: 1px solid #292929;
+    border-radius: 8px;
+}
+
+.strategy-round-stats {
+    margin-top: 6px;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.learning-status {
+    margin-left: 10px;
+    font-weight: 700;
+}
+
+.learning-status-pass {
+    color: #22c55e;
+}
+
+.learning-status-reject {
+    color: #ef4444;
+}
+
+.learning-status-inconclusive {
+    color: #f59e0b;
+}
+
+/* =====================================================
+   MARKETS SEARCH - MATCH MAIN DASHBOARD
+   ===================================================== */
+
+.market-search-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 620px;
+    margin-top: 14px;
+}
+
+.market-search-form input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 9px;
+    border: 1px solid #334155;
+    background: #000000;
+    color: #fff;
+    outline: none;
+    font-size: 14px;
+}
+
+.market-search-form input::placeholder {
+    color: #64748b;
+}
+
+.market-search-form input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, .12);
+}
+
+.market-search-form button {
+    flex: 0 0 auto;
+    padding: 11px 16px;
+    border-radius: 9px;
+    border: 1px solid #38bdf8;
+    background: #000000;
+    color: #38bdf8;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background .2s ease,
+        color .2s ease,
+        border-color .2s ease;
+}
+
+.market-search-form button:hover {
+    background: #38bdf8;
+    color: #000000;
+}
+
+@media (max-width: 600px) {
+
+    .market-search-form {
+        flex-direction: column;
+        align-items: stretch;
+        max-width: none;
+    }
+
+    .market-search-form button {
+        width: 100%;
+    }
+
+}

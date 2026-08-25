@@ -7,7 +7,7 @@ historical market data and backtesting.
 This service does NOT place trades.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from atlas.adapters.historical_market_data import (
     HistoricalMarketDataAdapter,
@@ -36,6 +36,9 @@ class StrategyResearchResult:
     strategies: list[StrategyHypothesis]
     backtests: list[BacktestResult]
     assessments: list[BacktestAssessment]
+    history: list["StrategyResearchResult"] = field(
+        default_factory=list
+    )
 
 
 class StrategyResearchService:
