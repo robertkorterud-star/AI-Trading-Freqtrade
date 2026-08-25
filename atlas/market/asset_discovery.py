@@ -36,6 +36,9 @@ class AssetDiscoveryService:
     NEWS_WEIGHT = 0.20
     LIQUIDITY_WEIGHT = 0.20
 
+    def __init__(self, market_data=None):
+        self.market_data = market_data
+
     @classmethod
     def _clamp(cls, value: float) -> float:
         return max(
@@ -69,6 +72,75 @@ class AssetDiscoveryService:
         return DiscoveryScore(
             asset=asset,
             score=round(score, 2),
+        )
+
+    def market_input(self, asset: Asset) -> DiscoveryInput:
+        """Convert market data into discovery signals."""
+
+        if self.market_data is None:
+            raise ValueError(
+                "A market data provider is required."
+            )
+
+        data = self.market_data.get(
+            asset.symbol
+        )
+
+        if data is None:
+            return DiscoveryInput()
+
+        volume_score = (
+            self._clamp(
+                float(data.volume_ratio) * 50.0
+            )
+        )
+
+        momentum_score = self._clamp(
+            (
+                (
+                    float(data.price) / float(data.ma50)
+                )
+                - 1.0
+            ) * 1000.0
+        )
+
+        volatility_score = self._clamp(
+            abs(float(data.change_percent)) * 10.0
+        )
+
+        liquidity_score = self._clamp(
+            float(data.volume_ratio) * 50.0
+        )
+
+        return DiscoveryInput(
+            volume_score=volume_score,
+            momentum_score=momentum_score,
+            volatility_score=volatility_score,
+            news_score=0.0,
+            liquidity_score=liquidity_score,
+        )
+
+    def discover(
+        self,
+        universe: AssetUniverse,
+        limit: int | None = None,
+    ) -> list[DiscoveryScore]:
+        """Build discovery inputs from market data and rank assets."""
+
+        if self.market_data is None:
+            raise ValueError(
+                "A market data provider is required."
+            )
+
+        market_data = {
+            asset.symbol: self.market_input(asset)
+            for asset in universe.all()
+        }
+
+        return self.rank(
+            universe,
+            market_data,
+            limit=limit,
         )
 
     def rank(
