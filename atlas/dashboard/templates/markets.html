@@ -50,7 +50,7 @@ ATLAS - Markets
         </div>
 
 
-        {% if market_results %}
+        {% if market_results and not strategy_research %}
 
             <div class="markets-columns">
 
@@ -124,7 +124,7 @@ ATLAS - Markets
                         </div>
 
                         <a
-                            href="/?symbol={{ market.symbol }}"
+                            href="/analysis?symbol={{ market.symbol|urlencode }}"
                             class="market-analyze-button"
                         >
                             🤖 Analyze with ATLAS →
@@ -294,7 +294,9 @@ ATLAS - Markets
 
     {% endif %}
 
-        <div class="card market-empty-card">
+        {% if not strategy_research %}
+
+            <div class="card market-empty-card">
 
                 <h2>🔎 No markets found</h2>
 
@@ -303,6 +305,8 @@ ATLAS - Markets
                 </p>
 
             </div>
+
+        {% endif %}
 
         {% endif %}
 

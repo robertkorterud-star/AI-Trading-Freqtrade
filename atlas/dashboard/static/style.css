@@ -2480,3 +2480,24 @@ main .dashboard-layout > .dashboard-right {
     }
 
 }
+
+/* =====================================================
+   MARKETS - ACTION LINKS
+   ===================================================== */
+
+.market-analyze-button,
+.market-analyze-button:link,
+.market-analyze-button:visited,
+.market-research-button,
+.market-research-button:link,
+.market-research-button:visited {
+    color: #f97316 !important;
+    text-decoration: none !important;
+    font-weight: 600;
+}
+
+.market-analyze-button:hover,
+.market-research-button:hover {
+    color: #fb923c !important;
+    text-decoration: none !important;
+}

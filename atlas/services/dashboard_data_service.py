@@ -244,10 +244,13 @@ class DashboardDataService:
     def market_scan(self, limit=5):
         'Return a lightweight ranked market scan for the dashboard.'
 
-        discovered = self.asset_discovery.discover(
-            self.asset_universe,
-            limit=limit,
-        )
+        try:
+            discovered = self.asset_discovery.discover(
+                self.asset_universe,
+                limit=limit,
+            )
+        except Exception:
+            discovered = []
 
         candidates = []
 
