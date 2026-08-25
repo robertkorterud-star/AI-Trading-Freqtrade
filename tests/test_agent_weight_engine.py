@@ -349,6 +349,146 @@ def test_weights_sum_to_exactly_one_after_rounding():
     assert sum(weights.values()) == 1.0
 
 
+def test_action_specific_weights_follow_action_accuracy():
+
+    tracker = AgentPerformanceTracker()
+
+    # Technical Analyst:
+    # BUY = 18/20 correct = 90%
+    # SELL = 6/20 correct = 30%
+    for _ in range(18):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=True,
+            action="BUY",
+        )
+
+    for _ in range(2):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=False,
+            action="BUY",
+        )
+
+    for _ in range(6):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=True,
+            action="SELL",
+        )
+
+    for _ in range(14):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=False,
+            action="SELL",
+        )
+
+    # Company Analyst:
+    # BUY = 10/20 = 50%
+    # SELL = 10/20 = 50%
+    for _ in range(10):
+        tracker.record(
+            analyst="Company Analyst",
+            correct=True,
+            action="BUY",
+        )
+
+    for _ in range(10):
+        tracker.record(
+            analyst="Company Analyst",
+            correct=False,
+            action="BUY",
+        )
+
+    for _ in range(10):
+        tracker.record(
+            analyst="Company Analyst",
+            correct=True,
+            action="SELL",
+        )
+
+    for _ in range(10):
+        tracker.record(
+            analyst="Company Analyst",
+            correct=False,
+            action="SELL",
+        )
+
+    # News Analyst:
+    # BUY = 6/20 = 30%
+    # SELL = 18/20 = 90%
+    for _ in range(6):
+        tracker.record(
+            analyst="News Analyst",
+            correct=True,
+            action="BUY",
+        )
+
+    for _ in range(14):
+        tracker.record(
+            analyst="News Analyst",
+            correct=False,
+            action="BUY",
+        )
+
+    for _ in range(18):
+        tracker.record(
+            analyst="News Analyst",
+            correct=True,
+            action="SELL",
+        )
+
+    for _ in range(2):
+        tracker.record(
+            analyst="News Analyst",
+            correct=False,
+            action="SELL",
+        )
+
+    engine = AgentWeightEngine(tracker)
+
+    buy_weights = engine.calculate(
+        action="BUY",
+    )
+
+    sell_weights = engine.calculate(
+        action="SELL",
+    )
+
+    assert buy_weights["Technical Analyst"] > (
+        buy_weights["Company Analyst"]
+    )
+
+    assert buy_weights["Company Analyst"] > (
+        buy_weights["News Analyst"]
+    )
+
+    assert sell_weights["News Analyst"] > (
+        sell_weights["Company Analyst"]
+    )
+
+    assert sell_weights["Company Analyst"] > (
+        sell_weights["Technical Analyst"]
+    )
+
+    assert round(
+        sum(buy_weights.values()),
+        4,
+    ) == 1.0
+
+    assert round(
+        sum(sell_weights.values()),
+        4,
+    ) == 1.0
+
+    for weight in buy_weights.values():
+        assert 0.10 <= weight <= 0.60
+
+    for weight in sell_weights.values():
+        assert 0.10 <= weight <= 0.60
+
+
 def test_weight_explanations_are_empty_without_history():
 
     tracker = AgentPerformanceTracker()

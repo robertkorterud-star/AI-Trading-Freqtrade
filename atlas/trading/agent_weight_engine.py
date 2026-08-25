@@ -25,10 +25,72 @@ class AgentWeightEngine:
     ):
         self.performance = performance
 
-    def calculate(self):
-        """Return safe normalized weights for all analysts."""
+    def calculate(
+        self,
+        action: str | None = None,
+    ):
+        """Return safe normalized weights for all analysts.
+
+        When an action is supplied, calculate weights from the
+        action-specific prediction history. Without an action,
+        preserve the existing overall-performance behavior.
+        """
 
         history = self.performance.history()
+
+        if action is not None:
+            normalized_action = str(action).upper()
+
+            filtered_history = []
+
+            for item in history:
+                action_predictions = item.get(
+                    "action_predictions",
+                    {},
+                )
+
+                action_correct = item.get(
+                    "action_correct",
+                    {},
+                )
+
+                predictions = int(
+                    action_predictions.get(
+                        normalized_action,
+                        0,
+                    )
+                )
+
+                correct = int(
+                    action_correct.get(
+                        normalized_action,
+                        0,
+                    )
+                )
+
+                filtered_history.append(
+                    {
+                        **item,
+                        "predictions": predictions,
+                        "correct": correct,
+                        "wrong": max(
+                            predictions - correct,
+                            0,
+                        ),
+                        "accuracy": (
+                            round(
+                                correct
+                                / predictions
+                                * 100,
+                                2,
+                            )
+                            if predictions
+                            else 0.0
+                        ),
+                    }
+                )
+
+            history = filtered_history
 
         if not history:
             return {}
