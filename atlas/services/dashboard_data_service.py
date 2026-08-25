@@ -37,6 +37,9 @@ from atlas.database.connection import Database
 from atlas.database.analysis_snapshot_repository import (
     AnalysisSnapshotRepository,
 )
+from atlas.database.prediction_repository import (
+    PredictionRepository,
+)
 
 
 class DashboardDataService:
@@ -69,17 +72,40 @@ class DashboardDataService:
         self.portfolio = PortfolioService()
         self.trading = TradingService()
 
+        database = Database(
+            self.config.database_path
+        )
+
         self.snapshot_repository = (
             AnalysisSnapshotRepository(
-                Database(
-                    self.config.database_path
-                )
+                database
+            )
+        )
+
+        self.prediction_repository = (
+            PredictionRepository(
+                database
             )
         )
 
         self.agent_performance = AgentPerformanceTracker(
             storage_path=self.config.agent_performance_storage
         )
+
+        has_performance_history = any(
+            item["predictions"] > 0
+            for item in self.agent_performance.history()
+        )
+
+        if not has_performance_history:
+            evaluated_predictions = (
+                self.prediction_repository.get_evaluated()
+            )
+
+            if evaluated_predictions:
+                self.agent_performance.rebuild_from_predictions(
+                    evaluated_predictions
+                )
 
         self.agent_weight_engine = AgentWeightEngine(
             self.agent_performance

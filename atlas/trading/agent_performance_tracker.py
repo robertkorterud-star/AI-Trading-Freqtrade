@@ -288,6 +288,7 @@ class AgentPerformanceTracker:
             if (
                 not prediction.evaluated
                 or prediction.correct is None
+                or not prediction.analysts
             ):
                 continue
 
@@ -328,6 +329,9 @@ class AgentPerformanceTracker:
 
                     if prediction.correct:
                         performance.action_correct[action] += 1
+
+        if not rebuilt:
+            return
 
         self._performance = rebuilt
         self._save()
