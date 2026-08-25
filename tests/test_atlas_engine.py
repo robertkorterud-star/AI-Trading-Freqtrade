@@ -545,3 +545,92 @@ def test_atlas_engine_ranks_candidate_decisions():
         "AAPL",
         "BTC-USD",
     ]
+
+
+def test_atlas_engine_decides_analyzed_candidates(monkeypatch):
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryScore
+    from atlas.market.asset_type import AssetType
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    candidates = [
+        DiscoveryScore(
+            asset=Asset(
+                symbol="NVDA",
+                name="NVIDIA",
+                asset_type=AssetType.STOCK,
+                market="US",
+                currency="USD",
+            ),
+            score=95.0,
+        ),
+        DiscoveryScore(
+            asset=Asset(
+                symbol="BTC-USD",
+                name="Bitcoin",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+            score=90.0,
+        ),
+    ]
+
+    monkeypatch.setattr(
+        engine,
+        "discover_candidates",
+        lambda limit=3, minimum_score=0.0: candidates[:limit],
+    )
+
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        lambda symbol: [
+            AnalysisResult(
+                analyst="Technical Analyst",
+                symbol=symbol,
+                action=Action.BUY,
+                confidence=85.0,
+                evidence=80.0,
+                reasoning=[],
+            ),
+        ],
+    )
+
+    monkeypatch.setattr(
+        engine.decision_engine,
+        "evaluate",
+        lambda results: DecisionResult(
+            symbol=results[0].symbol,
+            action=Action.BUY,
+            confidence=85.0,
+            evidence=80.0,
+            analysts=["Technical Analyst"],
+            dominant_action=Action.BUY,
+            dominant_weight=85.0,
+            decision_margin=25.0,
+            robustness=75.0,
+            robustness_level="STRONG",
+        ),
+    )
+
+    results = engine.decide_candidates(
+        limit=2,
+    )
+
+    assert [item["symbol"] for item in results] == [
+        "NVDA",
+        "BTC-USD",
+    ]
+
+    assert all(
+        item["decision"].action == Action.BUY
+        for item in results
+    )
+
+    assert results[0]["discovery_score"] == 95.0
+    assert results[1]["discovery_score"] == 90.0

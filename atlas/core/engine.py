@@ -246,6 +246,37 @@ class AtlasEngine:
             investable_only=investable_only,
         )
 
+    def decide_candidates(
+        self,
+        limit: int = 3,
+        minimum_score: float = 0.0,
+    ):
+        'Create a DecisionResult for each analyzed candidate.'
+
+        analyzed = self.analyze_candidates(
+            limit=limit,
+            minimum_score=minimum_score,
+        )
+
+        results = []
+
+        for item in analyzed:
+            decision = self.decision_engine.evaluate(
+                item["analysis"]
+            )
+
+            results.append(
+                {
+                    "symbol": item["symbol"],
+                    "discovery_score": item[
+                        "discovery_score"
+                    ],
+                    "decision": decision,
+                }
+            )
+
+        return results
+
     def start(self):
 
         self.logger.info("Starting ATLAS")
