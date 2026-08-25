@@ -501,3 +501,47 @@ def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
         "NVDA",
         "BTC-USD",
     ]
+
+
+def test_atlas_engine_ranks_candidate_decisions():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    decisions = [
+        DecisionResult(
+            symbol="AAPL",
+            action=Action.BUY,
+            confidence=80.0,
+            evidence=80.0,
+            robustness=60.0,
+            decision_margin=15.0,
+        ),
+        DecisionResult(
+            symbol="NVDA",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=92.0,
+            robustness=85.0,
+            decision_margin=30.0,
+        ),
+        DecisionResult(
+            symbol="BTC-USD",
+            action=Action.HOLD,
+            confidence=95.0,
+            evidence=95.0,
+            robustness=95.0,
+            decision_margin=40.0,
+        ),
+    ]
+
+    ranked = engine.rank_candidate_decisions(
+        decisions,
+    )
+
+    assert [decision.symbol for decision in ranked] == [
+        "NVDA",
+        "AAPL",
+        "BTC-USD",
+    ]

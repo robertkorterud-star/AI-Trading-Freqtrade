@@ -44,6 +44,9 @@ from atlas.services.analysis_snapshot_builder import (
 from atlas.market.asset_universe import AssetUniverse
 from atlas.market.asset_discovery import AssetDiscoveryService
 from atlas.market.candidate_selector import CandidateSelector
+from atlas.market.candidate_decision_ranker import (
+    CandidateDecisionRanker,
+)
 from atlas.adapters.market_data import MarketDataAdapter
 
 
@@ -99,6 +102,10 @@ class AtlasEngine:
         )
 
         self.candidate_selector = CandidateSelector()
+
+        self.candidate_decision_ranker = (
+            CandidateDecisionRanker()
+        )
 
         self.decision_engine = DecisionEngine()
 
@@ -226,6 +233,18 @@ class AtlasEngine:
             )
 
         return results
+
+    def rank_candidate_decisions(
+        self,
+        decisions,
+        investable_only=False,
+    ):
+        'Rank candidate decisions for portfolio selection.'
+
+        return self.candidate_decision_ranker.rank(
+            decisions,
+            investable_only=investable_only,
+        )
 
     def start(self):
 
