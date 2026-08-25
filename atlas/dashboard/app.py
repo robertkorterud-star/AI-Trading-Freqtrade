@@ -11,7 +11,9 @@ from atlas.i18n.translations import translate
 from atlas.dashboard.dashboard_service import DashboardService
 from atlas.services.settings_service import SettingsService
 from atlas.services.market_search_service import MarketSearchService
-from atlas.services.strategy_research_service import StrategyResearchService
+from atlas.services.adaptive_strategy_research_service import (
+    AdaptiveStrategyResearchService,
+)
 from atlas.adapters.intelligence_sources import (
     IntelligenceSourceAdapter,
 )
@@ -40,9 +42,15 @@ templates.env.globals["t"] = template_translate
 service = DashboardService()
 settings_service = service.data.settings
 market_search = MarketSearchService()
-strategy_research = StrategyResearchService()
+
+web_research = WebResearchAdapter()
+
+strategy_research = AdaptiveStrategyResearchService(
+    web_research=web_research,
+)
+
 intelligence_sources = IntelligenceSourceAdapter(
-    web=WebResearchAdapter()
+    web=web_research,
 )
 
 
