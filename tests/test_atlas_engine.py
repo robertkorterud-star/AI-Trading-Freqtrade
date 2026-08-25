@@ -689,3 +689,88 @@ def test_atlas_engine_selects_best_candidate_decision():
     assert selected["symbol"] == "NVDA"
     assert selected["decision"].action == Action.BUY
     assert selected["discovery_score"] == 95.0
+
+
+def test_atlas_engine_start_uses_selected_candidate(
+    monkeypatch,
+):
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    selected = {
+        "symbol": "NVDA",
+        "discovery_score": 95.0,
+        "decision": DecisionResult(
+            symbol="NVDA",
+            action=Action.BUY,
+            confidence=92.0,
+            evidence=94.0,
+            robustness=88.0,
+            decision_margin=32.0,
+        ),
+    }
+
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates: selected,
+    )
+
+    analyzed = [
+        selected,
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": DecisionResult(
+                symbol="BTC-USD",
+                action=Action.HOLD,
+                confidence=90.0,
+                evidence=90.0,
+                robustness=80.0,
+                decision_margin=20.0,
+            ),
+        },
+    ]
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        lambda limit=3, minimum_score=0.0: analyzed,
+    )
+
+    analyzed_symbols = []
+
+    def fake_snapshot(symbol):
+        analyzed_symbols.append(symbol)
+        return type(
+            "Snapshot",
+            (),
+            {"price": 100.0},
+        )()
+
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        lambda decision: None,
+    )
+
+    engine.config.trading_mode = "advisor"
+
+    engine.start()
+
+    assert analyzed_symbols
+    assert analyzed_symbols[-1] == "NVDA"

@@ -369,7 +369,10 @@ class DashboardDataService:
                 latest_decision = decision
 
                 latest_intelligence = (
-                    latest_snapshot_intelligence
+                    self.intelligence.summarize(
+                        results,
+                        weights=decision.agent_weights,
+                    )
                 )
 
                 latest_explanation = explain_decision(

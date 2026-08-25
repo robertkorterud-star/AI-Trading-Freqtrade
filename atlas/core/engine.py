@@ -328,19 +328,23 @@ class AtlasEngine:
             f"Capital Limit: {self.config.capital_limit}"
         )
 
-        symbol = "BTC-USD"
+        evaluation_prices = {}
 
-        # Evaluate predictions from previous runs before
-        # creating today's new prediction.
-        evaluation_snapshot = self._get_market_snapshot(
-            symbol
-        )
+        for asset in self.asset_universe.all():
+            try:
+                snapshot = self._get_market_snapshot(
+                    asset.symbol
+                )
+            except Exception:
+                continue
+
+            evaluation_prices[asset.symbol] = (
+                snapshot.price
+            )
 
         evaluation_results = (
             self.prediction_evaluator.evaluate_ready(
-                current_prices_usd={
-                    symbol: evaluation_snapshot.price,
-                }
+                current_prices_usd=evaluation_prices,
             )
         )
 
@@ -351,12 +355,41 @@ class AtlasEngine:
                 f"previous prediction(s)."
             )
 
-        results = self.analysis_service.analyze(
-            symbol
+        candidate_decisions = (
+            self.decide_candidates(
+                limit=3,
+            )
         )
 
-        decision = self.decision_engine.evaluate(
-            results
+        selected = self.select_best_candidate(
+            candidate_decisions,
+        )
+
+        if selected is None:
+            self.logger.info(
+                "No viable candidate found."
+            )
+            self.logger.info("ATLAS is ready.")
+            return
+
+        symbol = selected["symbol"]
+        decision = selected["decision"]
+
+        results = [
+            result
+            for result in selected.get(
+                "analysis",
+                [],
+            )
+        ]
+
+        if not results:
+            results = self.analysis_service.analyze(
+                symbol
+            )
+
+        evaluation_snapshot = self._get_market_snapshot(
+            symbol
         )
 
         snapshot = self.analysis_snapshot_builder.build(
