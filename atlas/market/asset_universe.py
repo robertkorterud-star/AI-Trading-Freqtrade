@@ -79,6 +79,30 @@ class AssetUniverse:
             if asset.active
         }
 
+    def add(self, asset: Asset) -> bool:
+        """Add an active asset if it is not already known."""
+
+        if not asset.active:
+            return False
+
+        if asset.symbol in self._assets:
+            return False
+
+        self._assets[asset.symbol] = asset
+
+        return True
+
+    def add_all(self, assets) -> int:
+        """Add active assets and return the number added."""
+
+        added = 0
+
+        for asset in assets:
+            if self.add(asset):
+                added += 1
+
+        return added
+
     def all(self):
         """Return all active assets."""
 

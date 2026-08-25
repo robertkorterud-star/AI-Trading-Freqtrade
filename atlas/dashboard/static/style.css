@@ -2501,3 +2501,32 @@ main .dashboard-layout > .dashboard-right {
     color: #fb923c !important;
     text-decoration: none !important;
 }
+
+/* =====================================================
+   STRATEGY BACKTEST ASSESSMENT
+   ===================================================== */
+
+.strategy-assessment {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    font-weight: 700;
+}
+
+.strategy-assessment span {
+    margin-left: 8px;
+    font-weight: 400;
+}
+
+.strategy-assessment-pass {
+    border-color: #22c55e;
+}
+
+.strategy-assessment-reject {
+    border-color: #ef4444;
+}
+
+.strategy-assessment-inconclusive {
+    border-color: #f59e0b;
+}

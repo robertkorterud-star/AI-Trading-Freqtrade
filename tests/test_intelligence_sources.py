@@ -274,3 +274,38 @@ def test_intelligence_source_adapter_finds_sec_cik_automatically():
     assert results[0]["source"] == "SEC"
     assert results[0]["company"] == "NVIDIA CORP"
     assert results[0]["cik"] == "0001045810"
+
+
+def test_intelligence_sources_includes_web_research():
+
+    class FakeWeb:
+
+        def search(self, symbol):
+            return [
+                {
+                    "source": "Google News",
+                    "title": "XRP RSI strategy",
+                    "summary": "XRP RSI trading strategy",
+                    "sentiment": "neutral",
+                }
+            ]
+
+    service = IntelligenceSourceAdapter(
+        youtube=type(
+            "EmptyYouTube",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
+        finnhub=type(
+            "EmptyFinnhub",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
+        web=FakeWeb(),
+    )
+
+    results = service.get("XRP-USD")
+
+    assert len(results) == 1
+    assert results[0]["source"] == "Google News"
+    assert "RSI" in results[0]["summary"]

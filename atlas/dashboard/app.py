@@ -12,7 +12,12 @@ from atlas.dashboard.dashboard_service import DashboardService
 from atlas.services.settings_service import SettingsService
 from atlas.services.market_search_service import MarketSearchService
 from atlas.services.strategy_research_service import StrategyResearchService
-from atlas.adapters.intelligence_sources import IntelligenceSourceAdapter
+from atlas.adapters.intelligence_sources import (
+    IntelligenceSourceAdapter,
+)
+from atlas.adapters.web_research import (
+    WebResearchAdapter,
+)
 
 app = FastAPI(title="ATLAS Dashboard")
 
@@ -36,7 +41,9 @@ service = DashboardService()
 settings_service = service.data.settings
 market_search = MarketSearchService()
 strategy_research = StrategyResearchService()
-intelligence_sources = IntelligenceSourceAdapter()
+intelligence_sources = IntelligenceSourceAdapter(
+    web=WebResearchAdapter()
+)
 
 
 def get_language():
@@ -144,7 +151,12 @@ async def markets(request: Request):
 
     results = market_search.search(query)
 
-    dashboard = service.get_dashboard()
+    trading_status = settings_service.get_trading_status()
+
+    dashboard = {
+        "status": "ATLAS Online",
+        "trading": trading_status,
+    }
 
     strategy_research_result = None
 

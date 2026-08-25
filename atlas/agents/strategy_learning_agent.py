@@ -48,6 +48,7 @@ class StrategyLearningAgent(BaseAgent):
         """
 
         hypotheses = []
+        seen = set()
 
         for item in research:
 
@@ -68,10 +69,11 @@ class StrategyLearningAgent(BaseAgent):
                 "oversold" in text
                 or "below 30" in text
                 or "under 30" in text
+                or "rsi strategy" in text
+                or "rsi trading" in text
             ):
-                hypotheses.append(
-                    StrategyHypothesis(
-                        name="RSI Oversold Reversal",
+                hypothesis = StrategyHypothesis(
+                    name="RSI Oversold Reversal",
                         symbol=symbol,
                         timeframe="15m",
                         entry_rule=(
@@ -104,16 +106,28 @@ class StrategyLearningAgent(BaseAgent):
                             "Hypothesis requires historical backtesting.",
                         ],
                     )
+
+                key = (
+                    hypothesis.name,
+                    hypothesis.symbol,
+                    hypothesis.timeframe,
+                    hypothesis.entry_rule,
+                    hypothesis.exit_rule,
+                    hypothesis.stop_loss,
+                    hypothesis.take_profit,
                 )
+
+                if key not in seen:
+                    seen.add(key)
+                    hypotheses.append(hypothesis)
 
             if (
                 "moving average" in text
                 or "ma crossover" in text
                 or "golden cross" in text
             ):
-                hypotheses.append(
-                    StrategyHypothesis(
-                        name="Moving Average Crossover",
+                hypothesis = StrategyHypothesis(
+                    name="Moving Average Crossover",
                         symbol=symbol,
                         timeframe="1h",
                         entry_rule="MA20 crosses above MA50",
@@ -126,6 +140,19 @@ class StrategyLearningAgent(BaseAgent):
                             "Hypothesis requires historical backtesting.",
                         ],
                     )
+
+                key = (
+                    hypothesis.name,
+                    hypothesis.symbol,
+                    hypothesis.timeframe,
+                    hypothesis.entry_rule,
+                    hypothesis.exit_rule,
+                    hypothesis.stop_loss,
+                    hypothesis.take_profit,
                 )
+
+                if key not in seen:
+                    seen.add(key)
+                    hypotheses.append(hypothesis)
 
         return hypotheses

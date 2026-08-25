@@ -110,3 +110,76 @@ def test_strategy_agent_extracts_rsi_rules_from_transcript():
     )
     assert strategy.take_profit == "RSI >= 60"
     assert strategy.source == "YouTube"
+
+
+def test_strategy_agent_accepts_rsi_strategy_research():
+    agent = StrategyLearningAgent()
+
+    results = agent.learn(
+        "XRP-USD",
+        [
+            {
+                "source": "Google News",
+                "title": "XRP RSI strategy guide",
+                "summary": (
+                    "A trading strategy using RSI "
+                    "for XRP entries and exits."
+                ),
+            }
+        ],
+    )
+
+    assert len(results) == 1
+    assert results[0].name == "RSI Oversold Reversal"
+
+
+def test_strategy_agent_accepts_moving_average_strategy_research():
+    agent = StrategyLearningAgent()
+
+    results = agent.learn(
+        "XRP-USD",
+        [
+            {
+                "source": "Google News",
+                "title": "XRP moving average strategy",
+                "summary": (
+                    "A moving average trading strategy "
+                    "for XRP."
+                ),
+            }
+        ],
+    )
+
+    assert len(results) == 1
+    assert results[0].name == "Moving Average Crossover"
+
+
+def test_strategy_agent_deduplicates_identical_strategies():
+
+    agent = StrategyLearningAgent()
+
+    research = [
+        {
+            "source": "Google News",
+            "title": "XRP RSI oversold signal",
+            "summary": "XRP is oversold.",
+        },
+        {
+            "source": "Google News",
+            "title": "XRP RSI reaches oversold levels",
+            "summary": "XRP RSI is oversold.",
+        },
+        {
+            "source": "Google News",
+            "title": "XRP RSI bottom signal",
+            "summary": "XRP remains oversold.",
+        },
+    ]
+
+    results = agent.learn(
+        "XRP-USD",
+        research,
+    )
+
+    assert len(results) == 1
+    assert results[0].name == "RSI Oversold Reversal"

@@ -14,6 +14,10 @@ from atlas.adapters.historical_market_data import (
 )
 from atlas.trading.backtest_engine import BacktestEngine
 from atlas.trading.backtest_result import BacktestResult
+from atlas.trading.backtest_evaluator import (
+    BacktestAssessment,
+    BacktestEvaluator,
+)
 from atlas.trading.indicators import (
     calculate_rsi,
     calculate_sma,
@@ -31,6 +35,7 @@ class StrategyResearchResult:
     symbol: str
     strategies: list[StrategyHypothesis]
     backtests: list[BacktestResult]
+    assessments: list[BacktestAssessment]
 
 
 class StrategyResearchService:
@@ -78,6 +83,7 @@ class StrategyResearchService:
                 symbol=symbol,
                 strategies=[],
                 backtests=[],
+                assessments=[],
             )
 
         candles = self.market_data.get(
@@ -91,6 +97,7 @@ class StrategyResearchService:
                 symbol=symbol,
                 strategies=strategies,
                 backtests=[],
+                assessments=[],
             )
 
         closes = [
@@ -123,6 +130,7 @@ class StrategyResearchService:
             enriched_candles.append(enriched)
 
         backtests = []
+        assessments = []
 
         for strategy in strategies:
 
@@ -133,8 +141,15 @@ class StrategyResearchService:
 
             backtests.append(result)
 
+            assessments.append(
+                BacktestEvaluator.assess(
+                    result
+                )
+            )
+
         return StrategyResearchResult(
             symbol=symbol,
             strategies=strategies,
             backtests=backtests,
+            assessments=assessments,
         )

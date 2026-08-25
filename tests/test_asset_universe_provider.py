@@ -63,3 +63,84 @@ def test_explicit_assets_still_override_provider():
     assert universe.count() == 1
     assert universe.get("AAPL") is not None
     assert universe.get("BTC-USD") is None
+
+
+def test_universe_can_add_dynamic_asset():
+
+    universe = AssetUniverse(
+        assets=[]
+    )
+
+    asset = Asset(
+        symbol="PLTR",
+        name="Palantir Technologies Inc.",
+        asset_type=AssetType.STOCK,
+        market="NMS",
+        currency="USD",
+    )
+
+    added = universe.add(asset)
+
+    assert added is True
+    assert universe.get("PLTR") == asset
+    assert universe.count() == 1
+
+
+def test_universe_does_not_duplicate_existing_asset():
+
+    universe = AssetUniverse(
+        assets=[
+            Asset(
+                symbol="NVDA",
+                name="NVIDIA",
+                asset_type=AssetType.STOCK,
+                market="US",
+                currency="USD",
+            )
+        ]
+    )
+
+    duplicate = Asset(
+        symbol="NVDA",
+        name="NVIDIA Corporation",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+
+    added = universe.add(duplicate)
+
+    assert added is False
+    assert universe.count() == 1
+    assert universe.get("NVDA").name == "NVIDIA"
+
+
+def test_universe_can_add_multiple_dynamic_assets():
+
+    universe = AssetUniverse(
+        assets=[]
+    )
+
+    assets = [
+        Asset(
+            symbol="PLTR",
+            name="Palantir Technologies Inc.",
+            asset_type=AssetType.STOCK,
+            market="NMS",
+            currency="USD",
+        ),
+        Asset(
+            symbol="XRP-USD",
+            name="XRP",
+            asset_type=AssetType.CRYPTO,
+            market="crypto",
+            currency="USD",
+        ),
+    ]
+
+    added = universe.add_all(assets)
+
+    assert added == 2
+    assert universe.count() == 2
+    assert universe.get("PLTR") is not None
+    assert universe.get("XRP-USD") is not None

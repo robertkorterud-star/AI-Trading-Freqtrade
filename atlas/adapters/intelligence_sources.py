@@ -16,6 +16,9 @@ from atlas.adapters.youtube_transcript import (
 from atlas.adapters.sec_research import (
     SECResearchAdapter,
 )
+from atlas.adapters.web_research import (
+    WebResearchAdapter,
+)
 
 
 @dataclass(slots=True)
@@ -35,6 +38,7 @@ class IntelligenceSourceAdapter:
         finnhub=None,
         transcript=None,
         sec=None,
+        web=None,
     ) -> None:
 
         self.youtube = (
@@ -60,6 +64,8 @@ class IntelligenceSourceAdapter:
             if sec is not None
             else SECResearchAdapter()
         )
+
+        self.web = web
 
     @staticmethod
     def _normalize(item) -> dict:
@@ -123,6 +129,12 @@ class IntelligenceSourceAdapter:
 
         for item in self.finnhub.search(symbol):
             results.append(self._normalize(item))
+
+        if self.web is not None:
+            for item in self.web.search(symbol):
+                results.append(
+                    self._normalize(item)
+                )
 
         if include_sec or cik:
             if cik is None:

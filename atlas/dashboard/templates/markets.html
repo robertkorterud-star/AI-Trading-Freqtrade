@@ -270,6 +270,33 @@ ATLAS - Markets
 
                                         </div>
 
+                                        {% set assessment = strategy_research.assessments[loop.index0] %}
+
+                                        <div
+                                            class="strategy-assessment
+                                            {% if assessment.status == 'PASS' %}
+                                                strategy-assessment-pass
+                                            {% elif assessment.status == 'REJECT' %}
+                                                strategy-assessment-reject
+                                            {% else %}
+                                                strategy-assessment-inconclusive
+                                            {% endif %}"
+                                        >
+
+                                            {% if assessment.status == "PASS" %}
+                                                ✅ PASS
+                                            {% elif assessment.status == "REJECT" %}
+                                                ❌ REJECT
+                                            {% else %}
+                                                ⚠️ INCONCLUSIVE
+                                            {% endif %}
+
+                                            <span>
+                                                {{ assessment.reason }}
+                                            </span>
+
+                                        </div>
+
                                     </div>
 
                                 {% endif %}
