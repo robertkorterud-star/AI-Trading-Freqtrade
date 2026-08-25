@@ -7,7 +7,7 @@ Tracks how accurate each ATLAS analyst is over time.
 import json
 import os
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -18,6 +18,14 @@ class AgentPerformance:
     analyst: str
     predictions: int = 0
     correct: int = 0
+
+    action_predictions: dict[str, int] = field(
+        default_factory=dict
+    )
+
+    action_correct: dict[str, int] = field(
+        default_factory=dict
+    )
 
     @property
     def wrong(self):
@@ -35,6 +43,25 @@ class AgentPerformance:
             2,
         )
 
+    @property
+    def action_accuracy(self):
+        actions = set(
+            self.action_predictions
+        ) | set(
+            self.action_correct
+        )
+
+        return {
+            action: round(
+                self.action_correct.get(action, 0)
+                / self.action_predictions[action]
+                * 100,
+                2,
+            )
+            for action in actions
+            if self.action_predictions.get(action, 0) > 0
+        }
+
     def as_dict(self):
         return {
             "analyst": self.analyst,
@@ -44,6 +71,15 @@ class AgentPerformance:
             "accuracy": round(
                 self.accuracy,
                 2,
+            ),
+            "action_predictions": dict(
+                self.action_predictions
+            ),
+            "action_correct": dict(
+                self.action_correct
+            ),
+            "action_accuracy": dict(
+                self.action_accuracy
             ),
         }
 
@@ -95,6 +131,24 @@ class AgentPerformanceTracker:
                 correct=int(
                     values.get("correct", 0)
                 ),
+                action_predictions={
+                    str(action): int(count)
+                    for action, count in (
+                        values.get(
+                            "action_predictions",
+                            {},
+                        )
+                    ).items()
+                },
+                action_correct={
+                    str(action): int(count)
+                    for action, count in (
+                        values.get(
+                            "action_correct",
+                            {},
+                        )
+                    ).items()
+                },
             )
 
     def _save(self):
@@ -112,6 +166,12 @@ class AgentPerformanceTracker:
             analyst: {
                 "predictions": performance.predictions,
                 "correct": performance.correct,
+                "action_predictions": dict(
+                    performance.action_predictions
+                ),
+                "action_correct": dict(
+                    performance.action_correct
+                ),
             }
             for analyst, performance
             in self._performance.items()
@@ -170,6 +230,7 @@ class AgentPerformanceTracker:
         self,
         analyst: str,
         correct: bool,
+        action: str | None = None,
     ):
         """Record one prediction result."""
 
@@ -195,6 +256,24 @@ class AgentPerformanceTracker:
 
         if correct:
             performance.correct += 1
+
+        if action:
+            performance.action_predictions[action] = (
+                performance.action_predictions.get(
+                    action,
+                    0,
+                )
+                + 1
+            )
+
+            if correct:
+                performance.action_correct[action] = (
+                    performance.action_correct.get(
+                        action,
+                        0,
+                    )
+                    + 1
+                )
 
         self._save()
 
@@ -228,6 +307,27 @@ class AgentPerformanceTracker:
 
                 if prediction.correct:
                     performance.correct += 1
+
+                action = prediction.action
+
+                if action:
+                    performance.action_predictions[action] = (
+                        performance.action_predictions.get(
+                            action,
+                            0,
+                        )
+                        + 1
+                    )
+
+                    performance.action_correct[action] = (
+                        performance.action_correct.get(
+                            action,
+                            0,
+                        )
+                    )
+
+                    if prediction.correct:
+                        performance.action_correct[action] += 1
 
         self._performance = rebuilt
         self._save()

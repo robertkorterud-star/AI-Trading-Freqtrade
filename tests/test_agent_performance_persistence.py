@@ -204,9 +204,25 @@ def test_rebuild_replaces_performance_from_evaluated_predictions(
         "Technical Analyst": {
             "predictions": 2,
             "correct": 1,
+            "action_predictions": {
+                "BUY": 1,
+                "SELL": 1,
+            },
+            "action_correct": {
+                "BUY": 1,
+                "SELL": 0,
+            },
         },
         "News Analyst": {
             "predictions": 2,
             "correct": 1,
+            "action_predictions": {
+                "BUY": 1,
+                "SELL": 1,
+            },
+            "action_correct": {
+                "BUY": 1,
+                "SELL": 0,
+            },
         },
     }
