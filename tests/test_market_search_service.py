@@ -69,3 +69,35 @@ def test_search_result_contains_market_data(monkeypatch):
     assert results[0]["change"] == 5.26
     assert results[0]["ma20"] == 98.0
     assert results[0]["ma50"] == 92.0
+
+
+def test_search_finds_xrp_by_symbol():
+    service = MarketSearchService()
+
+    results = service.search("XRP")
+
+    assert results
+    assert results[0]["symbol"] == "XRP-USD"
+    assert results[0]["type"] == "crypto"
+
+
+def test_search_finds_xrp_by_name():
+    service = MarketSearchService()
+
+    results = service.search("Ripple")
+
+    assert results
+    assert results[0]["symbol"] == "XRP-USD"
+    assert results[0]["name"] == "XRP"
+    assert results[0]["type"] == "crypto"
+
+
+def test_search_resolves_common_aliases():
+    service = MarketSearchService()
+
+    assert service.search("btc")[0]["symbol"] == "BTC-USD"
+    assert service.search("bitcoin")[0]["symbol"] == "BTC-USD"
+    assert service.search("eth")[0]["symbol"] == "ETH-USD"
+    assert service.search("ethereum")[0]["symbol"] == "ETH-USD"
+    assert service.search("sol")[0]["symbol"] == "SOL-USD"
+    assert service.search("xrp")[0]["symbol"] == "XRP-USD"

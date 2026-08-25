@@ -18,6 +18,11 @@ class MarketSearchService:
             "type": "crypto",
         },
         {
+            "symbol": "XRP-USD",
+            "name": "XRP",
+            "type": "crypto",
+        },
+        {
             "symbol": "ETH-USD",
             "name": "Ethereum",
             "type": "crypto",
@@ -64,6 +69,21 @@ class MarketSearchService:
         },
     ]
 
+    ALIASES = {
+        "btc": "BTC-USD",
+        "bitcoin": "BTC-USD",
+        "btc-usd": "BTC-USD",
+        "eth": "ETH-USD",
+        "ethereum": "ETH-USD",
+        "eth-usd": "ETH-USD",
+        "sol": "SOL-USD",
+        "solana": "SOL-USD",
+        "sol-usd": "SOL-USD",
+        "xrp": "XRP-USD",
+        "ripple": "XRP-USD",
+        "xrp-usd": "XRP-USD",
+    }
+
     def __init__(self) -> None:
         self.market = MarketDataAdapter()
 
@@ -80,12 +100,19 @@ class MarketSearchService:
 
         results = []
 
+        resolved_symbol = self.ALIASES.get(
+            normalized
+        )
+
         for market in self.MARKETS:
 
             symbol = market["symbol"].lower()
             name = market["name"].lower()
 
-            if not (
+            if resolved_symbol is not None:
+                if market["symbol"] != resolved_symbol:
+                    continue
+            elif not (
                 normalized == symbol
                 or normalized == name
                 or normalized in name
