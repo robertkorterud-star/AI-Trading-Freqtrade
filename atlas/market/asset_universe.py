@@ -60,12 +60,18 @@ class AssetUniverse:
     def __init__(
         self,
         assets=None,
+        provider=None,
     ):
-        source = (
-            self.DEFAULT_ASSETS
-            if assets is None
-            else tuple(assets)
-        )
+        if assets is not None:
+            source = tuple(assets)
+
+        elif provider is not None:
+            source = tuple(
+                provider.list_assets()
+            )
+
+        else:
+            source = self.DEFAULT_ASSETS
 
         self._assets = {
             asset.symbol: asset
