@@ -52,6 +52,11 @@ ATLAS - Agents
 
                     </div>
 
+                    {% set agent_weight = (
+                        dashboard.agent_performance.weights
+                        .get(agent.analyst, 0)
+                    ) %}
+
                     <div class="agent-weight">
 
                         <span>
@@ -59,15 +64,21 @@ ATLAS - Agents
                         </span>
 
                         <strong>
-                            {{
-                                (
-                                    dashboard.agent_performance.weights
-                                    .get(agent.analyst, 0)
-                                    * 100
-                                ) | round(2)
-                            }}%
+                            {{ (agent_weight * 100) | round(2) }}%
                         </strong>
 
+                    </div>
+
+                    <div class="agent-weight-bar">
+                        <div
+                            class="agent-weight-fill"
+                            style="width: {{ ((agent_weight / 0.60) * 100) | round(2) }}%;"
+                        ></div>
+                    </div>
+
+                    <div class="agent-weight-scale">
+                        <span>0%</span>
+                        <span>60% safety limit</span>
                     </div>
 
                     <div class="agent-learning-status">
