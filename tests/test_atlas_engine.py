@@ -634,3 +634,58 @@ def test_atlas_engine_decides_analyzed_candidates(monkeypatch):
 
     assert results[0]["discovery_score"] == 95.0
     assert results[1]["discovery_score"] == 90.0
+
+
+def test_atlas_engine_selects_best_candidate_decision():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    candidates = [
+        {
+            "symbol": "AAPL",
+            "discovery_score": 80.0,
+            "decision": DecisionResult(
+                symbol="AAPL",
+                action=Action.BUY,
+                confidence=80.0,
+                evidence=80.0,
+                robustness=65.0,
+                decision_margin=15.0,
+            ),
+        },
+        {
+            "symbol": "NVDA",
+            "discovery_score": 95.0,
+            "decision": DecisionResult(
+                symbol="NVDA",
+                action=Action.BUY,
+                confidence=92.0,
+                evidence=94.0,
+                robustness=88.0,
+                decision_margin=32.0,
+            ),
+        },
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": DecisionResult(
+                symbol="BTC-USD",
+                action=Action.HOLD,
+                confidence=95.0,
+                evidence=95.0,
+                robustness=95.0,
+                decision_margin=40.0,
+            ),
+        },
+    ]
+
+    selected = engine.select_best_candidate(
+        candidates,
+    )
+
+    assert selected is not None
+    assert selected["symbol"] == "NVDA"
+    assert selected["decision"].action == Action.BUY
+    assert selected["discovery_score"] == 95.0

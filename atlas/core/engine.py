@@ -277,6 +277,41 @@ class AtlasEngine:
 
         return results
 
+    def select_best_candidate(
+        self,
+        candidates,
+        investable_only=False,
+    ):
+        'Return the strongest candidate decision.'
+
+        if not candidates:
+            return None
+
+        decisions = [
+            item["decision"]
+            for item in candidates
+        ]
+
+        ranked_decisions = (
+            self.rank_candidate_decisions(
+                decisions,
+                investable_only=investable_only,
+            )
+        )
+
+        if not ranked_decisions:
+            return None
+
+        selected_symbol = (
+            ranked_decisions[0].symbol
+        )
+
+        for item in candidates:
+            if item["symbol"] == selected_symbol:
+                return item
+
+        return None
+
     def start(self):
 
         self.logger.info("Starting ATLAS")
