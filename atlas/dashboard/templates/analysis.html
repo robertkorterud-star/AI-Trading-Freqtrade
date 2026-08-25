@@ -283,6 +283,93 @@
 
             </div>
 
+            <div class="learned-agent-influence">
+
+                <h3>🧠 Learned Agent Influence</h3>
+
+                <div class="learned-agent-list">
+
+                    {% for agent in dashboard.agent_performance.history %}
+
+                        {% set agent_weight = (
+                            dashboard.agent_performance.weights
+                            .get(agent.analyst, 0)
+                        ) %}
+
+                        <div class="learned-agent">
+
+                            <div class="learned-agent-header">
+
+                                <div>
+                                    <strong>
+                                        {{ agent.analyst }}
+                                    </strong>
+
+                                    {% if agent.analyst in dashboard.intelligence.analysts %}
+                                        <span class="learned-agent-active">
+                                            Active
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <strong>
+                                    {{ (agent_weight * 100) | round(2) }}%
+                                </strong>
+
+                            </div>
+
+                            <div class="learned-agent-bar">
+
+                                <div
+                                    class="learned-agent-fill"
+                                    style="width: {{ ((agent_weight / 0.60) * 100) | round(2) }}%;"
+                                ></div>
+
+                            </div>
+
+                            <div class="learned-agent-meta">
+
+                                <span>
+                                    {{ agent.predictions }} predictions
+                                </span>
+
+                                <span>
+                                    {{ agent.accuracy }}% accuracy
+                                </span>
+
+                            </div>
+
+                            {% set explanation = (
+                                dashboard.agent_performance
+                                .weight_explanations
+                                .get(agent.analyst)
+                            ) %}
+
+                            {% if explanation %}
+
+                                <p class="learned-agent-reason">
+                                    {{ explanation.reason }}
+                                </p>
+
+                            {% endif %}
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+                {% if dashboard.decision_influence.adaptive_override %}
+
+                    <div class="learned-agent-override">
+                        Adaptive weighting influenced the final decision.
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+
             <div class="decision-robustness">
 
                 <h3>Decision Robustness</h3>
