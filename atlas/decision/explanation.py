@@ -51,6 +51,17 @@ def explain_decision(
             + "."
         )
 
+    if (
+        decision.action_support_analyst is not None
+        and decision.action_support_action is not None
+    ):
+        key_reasons.append(
+            f"Strongest learned support: "
+            f"{decision.action_support_analyst} "
+            f"for {decision.action_support_action.value} "
+            f"at {decision.action_support_weight * 100:.1f}% weight."
+        )
+
     if decision.adaptive_override:
         key_reasons.append(
             "Adaptive weighting influenced the final decision."
@@ -69,6 +80,9 @@ def explain_decision(
         agreement=agreement,
         dominant_action=decision.dominant_action,
         dominant_weight=decision.dominant_weight,
+        action_support_analyst=decision.action_support_analyst,
+        action_support_action=decision.action_support_action,
+        action_support_weight=decision.action_support_weight,
         decision_margin=decision.decision_margin,
         robustness=decision.robustness,
         robustness_level=decision.robustness_level,

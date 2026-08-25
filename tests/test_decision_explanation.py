@@ -1,4 +1,5 @@
 
+from atlas.decision.explanation import explain_decision
 from atlas.models.action import Action
 from atlas.models.decision_explanation import DecisionExplanation
 
@@ -173,5 +174,43 @@ def test_explain_decision_handles_simple_hold():
 
     assert any(
         "Adaptive analyst weights" not in reason
+        for reason in explanation.key_reasons
+    )
+
+
+def test_explanation_reports_strongest_learned_action_support():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.SELL,
+        confidence=85.0,
+        evidence=90.0,
+        dominant_action=Action.SELL,
+        dominant_weight=55.0,
+        action_support_analyst="Technical Analyst",
+        action_support_action=Action.BUY,
+        action_support_weight=0.4063,
+    )
+
+    explanation = explain_decision(
+        decision,
+        agreement=66.7,
+    )
+
+    assert explanation.action_support_analyst == (
+        "Technical Analyst"
+    )
+
+    assert explanation.action_support_action == (
+        Action.BUY
+    )
+
+    assert explanation.action_support_weight == 0.4063
+
+    assert any(
+        "Technical Analyst" in reason
+        and "BUY" in reason
         for reason in explanation.key_reasons
     )

@@ -31,6 +31,12 @@ class DecisionExplanation:
 
     dominant_weight: float = 0.0
 
+    action_support_analyst: str | None = None
+
+    action_support_action: Action | None = None
+
+    action_support_weight: float = 0.0
+
     decision_margin: float = 0.0
 
     robustness: float = 0.0
