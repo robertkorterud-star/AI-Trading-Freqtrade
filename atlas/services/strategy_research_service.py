@@ -143,7 +143,8 @@ class StrategyResearchService:
 
             assessments.append(
                 BacktestEvaluator.assess(
-                    result
+                    result,
+                    strategy_name=strategy.name,
                 )
             )
 

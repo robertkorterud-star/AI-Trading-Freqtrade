@@ -7,6 +7,7 @@ class BacktestAssessment:
 
     status: str
     reason: str
+    next_focus: tuple[str, ...] = ()
 
 
 class BacktestEvaluator:
@@ -22,6 +23,7 @@ class BacktestEvaluator:
     def assess(
         cls,
         result,
+        strategy_name: str = "",
     ) -> BacktestAssessment:
         """Return PASS, REJECT or INCONCLUSIVE."""
 
@@ -36,12 +38,34 @@ class BacktestEvaluator:
         )
 
         if total_return <= 0.0:
+            if "rsi" in strategy_name.lower():
+                next_focus = (
+                    "moving average",
+                    "golden cross",
+                    "breakout",
+                    "momentum",
+                )
+            elif "moving average" in strategy_name.lower():
+                next_focus = (
+                    "rsi",
+                    "breakout",
+                    "momentum",
+                )
+            else:
+                next_focus = (
+                    "rsi",
+                    "moving average",
+                    "breakout",
+                    "momentum",
+                )
+
             return BacktestAssessment(
                 status="REJECT",
                 reason=(
                     "Backtest lost money over the "
                     "tested period."
                 ),
+                next_focus=next_focus,
             )
 
         if profit_factor < cls.REJECT_MAX_PROFIT_FACTOR:

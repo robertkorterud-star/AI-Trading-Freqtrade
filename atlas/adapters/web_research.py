@@ -134,6 +134,7 @@ class WebResearchAdapter:
     def search(
         self,
         symbol: str,
+        focus: tuple[str, ...] | None = None,
     ) -> list[dict]:
         """Return normalized web research items."""
 
@@ -146,7 +147,16 @@ class WebResearchAdapter:
         seen_urls = set()
         article_fetches = 0
 
-        for template in self.QUERY_TEMPLATES:
+        templates = (
+            tuple(
+                f"{{symbol}} {term} strategy"
+                for term in focus
+            )
+            if focus
+            else self.QUERY_TEMPLATES
+        )
+
+        for template in templates:
 
             query = template.format(
                 symbol=normalized

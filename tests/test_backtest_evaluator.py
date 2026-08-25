@@ -73,3 +73,30 @@ def test_backtest_evaluator_marks_borderline_result_inconclusive():
 
     assert assessment.status == "INCONCLUSIVE"
     assert assessment.reason
+
+
+def test_rejected_rsi_strategy_suggests_alternative_focus():
+
+    result = type(
+        "BacktestResult",
+        (),
+        {
+            "trades": 230,
+            "wins": 130,
+            "losses": 100,
+            "win_rate": 56.52,
+            "total_return": -38.64,
+            "profit_factor": 0.82,
+            "max_drawdown": 40.88,
+        },
+    )()
+
+    assessment = BacktestEvaluator.assess(
+        result,
+        strategy_name="RSI Oversold Reversal",
+    )
+
+    assert assessment.status == "REJECT"
+    assert assessment.next_focus
+    assert "moving average" in assessment.next_focus
+    assert "breakout" in assessment.next_focus
