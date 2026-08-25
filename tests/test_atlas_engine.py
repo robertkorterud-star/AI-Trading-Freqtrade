@@ -371,3 +371,64 @@ def test_atlas_engine_start_evaluates_previous_predictions(
 
     assert company.predictions == 1
     assert company.correct == 1
+
+
+def test_atlas_engine_discovers_and_selects_top_candidates(
+    monkeypatch,
+):
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryScore
+    from atlas.market.asset_type import AssetType
+
+    engine = AtlasEngine()
+
+    candidates = [
+        DiscoveryScore(
+            asset=Asset(
+                symbol="BTC-USD",
+                name="Bitcoin",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+            score=80.0,
+        ),
+        DiscoveryScore(
+            asset=Asset(
+                symbol="NVDA",
+                name="NVIDIA",
+                asset_type=AssetType.STOCK,
+                market="US",
+                currency="USD",
+            ),
+            score=95.0,
+        ),
+        DiscoveryScore(
+            asset=Asset(
+                symbol="AAPL",
+                name="Apple",
+                asset_type=AssetType.STOCK,
+                market="US",
+                currency="USD",
+            ),
+            score=70.0,
+        ),
+    ]
+
+    monkeypatch.setattr(
+        engine.asset_discovery,
+        "discover",
+        lambda universe, limit=None: candidates,
+    )
+
+    selected = engine.discover_candidates(
+        limit=2,
+    )
+
+    assert [
+        candidate.symbol
+        for candidate in selected
+    ] == [
+        "NVDA",
+        "BTC-USD",
+    ]

@@ -41,6 +41,11 @@ from atlas.services.analysis_snapshot_builder import (
     AnalysisSnapshotBuilder,
 )
 
+from atlas.market.asset_universe import AssetUniverse
+from atlas.market.asset_discovery import AssetDiscoveryService
+from atlas.market.candidate_selector import CandidateSelector
+from atlas.adapters.market_data import MarketDataAdapter
+
 
 def build_config_from_args(args=None):
     """Build ATLAS configuration from command-line arguments."""
@@ -84,6 +89,16 @@ class AtlasEngine:
         self.analysis_service = AnalysisService(
             self.registry
         )
+
+        self.asset_universe = AssetUniverse()
+
+        self.market_data = MarketDataAdapter()
+
+        self.asset_discovery = AssetDiscoveryService(
+            market_data=self.market_data,
+        )
+
+        self.candidate_selector = CandidateSelector()
 
         self.decision_engine = DecisionEngine()
 
@@ -164,6 +179,23 @@ class AtlasEngine:
             config=self.config,
             controller=controller,
             prediction_tracker=self.prediction_tracker,
+        )
+
+    def discover_candidates(
+        self,
+        limit: int = 3,
+        minimum_score: float = 0.0,
+    ):
+        'Discover and select assets for deeper analysis.'
+
+        discovered = self.asset_discovery.discover(
+            self.asset_universe,
+        )
+
+        return self.candidate_selector.select(
+            discovered,
+            limit=limit,
+            minimum_score=minimum_score,
         )
 
     def start(self):
