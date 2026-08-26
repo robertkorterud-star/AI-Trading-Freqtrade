@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 import atlas.dashboard.app as dashboard_app
@@ -116,14 +117,10 @@ def test_strategy_research_api_uses_cache(monkeypatch):
     class Request:
         query_params = {"symbol": "XRP-USD"}
 
-    first = __import__(
-        "asyncio"
-    ).run(
+    first = asyncio.run(
         dashboard_app.strategy_research_api(Request())
     )
-    second = __import__(
-        "asyncio"
-    ).run(
+    second = asyncio.run(
         dashboard_app.strategy_research_api(Request())
     )
 
