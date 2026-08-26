@@ -23,8 +23,9 @@ def test_csv_adapter_loads_ohlcv(tmp_path):
         encoding="utf-8",
     )
 
-    data = CSVHistoricalDataAdapter().load(
-        path,
+    data = CSVHistoricalDataAdapter(
+        path
+    ).load(
         symbol="BTC-USD",
     )
 
@@ -63,8 +64,7 @@ def test_csv_adapter_supports_standard_timestamp():
             encoding="utf-8",
         )
 
-        data = CSVHistoricalDataAdapter().load(
-            path,
+        data = CSVHistoricalDataAdapter(path).load(
             symbol="AAPL",
         )
 
@@ -93,8 +93,7 @@ def test_csv_adapter_rejects_missing_columns(
     )
 
     with pytest.raises(ValueError):
-        CSVHistoricalDataAdapter().load(
-            path,
+        CSVHistoricalDataAdapter(path).load(
             symbol="BTC-USD",
         )
 
@@ -113,8 +112,7 @@ def test_csv_adapter_rejects_invalid_rows(
     )
 
     with pytest.raises(ValueError):
-        CSVHistoricalDataAdapter().load(
-            path,
+        CSVHistoricalDataAdapter(path).load(
             symbol="BTC-USD",
         )
 
@@ -126,8 +124,7 @@ def test_csv_adapter_rejects_missing_file(
     path = tmp_path / "missing.csv"
 
     with pytest.raises(FileNotFoundError):
-        CSVHistoricalDataAdapter().load(
-            path,
+        CSVHistoricalDataAdapter(path).load(
             symbol="BTC-USD",
         )
 
@@ -146,8 +143,7 @@ def test_csv_adapter_rejects_empty_timestamp(
     )
 
     with pytest.raises(ValueError):
-        CSVHistoricalDataAdapter().load(
-            path,
+        CSVHistoricalDataAdapter(path).load(
             symbol="BTC-USD",
         )
 
@@ -166,7 +162,6 @@ def test_csv_adapter_preserves_data_validation(
     )
 
     with pytest.raises(ValueError):
-        CSVHistoricalDataAdapter().load(
-            path,
+        CSVHistoricalDataAdapter(path).load(
             symbol="BTC-USD",
         )

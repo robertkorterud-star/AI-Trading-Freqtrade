@@ -11,13 +11,23 @@ from csv import DictReader
 from datetime import datetime
 from pathlib import Path
 
+from atlas.trading.historical_data_provider import (
+    HistoricalDataProvider,
+)
+
 from atlas.trading.historical_market_data import (
     HistoricalMarketData,
     OHLCVBar,
 )
 
 
-class CSVHistoricalDataAdapter:
+class CSVHistoricalDataAdapter(HistoricalDataProvider):
+    def __init__(
+        self,
+        path: str | Path,
+    ):
+        self.path = Path(path)
+
     """Load HistoricalMarketData from an OHLCV CSV file."""
 
     REQUIRED_COLUMNS = (
@@ -31,11 +41,12 @@ class CSVHistoricalDataAdapter:
 
     def load(
         self,
-        path: str | Path,
         symbol: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
     ) -> HistoricalMarketData:
 
-        csv_path = Path(path)
+        csv_path = self.path
 
         if not csv_path.exists():
             raise FileNotFoundError(
