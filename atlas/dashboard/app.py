@@ -103,7 +103,7 @@ def get_cached_strategy_research(
     symbol: str,
     research_items: list[dict],
 ):
-    """Return cached research for a symbol while it is fresh."""
+    """Return cached strategy research for a symbol while it is fresh."""
 
     now = time.monotonic()
 
@@ -121,9 +121,9 @@ def get_cached_strategy_research(
         ):
             return result
 
-    result = get_cached_strategy_research(
-        symbol,
-        research_items,
+    result = strategy_research.research(
+        symbol=symbol,
+        research=research_items,
     )
 
     _strategy_research_cache[symbol] = (
@@ -544,9 +544,9 @@ async def strategy_research_api(request: Request):
         )
     )
 
-    result = strategy_research.research(
+    result = get_cached_strategy_research(
         symbol=symbol,
-        research=research_items,
+        research_items=research_items,
     )
 
     return JSONResponse(
