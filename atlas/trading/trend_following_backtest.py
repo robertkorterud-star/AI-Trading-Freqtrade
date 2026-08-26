@@ -8,6 +8,10 @@ This module does not create live trading decisions.
 
 from dataclasses import dataclass
 
+from atlas.trading.historical_market_data import (
+    HistoricalMarketData,
+)
+
 from atlas.trading.trend_following import (
     TrendFollowingAnalyzer,
 )
@@ -79,19 +83,22 @@ class TrendFollowingBacktester:
 
     def run(
         self,
-        closes: list[float],
+        closes: list[float] | HistoricalMarketData,
         initial_capital: float = 10000.0,
     ) -> TrendFollowingBacktestResult:
+
+        if isinstance(closes, HistoricalMarketData):
+            prices = closes.closes
+        else:
+            prices = [
+                float(price)
+                for price in closes
+            ]
 
         if initial_capital <= 0:
             raise ValueError(
                 "initial_capital must be positive."
             )
-
-        prices = [
-            float(price)
-            for price in closes
-        ]
 
         if len(prices) < 2:
             return self._empty_result(

@@ -19,6 +19,9 @@ from atlas.adapters.sec_research import (
 from atlas.adapters.web_research import (
     WebResearchAdapter,
 )
+from atlas.adapters.direct_publisher_news import (
+    DirectPublisherNewsAdapter,
+)
 
 
 @dataclass(slots=True)
@@ -66,6 +69,10 @@ class IntelligenceSourceAdapter:
         )
 
         self.web = web
+
+        self.direct_publishers = (
+            DirectPublisherNewsAdapter()
+        )
 
     @staticmethod
     def _normalize(item) -> dict:
@@ -135,6 +142,13 @@ class IntelligenceSourceAdapter:
                 results.append(
                     self._normalize(item)
                 )
+
+        for item in self.direct_publishers.search(
+            symbol
+        ):
+            results.append(
+                self._normalize(item)
+            )
 
         if include_sec or cik:
             if cik is None:

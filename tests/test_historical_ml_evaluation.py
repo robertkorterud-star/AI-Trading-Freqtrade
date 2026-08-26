@@ -139,3 +139,40 @@ def test_historical_evaluator_does_not_modify_predictions():
     ]
 
     assert after == before
+
+
+def test_historical_evaluator_can_read_repository(
+    tmp_path,
+):
+    from atlas.database.connection import Database
+    from atlas.database.prediction_repository import (
+        PredictionRepository,
+    )
+    from atlas.database.schema import initialize_database
+
+    database = Database(
+        tmp_path / "historical_ml.db"
+    )
+
+    initialize_database(database)
+
+    repository = PredictionRepository(
+        database
+    )
+
+    predictions = _predictions(20)
+
+    for prediction in predictions:
+        repository.save(prediction)
+
+    result = HistoricalMLEvaluator().evaluate_repository(
+        repository
+    )
+
+    assert result.prediction_count == 20
+    assert result.training_examples == 20
+    assert result.skipped_predictions == 0
+
+    assert result.evaluation is not None
+    assert result.evaluation.train_examples == 16
+    assert result.evaluation.test_examples == 4

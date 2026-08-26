@@ -223,6 +223,66 @@ ATLAS - {{ asset.symbol }}
             </section>
 
 
+            <section
+                class="market-terminal-info-card
+                       multi-timeframe-card"
+            >
+
+                <div class="multi-timeframe-header">
+
+                    <div>
+                        <strong>
+                            🧠 Multi-Timeframe
+                        </strong>
+
+                        <small>
+                            4h · 1h · 15m · 5m · 1m
+                        </small>
+                    </div>
+
+                    <span
+                        id="multi-timeframe-signal"
+                        class="multi-timeframe-signal signal-wait"
+                    >
+                        WAIT
+                    </span>
+
+                </div>
+
+                <div
+                    id="multi-timeframe-rows"
+                    class="multi-timeframe-rows"
+                >
+                    <div class="multi-timeframe-loading">
+                        Loading...
+                    </div>
+                </div>
+
+                <div class="multi-timeframe-summary">
+
+                    <div>
+                        <small>Alignment</small>
+                        <strong
+                            id="multi-timeframe-alignment"
+                        >
+                            —
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Confidence</small>
+                        <strong
+                            id="multi-timeframe-confidence"
+                        >
+                            —
+                        </strong>
+                    </div>
+
+                </div>
+
+            </section>
+
+
             <section class="market-terminal-info-card">
 
                 <button
@@ -411,6 +471,26 @@ ATLAS - {{ asset.symbol }}
     const changeElement =
         document.getElementById(
             "market-current-change"
+        );
+
+    const multiTimeframeSignal =
+        document.getElementById(
+            "multi-timeframe-signal"
+        );
+
+    const multiTimeframeRows =
+        document.getElementById(
+            "multi-timeframe-rows"
+        );
+
+    const multiTimeframeAlignment =
+        document.getElementById(
+            "multi-timeframe-alignment"
+        );
+
+    const multiTimeframeConfidence =
+        document.getElementById(
+            "multi-timeframe-confidence"
         );
 
     const ma20Toggle =
@@ -2763,6 +2843,144 @@ ATLAS - {{ asset.symbol }}
             },
             30000
         );
+
+
+    async function loadMultiTimeframe() {
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/multi-timeframe?" +
+                    new URLSearchParams({
+                        symbol,
+                    })
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error ||
+                    "Multi-timeframe analysis unavailable."
+                );
+            }
+
+            const overall =
+                String(
+                    data.overall_signal ||
+                    "WAIT"
+                ).toUpperCase();
+
+            multiTimeframeSignal.textContent =
+                overall;
+
+            multiTimeframeSignal.className =
+                "multi-timeframe-signal " +
+                (
+                    overall === "BUY"
+                        ? "signal-buy"
+                        : overall === "SELL"
+                            ? "signal-sell"
+                            : "signal-wait"
+                );
+
+            multiTimeframeAlignment.textContent =
+                Number(
+                    data.alignment
+                ).toFixed(0) + "%";
+
+            multiTimeframeConfidence.textContent =
+                Number(
+                    data.confidence
+                ).toFixed(0) + "%";
+
+            multiTimeframeRows.innerHTML =
+                (data.timeframes || [])
+                    .map(
+                        function (item) {
+
+                            const trend =
+                                String(
+                                    item.trend ||
+                                    "NEUTRAL"
+                                ).toUpperCase();
+
+                            const signal =
+                                String(
+                                    item.signal ||
+                                    "WAIT"
+                                ).toUpperCase();
+
+                            const trendClass =
+                                trend === "BULLISH"
+                                    ? "trend-bullish"
+                                    : trend === "BEARISH"
+                                        ? "trend-bearish"
+                                        : "trend-neutral";
+
+                            const signalClass =
+                                signal === "BUY"
+                                    ? "signal-buy"
+                                    : signal === "SELL"
+                                        ? "signal-sell"
+                                        : "signal-wait";
+
+                            return `
+                                <div class="multi-timeframe-row">
+
+                                    <strong>
+                                        ${item.timeframe}
+                                    </strong>
+
+                                    <span
+                                        class="${trendClass}"
+                                    >
+                                        ${trend}
+                                    </span>
+
+                                    <span
+                                        class="${signalClass}"
+                                    >
+                                        ${signal}
+                                    </span>
+
+                                </div>
+                            `;
+                        }
+                    )
+                    .join("");
+
+        } catch (error) {
+
+            multiTimeframeSignal.textContent =
+                "—";
+
+            multiTimeframeSignal.className =
+                "multi-timeframe-signal signal-wait";
+
+            multiTimeframeRows.innerHTML =
+                `<div class="multi-timeframe-loading">
+                    ${error.message}
+                </div>`;
+
+            multiTimeframeAlignment.textContent =
+                "—";
+
+            multiTimeframeConfidence.textContent =
+                "—";
+        }
+    }
+
+
+    loadMultiTimeframe();
+
+
+    window.setInterval(
+        loadMultiTimeframe,
+        30000
+    );
 
 
     loadCandles(

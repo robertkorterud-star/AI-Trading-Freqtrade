@@ -3575,3 +3575,462 @@ main .dashboard-layout > .dashboard-right {
     }
 
 }
+
+/* =====================================================
+   MARKETS - COMPACT INTELLIGENCE VIEW
+   ===================================================== */
+
+.research-overview {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0 22px;
+}
+
+.research-overview > div {
+    padding: 14px 16px;
+    border: 1px solid #263241;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.35);
+}
+
+.research-overview small {
+    display: block;
+    margin-bottom: 5px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.research-overview strong {
+    font-size: 20px;
+}
+
+.overview-positive {
+    color: #22c55e;
+}
+
+.overview-muted {
+    color: #94a3b8;
+}
+
+.strategy-learning-history {
+    margin: 0 0 24px;
+    border: 1px solid #263241;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.20);
+}
+
+.strategy-learning-history > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 800;
+}
+
+.strategy-learning-history > summary::-webkit-details-marker {
+    display: none;
+}
+
+.strategy-learning-history > summary::after {
+    content: "▾";
+    color: #64748b;
+}
+
+.strategy-learning-history:not([open]) > summary::after {
+    content: "▸";
+}
+
+.strategy-learning-history > summary span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.strategy-learning-history-body {
+    padding: 0 14px 14px;
+}
+
+.strategy-learning-history .strategy-round {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.10);
+}
+
+.strategy-learning-history .strategy-round:first-child {
+    border-top: 0;
+}
+
+.strategy-learning-history .strategy-round h4 {
+    margin: 0 0 8px;
+    color: #94a3b8;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.strategy-research-grid {
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+}
+
+.strategy-result {
+    min-width: 0;
+}
+
+.strategy-assessment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.strategy-assessment span {
+    color: #94a3b8;
+}
+
+.strategy-assessment-reject {
+    border: 1px solid #3f2b2b;
+    background: rgba(127, 29, 29, 0.10);
+    color: #fca5a5;
+}
+
+.strategy-assessment-pass {
+    border: 1px solid #24402f;
+    background: rgba(22, 101, 52, 0.10);
+    color: #86efac;
+}
+
+.strategy-assessment-inconclusive {
+    border: 1px solid #3b3a25;
+    background: rgba(120, 113, 0, 0.08);
+    color: #fde68a;
+}
+
+.strategy-result .strategy-reasoning {
+    margin-top: 16px;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.18);
+}
+
+.strategy-result .strategy-reasoning ul {
+    margin-bottom: 0;
+}
+
+.strategy-timing {
+    margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+
+    .research-overview {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .strategy-research-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .research-overview {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+/* =====================================================
+   MARKETS - REDUCE TYPOGRAPHY WITHOUT SHRINKING
+   HISTORICAL TIMING
+   ===================================================== */
+
+.markets-results-header h2 {
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+.strategy-research-card > h2 {
+    font-size: 26px;
+    line-height: 1.2;
+    margin-bottom: 14px;
+}
+
+.strategy-research-intro {
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 10px 0 16px;
+    color: #94a3b8;
+}
+
+.strategy-result {
+    font-size: 13px;
+}
+
+.strategy-result h3 {
+    font-size: 20px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+}
+
+.strategy-result p {
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 5px 0;
+}
+
+.strategy-result .market-card-type {
+    font-size: 10px;
+}
+
+.strategy-result .strategy-reasoning {
+    margin-top: 12px;
+    padding: 10px;
+}
+
+.strategy-result .strategy-reasoning strong {
+    font-size: 12px;
+}
+
+.strategy-result .strategy-reasoning li {
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.strategy-backtest {
+    margin-top: 16px;
+}
+
+.strategy-backtest h4 {
+    font-size: 16px;
+    line-height: 1.2;
+    margin-bottom: 10px;
+}
+
+.strategy-backtest .market-data {
+    gap: 8px;
+}
+
+.strategy-backtest .market-data small {
+    font-size: 10px;
+}
+
+.strategy-backtest .market-data strong {
+    font-size: 14px;
+}
+
+.strategy-assessment {
+    font-size: 11px;
+    line-height: 1.35;
+    margin-top: 10px;
+    padding: 7px 10px;
+}
+
+/* Keep Historical Timing comfortable and readable. */
+.strategy-timing {
+    font-size: 12px;
+}
+
+.strategy-timing-header h4 {
+    font-size: 12px;
+}
+
+/* =====================================================
+   MARKET TERMINAL - MULTI-TIMEFRAME PANEL
+   ===================================================== */
+
+.multi-timeframe-card {
+    padding: 14px;
+}
+
+.multi-timeframe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.multi-timeframe-header strong {
+    display: block;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.multi-timeframe-header small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 9px;
+}
+
+.multi-timeframe-signal {
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.multi-timeframe-rows {
+    display: grid;
+    gap: 4px;
+}
+
+.multi-timeframe-row {
+    display: grid;
+    grid-template-columns:
+        30px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 7px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.35);
+    font-size: 9px;
+}
+
+.multi-timeframe-row > strong {
+    font-size: 10px;
+}
+
+.trend-bullish {
+    color: #22c55e;
+}
+
+.trend-bearish {
+    color: #f87171;
+}
+
+.trend-neutral {
+    color: #94a3b8;
+}
+
+.signal-buy {
+    color: #22c55e;
+    font-weight: 800;
+}
+
+.signal-sell {
+    color: #f87171;
+    font-weight: 800;
+}
+
+.signal-wait {
+    color: #fbbf24;
+    font-weight: 800;
+}
+
+.multi-timeframe-signal.signal-buy {
+    background: rgba(22, 163, 74, 0.15);
+}
+
+.multi-timeframe-signal.signal-sell {
+    background: rgba(220, 38, 38, 0.15);
+}
+
+.multi-timeframe-signal.signal-wait {
+    background: rgba(234, 179, 8, 0.12);
+}
+
+.multi-timeframe-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-top: 9px;
+}
+
+.multi-timeframe-summary > div {
+    padding: 7px 8px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.35);
+}
+
+.multi-timeframe-summary small {
+    display: block;
+    color: #64748b;
+    font-size: 8px;
+    text-transform: uppercase;
+}
+
+.multi-timeframe-summary strong {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+}
+
+.multi-timeframe-loading {
+    padding: 7px;
+    color: #64748b;
+    font-size: 9px;
+}
+
+.research-source-summary {
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    border: 1px solid #263241;
+    border-radius: 9px;
+    background: rgba(15, 23, 42, 0.20);
+}
+
+.research-source-title {
+    margin-bottom: 8px;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.research-source-channels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.research-source-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.60);
+    color: #cbd5e1;
+    font-size: 10px;
+}
+
+.research-source-pill strong {
+    color: #f8fafc;
+    font-size: 10px;
+}
+
+.research-publishers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-top: 9px;
+    color: #64748b;
+    font-size: 9px;
+}
+
+.research-publishers small {
+    width: 100%;
+    color: #475569;
+    font-size: 9px;
+    text-transform: uppercase;
+}
+
+.research-publishers span {
+    color: #94a3b8;
+}

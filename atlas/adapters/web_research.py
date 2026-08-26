@@ -217,6 +217,14 @@ class WebResearchAdapter:
                     or ""
                 ).strip()
 
+                publisher = (
+                    item.findtext(
+                        "source",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
                 if not title:
                     continue
 
@@ -243,6 +251,7 @@ class WebResearchAdapter:
                 results.append(
                     {
                         "source": "Google News",
+                        "publisher": publisher,
                         "title": title,
                         "summary": summary,
                         "sentiment": "neutral",

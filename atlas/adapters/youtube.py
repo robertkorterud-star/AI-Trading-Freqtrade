@@ -21,24 +21,27 @@ class YouTubeAdapter:
     )
 
     RESEARCH_QUERIES = [
-        "{symbol} trading strategy",
-        "{symbol} technical analysis",
-        "{symbol} professional trader",
-        "{symbol} momentum strategy",
-        "{symbol} RSI strategy",
-        "{symbol} moving average strategy",
-        "{symbol} options strategy",
-        "{symbol} hedge fund",
-        "{symbol} institutional investor",
-        "{symbol} Warren Buffett",
-        "{symbol} Michael Burry",
-        "{symbol} Stanley Druckenmiller",
+        (
+            "{symbol} trading strategy "
+            "technical analysis professional trader "
+            "RSI momentum"
+        ),
+        (
+            "{symbol} day trading swing trading "
+            "breakout support resistance "
+            "institutional investor hedge fund"
+        ),
+        (
+            "{symbol} Warren Buffett Michael Burry "
+            "Stanley Druckenmiller"
+        ),
     ]
 
     MAX_RESULTS = 30
 
     def __init__(self) -> None:
         self.api_key = os.getenv("YOUTUBE_API_KEY")
+        self.last_error = None
 
     @staticmethod
     def _score_result(item: dict, symbol: str) -> int:
@@ -58,11 +61,39 @@ class YouTubeAdapter:
 
         score = 0
 
-        # The requested symbol must be relevant to the video.
+        # The requested market is often referred to by
+        # several aliases on YouTube. For example:
+        # XRP-USD -> XRP / XRP USD / XRP/USD / Ripple.
         symbol_lower = symbol.lower()
 
-        symbol_mentions = (
-            text.count(symbol_lower)
+        aliases = {
+            symbol_lower,
+        }
+
+        normalized = (
+            symbol_lower
+            .replace("-usd", "")
+            .replace("_usd", "")
+            .replace("/usd", "")
+            .strip()
+        )
+
+        if normalized:
+            aliases.add(normalized)
+            aliases.add(
+                f"{normalized} usd"
+            )
+            aliases.add(
+                f"{normalized}/usd"
+            )
+
+        if normalized == "xrp":
+            aliases.add("ripple")
+
+        symbol_mentions = sum(
+            text.count(alias)
+            for alias in aliases
+            if alias
         )
 
         if symbol_mentions == 0:
@@ -176,7 +207,10 @@ class YouTubeAdapter:
         """Search YouTube and return ranked research results."""
 
         if not self.api_key:
+            self.last_error = "missing_api_key"
             return []
+
+        self.last_error = None
 
         results = []
         seen_video_ids = set()
@@ -204,7 +238,31 @@ class YouTubeAdapter:
                 response.raise_for_status()
                 data = response.json()
 
-            except Exception:
+            except requests.HTTPError as error:
+                response = getattr(
+                    error,
+                    "response",
+                    None,
+                )
+
+                if (
+                    response is not None
+                    and response.status_code == 429
+                ):
+                    self.last_error = (
+                        "quota_exceeded"
+                    )
+                    break
+
+                self.last_error = (
+                    type(error).__name__
+                )
+                continue
+
+            except Exception as error:
+                self.last_error = (
+                    type(error).__name__
+                )
                 continue
 
             for item in data.get("items", []):

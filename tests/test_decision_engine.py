@@ -20,12 +20,17 @@ class FakeAIAdapter:
 
 def test_decision_engine_returns_buy(monkeypatch):
 
-    import atlas.adapters.ai
+    from atlas.core.ai_provider_factory import (
+        AIProviderFactory,
+    )
 
     monkeypatch.setattr(
-        atlas.adapters.ai,
-        "AIAdapter",
-        FakeAIAdapter,
+        AIProviderFactory,
+        "create",
+        classmethod(
+            lambda cls, config=None:
+                FakeAIAdapter()
+        ),
     )
 
     analyst = NewsAnalyst()

@@ -25,6 +25,9 @@ from atlas.adapters.web_research import (
 from atlas.adapters.historical_market_data import (
     HistoricalMarketDataAdapter,
 )
+from atlas.services.multi_timeframe_service import (
+    MultiTimeframeService,
+)
 
 app = FastAPI(title="ATLAS Dashboard")
 
@@ -55,6 +58,8 @@ strategy_research = AdaptiveStrategyResearchService(
     web_research=web_research,
 )
 
+multi_timeframe_service = MultiTimeframeService()
+
 intelligence_sources = IntelligenceSourceAdapter(
     web=web_research,
 )
@@ -64,6 +69,9 @@ STRATEGY_RESEARCH_CACHE_TTL = 300.0
 
 _strategy_research_cache = {}
 _intelligence_sources_cache = {}
+
+MULTI_TIMEFRAME_CACHE_TTL = 30.0
+_multi_timeframe_cache = {}
 
 
 def get_cached_intelligence_sources(
@@ -132,6 +140,98 @@ def get_cached_strategy_research(
     )
 
     return result
+
+
+def get_cached_multi_timeframe(
+    symbol: str,
+):
+    """Return a short-lived multi-timeframe analysis."""
+
+    now = time.monotonic()
+
+    cached = _multi_timeframe_cache.get(
+        symbol
+    )
+
+    if cached is not None:
+
+        created_at, result = cached
+
+        if (
+            now - created_at
+            < MULTI_TIMEFRAME_CACHE_TTL
+        ):
+            return result
+
+    result = multi_timeframe_service.analyze(
+        symbol
+    )
+
+    _multi_timeframe_cache[symbol] = (
+        now,
+        result,
+    )
+
+    return result
+
+
+def summarize_research_sources(
+    items: list[dict],
+):
+    """Summarize research channels and publishers."""
+
+    channels = {}
+    publishers = {}
+
+    for item in items or []:
+
+        channel = (
+            str(
+                item.get(
+                    "source",
+                    "Unknown",
+                )
+            ).strip()
+            or "Unknown"
+        )
+
+        channels[channel] = (
+            channels.get(channel, 0) + 1
+        )
+
+        publisher = (
+            str(
+                item.get(
+                    "publisher",
+                    "",
+                )
+            ).strip()
+        )
+
+        if publisher:
+            publishers[publisher] = (
+                publishers.get(
+                    publisher,
+                    0,
+                ) + 1
+            )
+
+    return {
+        "channels": sorted(
+            channels.items(),
+            key=lambda item: (
+                -item[1],
+                item[0].lower(),
+            ),
+        ),
+        "publishers": sorted(
+            publishers.items(),
+            key=lambda item: (
+                -item[1],
+                item[0].lower(),
+            ),
+        ),
+    }
 
 
 def get_language():
@@ -480,6 +580,66 @@ async def market_candles_api(
     )
 
 
+@app.get("/api/multi-timeframe")
+async def multi_timeframe_api(
+    request: Request,
+):
+    symbol = request.query_params.get(
+        "symbol",
+        "",
+    ).strip().upper()
+
+    if not symbol:
+        return JSONResponse(
+            content={
+                "error": "Symbol is required.",
+            },
+            status_code=400,
+        )
+
+    try:
+
+        result = get_cached_multi_timeframe(
+            symbol
+        )
+
+        return JSONResponse(
+            content={
+                "symbol": result.symbol,
+                "overall_signal":
+                    result.overall_signal,
+                "confidence":
+                    result.confidence,
+                "alignment":
+                    result.alignment,
+                "timeframes": [
+                    {
+                        "timeframe":
+                            item.timeframe,
+                        "trend":
+                            item.trend,
+                        "momentum":
+                            item.momentum,
+                        "signal":
+                            item.signal,
+                        "confidence":
+                            item.confidence,
+                    }
+                    for item in result.timeframes
+                ],
+            }
+        )
+
+    except Exception as exc:
+
+        return JSONResponse(
+            content={
+                "error": str(exc),
+            },
+            status_code=502,
+        )
+
+
 @app.get("/markets", response_class=HTMLResponse)
 async def markets(request: Request):
 
@@ -496,6 +656,10 @@ async def markets(request: Request):
     }
 
     strategy_research_result = None
+    research_source_summary = {
+        "channels": [],
+        "publishers": [],
+    }
 
     if research_symbol:
 
@@ -512,6 +676,12 @@ async def markets(request: Request):
             )
         )
 
+        research_source_summary = (
+            summarize_research_sources(
+                research_items
+            )
+        )
+
     return templates.TemplateResponse(
         request=request,
         name="markets.html",
@@ -521,6 +691,8 @@ async def markets(request: Request):
             "query": query,
             "market_results": results,
             "strategy_research": strategy_research_result,
+            "research_source_summary":
+                research_source_summary,
         },
     )
 

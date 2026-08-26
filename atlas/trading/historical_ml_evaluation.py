@@ -73,3 +73,17 @@ class HistoricalMLEvaluator:
             skipped_predictions=skipped,
             evaluation=evaluation,
         )
+
+    def evaluate_repository(
+        self,
+        repository,
+        train_ratio: float = 0.8,
+    ) -> HistoricalMLEvaluation:
+        """Evaluate predictions loaded from a PredictionRepository."""
+
+        predictions = repository.get_evaluated()
+
+        return self.evaluate(
+            predictions=predictions,
+            train_ratio=train_ratio,
+        )

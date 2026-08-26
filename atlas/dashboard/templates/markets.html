@@ -153,15 +153,119 @@ ATLAS - Markets
         <div class="card strategy-research-card">
 
             <h2>
-                🧠 ATLAS Strategy Research —
+                🧠 ATLAS Market Intelligence —
                 {{ strategy_research.symbol }}
             </h2>
 
+            {% if research_source_summary.channels %}
+
+                <div class="research-source-summary">
+
+                    <div class="research-source-title">
+                        Research sources
+                    </div>
+
+                    <div class="research-source-channels">
+
+                        {% for source, count in research_source_summary.channels %}
+
+                            <span class="research-source-pill">
+                                {{ source }}
+                                <strong>{{ count }}</strong>
+                            </span>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% if research_source_summary.publishers %}
+
+                        <div class="research-publishers">
+
+                            <small>
+                                Publishers found:
+                            </small>
+
+                            {% for publisher, count in research_source_summary.publishers[:8] %}
+
+                                <span>
+                                    {{ publisher }}
+                                    {% if count > 1 %}
+                                        ×{{ count }}
+                                    {% endif %}
+                                </span>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            {% endif %}
+
+
+            {% if strategy_research.strategies %}
+
+                <div class="research-overview">
+
+                    <div>
+                        <small>Strategies tested</small>
+                        <strong>
+                            {{ strategy_research.strategies|length }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Passed</small>
+                        <strong class="overview-positive">
+                            {{
+                                strategy_research.assessments
+                                | selectattr("status", "equalto", "PASS")
+                                | list
+                                | length
+                            }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Rejected</small>
+                        <strong class="overview-muted">
+                            {{
+                                strategy_research.assessments
+                                | selectattr("status", "equalto", "REJECT")
+                                | list
+                                | length
+                            }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Timing signals</small>
+                        <strong>
+                            {{
+                                strategy_research.timing
+                                | map(attribute="signals")
+                                | sum
+                            }}
+                        </strong>
+                    </div>
+
+                </div>
+
+            {% endif %}
+
             {% if strategy_research.history|length > 1 %}
 
-                <div class="strategy-learning-history">
+                <details class="strategy-learning-history">
 
-                    <h3>🧠 ATLAS Learning History</h3>
+                    <summary>
+                        🧠 ATLAS Learning History
+                        <span>Rounds {{ strategy_research.history|length }}</span>
+                    </summary>
+
+                <div class="strategy-learning-history-body">
 
                     {% for round in strategy_research.history %}
 
@@ -230,6 +334,10 @@ ATLAS - Markets
                     {% endfor %}
 
                 </div>
+
+                </div>
+
+            </details>
 
             {% endif %}
 

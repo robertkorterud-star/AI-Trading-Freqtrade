@@ -195,3 +195,48 @@ def test_backtest_does_not_create_live_decision():
         result,
         "sell",
     )
+
+
+def test_backtest_accepts_historical_market_data():
+
+    from datetime import datetime, timedelta
+
+    from atlas.trading.historical_market_data import (
+        HistoricalMarketData,
+        OHLCVBar,
+    )
+
+    start = datetime(
+        2026,
+        1,
+        1,
+    )
+
+    bars = [
+        OHLCVBar(
+            timestamp=start + timedelta(
+                days=index
+            ),
+            open=float(100 + index),
+            high=float(105 + index),
+            low=float(99 + index),
+            close=float(104 + index),
+            volume=1000.0,
+        )
+        for index in range(40)
+    ]
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=bars,
+    )
+
+    result = TrendFollowingBacktester(
+        fast_period=3,
+        slow_period=8,
+        transaction_cost_percent=0.0,
+        slippage_percent=0.0,
+    ).run(data)
+
+    assert result.final_capital >= 10000.0
+    assert result.buy_and_hold_return_percent > 0.0

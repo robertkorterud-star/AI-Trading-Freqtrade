@@ -125,6 +125,7 @@ def test_youtube_search_includes_expert_research():
     assert "warren buffett" in combined
     assert "michael burry" in combined
     assert "stanley druckenmiller" in combined
+    assert len(mock_get.call_args_list) == 3
 
 
 def test_youtube_marks_symbol_relevance():
