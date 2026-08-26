@@ -378,6 +378,106 @@ ATLAS - Markets
 
                                     </div>
 
+                                    {% for timing in strategy_research.timing %}
+
+                                        {% if timing.strategy_name == strategy.name %}
+
+                                            <div class="strategy-timing">
+
+                                                <div class="strategy-timing-header">
+                                                    <h4>
+                                                        Historical Timing
+                                                    </h4>
+
+                                                    <span class="strategy-timing-badge">
+                                                        {{ timing.signals }} signals
+                                                    </span>
+                                                </div>
+
+                                                {% if timing.best_entry_price is not none %}
+
+                                                    <div class="strategy-timing-grid">
+
+                                                        <div>
+                                                            <small>Max favorable</small>
+                                                            <strong class="timing-positive">
+                                                                +{{ timing.max_favorable_excursion }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>Median favorable</small>
+                                                            <strong>
+                                                                +{{ timing.median_favorable_excursion }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>Median drawdown</small>
+                                                            <strong>
+                                                                {{ timing.median_adverse_excursion }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>5-candle target</small>
+                                                            <strong>
+                                                                {{ timing.target_hit_5 }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>5-candle stop</small>
+                                                            <strong>
+                                                                {{ timing.stop_hit_5 }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>20-candle target</small>
+                                                            <strong>
+                                                                {{ timing.target_hit_20 }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>20-candle stop</small>
+                                                            <strong>
+                                                                {{ timing.stop_hit_20 }}%
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <small>Best signal window</small>
+                                                            <strong>
+                                                                {{ timing.best_window }}
+                                                                candles
+                                                            </strong>
+                                                        </div>
+
+                                                    </div>
+
+                                                    <p class="strategy-timing-note">
+                                                        MFE/MAE forward-window analysis.
+                                                        This is an opportunity measure,
+                                                        not an executable strategy return.
+                                                    </p>
+
+                                                {% else %}
+
+                                                    <p class="strategy-timing-empty">
+                                                        No historical timing opportunity
+                                                        was detected.
+                                                    </p>
+
+                                                {% endif %}
+
+                                            </div>
+
+                                        {% endif %}
+
+                                    {% endfor %}
+
                                 {% endif %}
 
                             {% endfor %}

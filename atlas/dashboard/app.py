@@ -2,6 +2,8 @@
 ATLAS Dashboard
 """
 
+import time
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -56,6 +58,80 @@ strategy_research = AdaptiveStrategyResearchService(
 intelligence_sources = IntelligenceSourceAdapter(
     web=web_research,
 )
+
+
+STRATEGY_RESEARCH_CACHE_TTL = 300.0
+
+_strategy_research_cache = {}
+_intelligence_sources_cache = {}
+
+
+def get_cached_intelligence_sources(
+    symbol: str,
+):
+    """Return cached web research for a symbol."""
+
+    now = time.monotonic()
+
+    cached = _intelligence_sources_cache.get(
+        symbol
+    )
+
+    if cached is not None:
+
+        created_at, result = cached
+
+        if (
+            now - created_at
+            < STRATEGY_RESEARCH_CACHE_TTL
+        ):
+            return result
+
+    result = intelligence_sources.get(
+        symbol
+    )
+
+    _intelligence_sources_cache[symbol] = (
+        now,
+        result,
+    )
+
+    return result
+
+
+def get_cached_strategy_research(
+    symbol: str,
+    research_items: list[dict],
+):
+    """Return cached research for a symbol while it is fresh."""
+
+    now = time.monotonic()
+
+    cached = _strategy_research_cache.get(
+        symbol
+    )
+
+    if cached is not None:
+
+        created_at, result = cached
+
+        if (
+            now - created_at
+            < STRATEGY_RESEARCH_CACHE_TTL
+        ):
+            return result
+
+    result = get_cached_strategy_research(
+        symbol,
+        research_items,
+    )
+
+    _strategy_research_cache[symbol] = (
+        now,
+        result,
+    )
+
+    return result
 
 
 def get_language():
@@ -423,14 +499,16 @@ async def markets(request: Request):
 
     if research_symbol:
 
-        research_items = intelligence_sources.get(
-            research_symbol
+        research_items = (
+            get_cached_intelligence_sources(
+                research_symbol,
+            )
         )
 
         strategy_research_result = (
-            strategy_research.research(
-                symbol=research_symbol,
-                research=research_items,
+            get_cached_strategy_research(
+                research_symbol,
+                research_items,
             )
         )
 
@@ -460,8 +538,10 @@ async def strategy_research_api(request: Request):
             status_code=400,
         )
 
-    research_items = intelligence_sources.get(
-        symbol
+    research_items = (
+        get_cached_intelligence_sources(
+            symbol,
+        )
     )
 
     result = strategy_research.research(

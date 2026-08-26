@@ -3493,3 +3493,85 @@ main .dashboard-layout > .dashboard-right {
     outline: none;
     border-color: #38bdf8;
 }
+
+.strategy-timing {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid #263241;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.strategy-timing-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.strategy-timing-header h4 {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 12px;
+}
+
+.strategy-timing-badge {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #172033;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.strategy-timing-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.strategy-timing-grid > div {
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.strategy-timing-grid small {
+    display: block;
+    margin-bottom: 5px;
+    color: #64748b;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.strategy-timing-grid strong {
+    font-size: 14px;
+}
+
+.timing-positive {
+    color: #22c55e;
+}
+
+.strategy-timing-note {
+    margin: 12px 0 0;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.strategy-timing-empty {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+}
+
+@media (max-width: 900px) {
+
+    .strategy-timing-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+}
