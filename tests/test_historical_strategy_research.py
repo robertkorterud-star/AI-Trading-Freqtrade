@@ -125,3 +125,33 @@ def test_historical_strategy_research_is_deterministic():
     )
 
     assert first == second
+
+
+def test_historical_strategy_research_includes_data_quality():
+
+    data = _data()
+
+    result = HistoricalStrategyResearch().run(
+        data,
+        train_size=50,
+        test_size=20,
+    )
+
+    assert result.quality is not None
+    assert result.quality.valid is True
+    assert result.quality.bar_count == len(data)
+
+
+def test_historical_strategy_research_preserves_data_metadata():
+
+    data = _data()
+
+    result = HistoricalStrategyResearch().run(
+        data,
+        train_size=50,
+        test_size=20,
+    )
+
+    assert data.symbol == "BTC-USD"
+    assert data.timeframe == "4h"
+    assert data.source == "coingecko"

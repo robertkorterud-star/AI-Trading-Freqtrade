@@ -7,6 +7,10 @@ walk-forward evaluation and strategy research reporting.
 
 from dataclasses import dataclass
 
+from atlas.trading.historical_data_quality import (
+    HistoricalDataQualityResult,
+    HistoricalDataQualityValidator,
+)
 from atlas.trading.historical_market_data import (
     HistoricalMarketData,
 )
@@ -28,6 +32,7 @@ class HistoricalStrategyResearchResult:
     backtest: object
     walk_forward: object
     report: object
+    quality: HistoricalDataQualityResult
 
 
 class HistoricalStrategyResearch:
@@ -53,6 +58,11 @@ class HistoricalStrategyResearch:
         train_size: int,
         test_size: int,
     ) -> HistoricalStrategyResearchResult:
+
+        quality = (
+            HistoricalDataQualityValidator()
+            .validate(data)
+        )
 
         backtest = TrendFollowingBacktester(
             fast_period=self.fast_period,
@@ -91,4 +101,5 @@ class HistoricalStrategyResearch:
             backtest=backtest,
             walk_forward=walk_forward,
             report=report,
+            quality=quality,
         )
