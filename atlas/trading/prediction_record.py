@@ -21,6 +21,9 @@ class PredictionRecord:
     database_id: int | None = None
     analysts: list[str] = field(default_factory=list)
     reason: str = ""
+    features: dict[str, float] = field(
+        default_factory=dict
+    )
 
     # Outcome fields are populated after the prediction
     # has been evaluated.
@@ -42,6 +45,7 @@ class PredictionRecord:
             ),
             "analysts": self.analysts,
             "reason": self.reason,
+            "features": self.features,
             "evaluated": self.evaluated,
             "correct": self.correct,
             "evaluated_price_usd": (

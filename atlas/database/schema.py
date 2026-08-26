@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     timestamp TEXT NOT NULL,
     analysts TEXT NOT NULL,
     reason TEXT NOT NULL,
+    features TEXT NOT NULL DEFAULT '{}',
     evaluated INTEGER NOT NULL DEFAULT 0,
     correct INTEGER,
     evaluated_price_usd REAL,
@@ -81,4 +82,21 @@ def initialize_database(database: Database):
 
     with database.connect() as connection:
         connection.executescript(SCHEMA)
+
+        columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(predictions)"
+            ).fetchall()
+        }
+
+        if "features" not in columns:
+            connection.execute(
+                """
+                ALTER TABLE predictions
+                ADD COLUMN features TEXT
+                NOT NULL DEFAULT '{}'
+                """
+            )
+
         connection.commit()

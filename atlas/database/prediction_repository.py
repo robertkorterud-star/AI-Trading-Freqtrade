@@ -32,13 +32,14 @@ class PredictionRepository:
                     timestamp,
                     analysts,
                     reason,
+                    features,
                     evaluated,
                     correct,
                     evaluated_price_usd,
                     price_change_percent,
                     evaluated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     prediction.symbol,
@@ -54,6 +55,10 @@ class PredictionRepository:
                         ensure_ascii=False,
                     ),
                     prediction.reason,
+                    json.dumps(
+                        prediction.features,
+                        ensure_ascii=False,
+                    ),
                     int(prediction.evaluated),
                     (
                         int(prediction.correct)
@@ -237,6 +242,10 @@ class PredictionRepository:
                 row["analysts"]
             ),
             reason=row["reason"],
+            features=json.loads(
+                row["features"]
+                or "{}"
+            ),
             evaluated=bool(row["evaluated"]),
             correct=(
                 bool(row["correct"])
