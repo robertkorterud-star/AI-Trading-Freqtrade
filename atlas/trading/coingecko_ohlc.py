@@ -8,6 +8,9 @@ HistoricalMarketData.
 from datetime import datetime, timezone
 from typing import Protocol
 
+from atlas.trading.coingecko_http_client import (
+    CoinGeckoHTTPClient,
+)
 from atlas.trading.historical_data_provider import (
     HistoricalDataProvider,
 )
@@ -35,7 +38,7 @@ class CoinGeckoOHLCProvider(
 
     def __init__(
         self,
-        client: CoinGeckoOHLCClient,
+        client: CoinGeckoOHLCClient | CoinGeckoHTTPClient,
         coin_ids: dict[str, str] | None = None,
         vs_currency: str = "usd",
     ):

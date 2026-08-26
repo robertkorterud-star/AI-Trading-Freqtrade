@@ -207,3 +207,66 @@ def test_ohlc_provider_rejects_invalid_date_range():
             start=start,
             end=end,
         )
+
+
+def test_ohlc_provider_accepts_real_http_client_contract():
+
+    from atlas.trading.coingecko_http_client import (
+        CoinGeckoHTTPClient,
+    )
+
+    class FakeResponse:
+
+        status_code = 200
+
+        def json(self):
+            return [
+                [
+                    1767225600000,
+                    100.0,
+                    105.0,
+                    99.0,
+                    104.0,
+                ],
+                [
+                    1767312000000,
+                    104.0,
+                    110.0,
+                    103.0,
+                    108.0,
+                ],
+            ]
+
+    class FakeTransport:
+
+        def get(
+            self,
+            url,
+            *,
+            params,
+            timeout,
+        ):
+            return FakeResponse()
+
+    client = CoinGeckoHTTPClient(
+        transport=FakeTransport(),
+    )
+
+    provider = CoinGeckoOHLCProvider(
+        client=client,
+        coin_ids={
+            "BTC-USD": "bitcoin",
+        },
+    )
+
+    result = provider.load(
+        symbol="BTC-USD",
+    )
+
+    assert result.symbol == "BTC-USD"
+    assert len(result) == 2
+
+    assert result.bars[0].open == 100.0
+    assert result.bars[0].high == 105.0
+    assert result.bars[0].low == 99.0
+    assert result.bars[0].close == 104.0
