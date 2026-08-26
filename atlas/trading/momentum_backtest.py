@@ -3,9 +3,8 @@ ATLAS Momentum Backtest.
 
 Research-only momentum strategy.
 
-The strategy is long when price momentum over the
-lookback period is positive and exits when momentum
-turns non-positive.
+The strategy enters when recent momentum is positive
+and exits when momentum turns non-positive.
 """
 
 from dataclasses import dataclass
@@ -16,16 +15,26 @@ from atlas.trading.historical_market_data import (
 
 
 @dataclass(frozen=True, slots=True)
+class MomentumTrade:
+    entry_index: int
+    exit_index: int
+    entry_price: float
+    exit_price: float
+    return_percent: float
+
+
+@dataclass(frozen=True, slots=True)
 class MomentumBacktestResult:
     strategy_return_percent: float
     buy_and_hold_return_percent: float
     max_drawdown_percent: float
     trade_count: int
     win_rate_percent: float
+    trades: tuple[MomentumTrade, ...]
 
 
 class MomentumBacktester:
-    """Backtest a simple long-only momentum strategy."""
+    """Backtest a simple price-momentum strategy."""
 
     def __init__(
         self,
@@ -38,12 +47,22 @@ class MomentumBacktester:
                 "lookback_period must be positive."
             )
 
+        if transaction_cost_percent < 0:
+            raise ValueError(
+                "transaction_cost_percent cannot be negative."
+            )
+
+        if slippage_percent < 0:
+            raise ValueError(
+                "slippage_percent cannot be negative."
+            )
+
         self.lookback_period = lookback_period
         self.transaction_cost_percent = (
-            transaction_cost_percent
+            float(transaction_cost_percent)
         )
         self.slippage_percent = (
-            slippage_percent
+            float(slippage_percent)
         )
 
     def run(
@@ -60,16 +79,19 @@ class MomentumBacktester:
                 max_drawdown_percent=0.0,
                 trade_count=0,
                 win_rate_percent=0.0,
+                trades=(),
             )
 
         capital = 1.0
-        position = False
-        entry_price = 0.0
-
-        trade_returns = []
         equity_curve = [capital]
 
-        cost_percent = (
+        in_position = False
+        entry_index = None
+        entry_price = None
+
+        trades: list[MomentumTrade] = []
+
+        total_cost_percent = (
             self.transaction_cost_percent
             + self.slippage_percent
         )
@@ -80,75 +102,84 @@ class MomentumBacktester:
         ):
 
             price = closes[index]
-            reference_price = closes[
-                index - self.lookback_period
-            ]
 
-            momentum_percent = (
-                (price - reference_price)
-                / reference_price
-                * 100.0
-            )
+            momentum = (
+                price
+                / closes[
+                    index - self.lookback_period
+                ]
+                - 1.0
+            ) * 100.0
 
-            if not position:
+            if momentum > 0.0 and not in_position:
 
-                if momentum_percent > 0.0:
+                in_position = True
+                entry_index = index
+                entry_price = price
 
-                    position = True
-                    entry_price = price
+                capital *= (
+                    1.0
+                    - total_cost_percent / 100.0
+                )
 
-                    capital *= (
-                        1.0
-                        - cost_percent / 100.0
+            elif momentum <= 0.0 and in_position:
+
+                exit_index = index
+                exit_price = price
+
+                trade_return = (
+                    exit_price
+                    / entry_price
+                    - 1.0
+                ) * 100.0
+
+                capital *= (
+                    1.0
+                    + trade_return / 100.0
+                )
+
+                capital *= (
+                    1.0
+                    - total_cost_percent / 100.0
+                )
+
+                trades.append(
+                    MomentumTrade(
+                        entry_index=entry_index,
+                        exit_index=exit_index,
+                        entry_price=entry_price,
+                        exit_price=exit_price,
+                        return_percent=trade_return,
                     )
+                )
 
-            else:
+                in_position = False
+                entry_index = None
+                entry_price = None
 
-                if momentum_percent <= 0.0:
+            if in_position and entry_price is not None:
 
-                    trade_return = (
-                        (price - entry_price)
-                        / entry_price
-                        * 100.0
-                    )
-
-                    capital *= (
-                        1.0
-                        + trade_return / 100.0
-                    )
-
-                    capital *= (
-                        1.0
-                        - cost_percent / 100.0
-                    )
-
-                    trade_returns.append(
-                        trade_return
-                    )
-
-                    position = False
-                    entry_price = 0.0
-
-            equity = capital
-
-            if position:
                 equity = (
                     capital
                     * price
                     / entry_price
                 )
 
-            equity_curve.append(equity)
+                equity_curve.append(equity)
 
-        if position:
+            else:
+                equity_curve.append(capital)
 
-            final_price = closes[-1]
+        if in_position:
+
+            exit_index = len(closes) - 1
+            exit_price = closes[exit_index]
 
             trade_return = (
-                (final_price - entry_price)
+                exit_price
                 / entry_price
-                * 100.0
-            )
+                - 1.0
+            ) * 100.0
 
             capital *= (
                 1.0
@@ -157,11 +188,17 @@ class MomentumBacktester:
 
             capital *= (
                 1.0
-                - cost_percent / 100.0
+                - total_cost_percent / 100.0
             )
 
-            trade_returns.append(
-                trade_return
+            trades.append(
+                MomentumTrade(
+                    entry_index=entry_index,
+                    exit_index=exit_index,
+                    entry_price=entry_price,
+                    exit_price=exit_price,
+                    return_percent=trade_return,
+                )
             )
 
             equity_curve.append(capital)
@@ -171,10 +208,10 @@ class MomentumBacktester:
         ) * 100.0
 
         buy_and_hold = (
-            (closes[-1] - closes[0])
+            closes[-1]
             / closes[0]
-            * 100.0
-        )
+            - 1.0
+        ) * 100.0
 
         peak = equity_curve[0]
         max_drawdown = 0.0
@@ -197,15 +234,15 @@ class MomentumBacktester:
                 drawdown,
             )
 
-        trade_count = len(
-            trade_returns
+        trade_count = len(trades)
+
+        winning_trades = sum(
+            trade.return_percent > 0.0
+            for trade in trades
         )
 
         win_rate = (
-            sum(
-                value > 0
-                for value in trade_returns
-            )
+            winning_trades
             / trade_count
             * 100.0
             if trade_count
@@ -224,4 +261,5 @@ class MomentumBacktester:
             ),
             trade_count=trade_count,
             win_rate_percent=win_rate,
+            trades=tuple(trades),
         )

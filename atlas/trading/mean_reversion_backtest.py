@@ -16,12 +16,22 @@ from atlas.trading.historical_market_data import (
 
 
 @dataclass(frozen=True, slots=True)
+class MeanReversionTrade:
+    entry_index: int
+    exit_index: int
+    entry_price: float
+    exit_price: float
+    return_percent: float
+
+
+@dataclass(frozen=True, slots=True)
 class MeanReversionBacktestResult:
     strategy_return_percent: float
     buy_and_hold_return_percent: float
     max_drawdown_percent: float
     trade_count: int
     win_rate_percent: float
+    trades: tuple[MeanReversionTrade, ...]
 
 
 class MeanReversionBacktester:
@@ -45,15 +55,9 @@ class MeanReversionBacktester:
             )
 
         self.lookback_period = lookback_period
-        self.entry_deviation_percent = (
-            entry_deviation_percent
-        )
-        self.transaction_cost_percent = (
-            transaction_cost_percent
-        )
-        self.slippage_percent = (
-            slippage_percent
-        )
+        self.entry_deviation_percent = entry_deviation_percent
+        self.transaction_cost_percent = transaction_cost_percent
+        self.slippage_percent = slippage_percent
 
     def run(
         self,
@@ -69,15 +73,18 @@ class MeanReversionBacktester:
                 max_drawdown_percent=0.0,
                 trade_count=0,
                 win_rate_percent=0.0,
+                trades=(),
             )
 
         capital = 1.0
         equity = 1.0
 
         position = False
+        entry_index = None
         entry_price = 0.0
 
         trade_returns = []
+        trades = []
         equity_curve = [equity]
 
         cost_percent = (
@@ -115,6 +122,7 @@ class MeanReversionBacktester:
                     <= -self.entry_deviation_percent
                 ):
                     position = True
+                    entry_index = index
                     entry_price = price
 
                     capital *= (
@@ -146,7 +154,18 @@ class MeanReversionBacktester:
                         trade_return
                     )
 
+                    trades.append(
+                        MeanReversionTrade(
+                            entry_index=entry_index,
+                            exit_index=index,
+                            entry_price=entry_price,
+                            exit_price=price,
+                            return_percent=trade_return,
+                        )
+                    )
+
                     position = False
+                    entry_index = None
                     entry_price = 0.0
 
             equity = capital
@@ -161,7 +180,8 @@ class MeanReversionBacktester:
             equity_curve.append(equity)
 
         if position:
-            final_price = closes[-1]
+            final_index = len(closes) - 1
+            final_price = closes[final_index]
 
             trade_return = (
                 (final_price - entry_price)
@@ -181,6 +201,16 @@ class MeanReversionBacktester:
 
             trade_returns.append(
                 trade_return
+            )
+
+            trades.append(
+                MeanReversionTrade(
+                    entry_index=entry_index,
+                    exit_index=final_index,
+                    entry_price=entry_price,
+                    exit_price=final_price,
+                    return_percent=trade_return,
+                )
             )
 
             equity = capital
@@ -244,4 +274,5 @@ class MeanReversionBacktester:
             ),
             trade_count=trade_count,
             win_rate_percent=win_rate,
+            trades=tuple(trades),
         )
