@@ -1,10 +1,11 @@
 """
 ATLAS Regime × Strategy Research.
 
-Research-only analysis of how strategy performance relates
-to market regimes.
+Research-only analysis of actual strategy performance
+across market regimes.
 
-This module does not generate live trading decisions.
+This module uses the existing strategy backtest research
+and does not generate live trading decisions.
 """
 
 from dataclasses import dataclass
@@ -12,11 +13,8 @@ from dataclasses import dataclass
 from atlas.trading.historical_market_data import (
     HistoricalMarketData,
 )
-from atlas.trading.indicator_engine import (
-    IndicatorEngine,
-)
-from atlas.trading.market_regime import (
-    MarketRegimeAnalyzer,
+from atlas.trading.regime_strategy_backtest import (
+    RegimeStrategyBacktestResearch,
 )
 
 
@@ -64,137 +62,108 @@ class RegimeStrategyResearchSummary:
 
 class RegimeStrategyResearch:
     """
-    Research forward returns by regime and strategy proxy.
+    Analyze actual strategy trades by entry regime.
 
-    The first implementation uses deterministic strategy-family
-    proxies derived from price/regime information. It is intended
-    for research and hypothesis generation, not trading decisions.
+    Unlike the earlier proxy implementation, this class
+    uses the existing strategy backtest engine so that
+    strategy results are based on real strategy trades.
     """
-
-    STRATEGIES = (
-        "Trend Following",
-        "Mean Reversion",
-        "Momentum",
-    )
 
     def __init__(
         self,
-        forward_period: int = 1,
+        transaction_cost_percent: float = 0.1,
+        slippage_percent: float = 0.05,
     ):
-        if forward_period <= 0:
+        if transaction_cost_percent < 0:
             raise ValueError(
-                "forward_period must be positive."
+                "transaction_cost_percent "
+                "cannot be negative."
             )
 
-        self.forward_period = forward_period
-        self.indicator_engine = IndicatorEngine()
-        self.regime_analyzer = MarketRegimeAnalyzer()
+        if slippage_percent < 0:
+            raise ValueError(
+                "slippage_percent "
+                "cannot be negative."
+            )
+
+        self.transaction_cost_percent = (
+            float(transaction_cost_percent)
+        )
+        self.slippage_percent = (
+            float(slippage_percent)
+        )
 
     def run(
         self,
         data: HistoricalMarketData,
     ) -> RegimeStrategyResearchSummary:
 
-        prices = data.closes
+        summary = (
+            RegimeStrategyBacktestResearch(
+                transaction_cost_percent=(
+                    self.transaction_cost_percent
+                ),
+                slippage_percent=(
+                    self.slippage_percent
+                ),
+            ).run(data)
+        )
 
-        if len(prices) <= self.forward_period:
-            return RegimeStrategyResearchSummary(
-                results=tuple(),
-                best_strategy_by_regime={},
-                overall_best_strategy=None,
-            )
+        results_by_strategy = {}
 
-        snapshots = []
-
-        for index in range(len(prices)):
-            candles = [
-                {
-                    "close": bar.close,
-                    "high": bar.high,
-                    "low": bar.low,
-                    "volume": bar.volume,
-                }
-                for bar in data.bars[: index + 1]
-            ]
-
-            indicators = (
-                self.indicator_engine.calculate(
-                    candles
-                )
-            )
-
-            regime = self.regime_analyzer.analyze(
-                indicators
-            )
-
-            snapshots.append(regime)
+        for result in summary.results:
+            results_by_strategy.setdefault(
+                result.strategy_name,
+                [],
+            ).append(result)
 
         results = []
 
-        for strategy_name in self.STRATEGIES:
+        for strategy_name in sorted(
+            results_by_strategy
+        ):
+            strategy_results = (
+                results_by_strategy[strategy_name]
+            )
+
             observations = []
-            regime_returns = {}
-            regime_counts = {}
 
-            for index in range(
-                len(prices) - self.forward_period
-            ):
-                regime = snapshots[index].regime
-
-                forward_price = prices[
-                    index + self.forward_period
-                ]
-
-                current_price = prices[index]
-
-                forward_return = (
-                    (
-                        forward_price
-                        / current_price
+            for regime_result in strategy_results:
+                for index in range(
+                    regime_result.trade_count
+                ):
+                    observations.append(
+                        RegimeStrategyObservation(
+                            index=index,
+                            regime=regime_result.regime,
+                            strategy_name=strategy_name,
+                            forward_return_percent=(
+                                regime_result
+                                .average_trade_return_percent
+                            ),
+                        )
                     )
-                    - 1.0
-                ) * 100.0
 
-                observations.append(
-                    RegimeStrategyObservation(
-                        index=index,
-                        regime=regime,
-                        strategy_name=strategy_name,
-                        forward_return_percent=round(
-                            forward_return,
-                            10,
-                        ),
-                    )
+            regime_counts = {
+                result.regime: result.trade_count
+                for result in strategy_results
+            }
+
+            average_returns = {
+                result.regime: (
+                    result.average_trade_return_percent
                 )
-
-                regime_counts[regime] = (
-                    regime_counts.get(regime, 0)
-                    + 1
-                )
-
-                regime_returns.setdefault(
-                    regime,
-                    [],
-                ).append(forward_return)
-
-            averages = {
-                regime: round(
-                    sum(values) / len(values),
-                    10,
-                )
-                for regime, values
-                in regime_returns.items()
-                if values
+                for result in strategy_results
             }
 
             results.append(
                 RegimeStrategyResult(
                     strategy_name=strategy_name,
-                    observations=tuple(
-                        observations
-                    ),
+                    observations=tuple(observations),
                     regime_counts=regime_counts,
-                    average_forward_returns=averages,
+                    average_forward_returns=(
+                        average_returns
+                    ),
                 )
             )
 
@@ -213,6 +182,10 @@ class RegimeStrategyResearch:
                 for result in results
                 if regime
                 in result.average_forward_returns
+                and result.regime_counts.get(
+                    regime,
+                    0,
+                ) > 0
             ]
 
             if candidates:
@@ -222,6 +195,10 @@ class RegimeStrategyResearch:
                         result.average_forward_returns[
                             regime
                         ],
+                        result.regime_counts.get(
+                            regime,
+                            0,
+                        ),
                         result.strategy_name,
                     ),
                 )
@@ -233,15 +210,30 @@ class RegimeStrategyResearch:
         strategy_scores = {}
 
         for result in results:
-            values = list(
-                result.average_forward_returns.values()
-            )
+            weighted_returns = []
+            total_trades = 0
 
-            strategy_scores[
-                result.strategy_name
-            ] = (
-                sum(values) / len(values)
-                if values
+            for regime, average_return in (
+                result.average_forward_returns.items()
+            ):
+                count = result.regime_counts.get(
+                    regime,
+                    0,
+                )
+
+                if count <= 0:
+                    continue
+
+                weighted_returns.extend(
+                    [average_return] * count
+                )
+
+                total_trades += count
+
+            strategy_scores[result.strategy_name] = (
+                sum(weighted_returns)
+                / total_trades
+                if total_trades
                 else float("-inf")
             )
 
@@ -276,8 +268,9 @@ def format_regime_strategy_research(
         lines.append(
             result.strategy_name
         )
+
         lines.append(
-            "  Observations: "
+            "  Trades: "
             f"{result.classified_observations}"
         )
 
@@ -288,6 +281,7 @@ def format_regime_strategy_research(
                 regime,
                 0,
             )
+
             average = (
                 result.average_forward_returns[
                     regime
