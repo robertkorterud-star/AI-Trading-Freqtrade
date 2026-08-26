@@ -10,6 +10,10 @@ This module is research-only.
 
 from dataclasses import dataclass
 
+from atlas.trading.historical_market_data import (
+    HistoricalMarketData,
+)
+
 from atlas.trading.trend_following_backtest import (
     TrendFollowingBacktester,
 )
@@ -63,7 +67,7 @@ class TrendFollowingWalkForward:
 
     def evaluate(
         self,
-        closes: list[float],
+        closes: list[float] | HistoricalMarketData,
         train_size: int,
         test_size: int,
         step_size: int | None = None,
@@ -87,10 +91,16 @@ class TrendFollowingWalkForward:
                 "step_size must be positive."
             )
 
-        prices = [
-            float(price)
-            for price in closes
-        ]
+        if isinstance(
+            closes,
+            HistoricalMarketData,
+        ):
+            prices = closes.closes
+        else:
+            prices = [
+                float(price)
+                for price in closes
+            ]
 
         if any(price <= 0 for price in prices):
             raise ValueError(

@@ -216,3 +216,56 @@ def test_walk_forward_rejects_invalid_prices():
             train_size=2,
             test_size=2,
         )
+
+
+def test_walk_forward_accepts_historical_market_data():
+
+    from datetime import datetime, timedelta
+
+    from atlas.trading.historical_market_data import (
+        HistoricalMarketData,
+        OHLCVBar,
+    )
+
+    start = datetime(
+        2026,
+        1,
+        1,
+    )
+
+    bars = [
+        OHLCVBar(
+            timestamp=start + timedelta(
+                days=index
+            ),
+            open=float(100 + index),
+            high=float(105 + index),
+            low=float(99 + index),
+            close=float(104 + index),
+            volume=1000.0,
+        )
+        for index in range(100)
+    ]
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=bars,
+    )
+
+    result = TrendFollowingWalkForward(
+        fast_period=3,
+        slow_period=8,
+        transaction_cost_percent=0.0,
+        slippage_percent=0.0,
+    ).evaluate(
+        data,
+        train_size=40,
+        test_size=20,
+    )
+
+    assert result.total_points == 100
+    assert len(result.windows) == 3
+
+    for window in result.windows:
+        assert window.train_end == window.test_start
+        assert window.test_start < window.test_end
