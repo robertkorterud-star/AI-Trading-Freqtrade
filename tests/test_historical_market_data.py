@@ -1,68 +1,206 @@
-from unittest.mock import patch
+from datetime import datetime, timedelta
 
-import pandas as pd
+import pytest
 
-from atlas.adapters.historical_market_data import (
-    HistoricalMarketDataAdapter,
+from atlas.trading.historical_market_data import (
+    HistoricalMarketData,
+    OHLCVBar,
 )
 
 
-def test_historical_market_data_returns_candles():
+def _bars(count=5):
 
-    data = pd.DataFrame(
-        {
-            "Open": [100.0, 101.0],
-            "High": [102.0, 103.0],
-            "Low": [99.0, 100.0],
-            "Close": [101.0, 102.0],
-            "Volume": [1000.0, 1200.0],
-        },
-        index=pd.to_datetime(
-            [
-                "2026-01-01",
-                "2026-01-02",
-            ]
-        ),
+    start = datetime(
+        2026,
+        1,
+        1,
     )
 
-    fake_ticker = patch(
-        "atlas.adapters.historical_market_data.yf.Ticker"
+    return [
+        OHLCVBar(
+            timestamp=start + timedelta(
+                days=index
+            ),
+            open=100.0 + index,
+            high=105.0 + index,
+            low=99.0 + index,
+            close=104.0 + index,
+            volume=1000.0 + index,
+        )
+        for index in range(count)
+    ]
+
+
+def test_historical_market_data_accepts_valid_bars():
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=_bars(),
     )
 
-    with fake_ticker as mock_ticker:
+    assert data.symbol == "BTC-USD"
+    assert len(data) == 5
+    assert len(data.bars) == 5
 
-        mock_ticker.return_value.history.return_value = data
 
-        candles = HistoricalMarketDataAdapter().get(
-            "NVDA"
+def test_closes_are_extracted_in_order():
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=_bars(),
+    )
+
+    assert data.closes == [
+        104.0,
+        105.0,
+        106.0,
+        107.0,
+        108.0,
+    ]
+
+
+def test_timestamps_are_extracted_in_order():
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=_bars(),
+    )
+
+    assert data.timestamps == [
+        bar.timestamp
+        for bar in _bars()
+    ]
+
+
+def test_bars_are_immutable_from_public_property():
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=_bars(),
+    )
+
+    assert isinstance(
+        data.bars,
+        tuple,
+    )
+
+
+def test_symbol_must_not_be_empty():
+
+    with pytest.raises(ValueError):
+        HistoricalMarketData(
+            symbol="",
+            bars=_bars(),
         )
 
-    assert len(candles) == 2
-    assert candles[0]["open"] == 100.0
-    assert candles[0]["close"] == 101.0
-    assert candles[1]["volume"] == 1200.0
 
+def test_bars_must_be_chronological():
 
-def test_historical_market_data_handles_empty_history():
+    bars = _bars()
 
-    data = pd.DataFrame(
-        columns=[
-            "Open",
-            "High",
-            "Low",
-            "Close",
-            "Volume",
-        ]
+    bars[2] = OHLCVBar(
+        timestamp=bars[1].timestamp,
+        open=102.0,
+        high=107.0,
+        low=101.0,
+        close=106.0,
+        volume=1000.0,
     )
 
-    with patch(
-        "atlas.adapters.historical_market_data.yf.Ticker"
-    ) as mock_ticker:
-
-        mock_ticker.return_value.history.return_value = data
-
-        candles = HistoricalMarketDataAdapter().get(
-            "NVDA"
+    with pytest.raises(ValueError):
+        HistoricalMarketData(
+            symbol="BTC-USD",
+            bars=bars,
         )
 
-    assert candles == []
+
+def test_prices_must_be_positive():
+
+    bars = _bars()
+
+    bars[2] = OHLCVBar(
+        timestamp=bars[2].timestamp,
+        open=0.0,
+        high=107.0,
+        low=101.0,
+        close=106.0,
+        volume=1000.0,
+    )
+
+    with pytest.raises(ValueError):
+        HistoricalMarketData(
+            symbol="BTC-USD",
+            bars=bars,
+        )
+
+
+def test_volume_cannot_be_negative():
+
+    bars = _bars()
+
+    bars[2] = OHLCVBar(
+        timestamp=bars[2].timestamp,
+        open=102.0,
+        high=107.0,
+        low=101.0,
+        close=106.0,
+        volume=-1.0,
+    )
+
+    with pytest.raises(ValueError):
+        HistoricalMarketData(
+            symbol="BTC-USD",
+            bars=bars,
+        )
+
+
+def test_high_must_contain_open_and_close():
+
+    bars = _bars()
+
+    bars[2] = OHLCVBar(
+        timestamp=bars[2].timestamp,
+        open=102.0,
+        high=101.0,
+        low=101.0,
+        close=106.0,
+        volume=1000.0,
+    )
+
+    with pytest.raises(ValueError):
+        HistoricalMarketData(
+            symbol="BTC-USD",
+            bars=bars,
+        )
+
+
+def test_low_must_contain_open_and_close():
+
+    bars = _bars()
+
+    bars[2] = OHLCVBar(
+        timestamp=bars[2].timestamp,
+        open=102.0,
+        high=107.0,
+        low=107.0,
+        close=106.0,
+        volume=1000.0,
+    )
+
+    with pytest.raises(ValueError):
+        HistoricalMarketData(
+            symbol="BTC-USD",
+            bars=bars,
+        )
+
+
+def test_empty_dataset_is_allowed():
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        bars=[],
+    )
+
+    assert len(data) == 0
+    assert data.closes == []
+    assert data.timestamps == []
