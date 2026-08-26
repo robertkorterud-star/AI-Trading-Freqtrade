@@ -270,3 +270,44 @@ def test_ohlc_provider_accepts_real_http_client_contract():
     assert result.bars[0].high == 105.0
     assert result.bars[0].low == 99.0
     assert result.bars[0].close == 104.0
+
+
+def test_ohlc_provider_preserves_timeframe_and_source():
+
+    client = FakeCoinGeckoOHLCClient(
+        _rows()
+    )
+
+    provider = CoinGeckoOHLCProvider(
+        client=client,
+        coin_ids={
+            "BTC-USD": "bitcoin",
+        },
+        timeframe="4h",
+        source="coingecko",
+    )
+
+    result = provider.load(
+        symbol="BTC-USD",
+    )
+
+    assert result.timeframe == "4h"
+    assert result.source == "coingecko"
+
+
+def test_ohlc_provider_supports_explicit_timeframe():
+
+    client = FakeCoinGeckoOHLCClient(
+        _rows()
+    )
+
+    provider = CoinGeckoOHLCProvider(
+        client=client,
+        timeframe="1h",
+    )
+
+    result = provider.load(
+        symbol="bitcoin",
+    )
+
+    assert result.timeframe == "1h"

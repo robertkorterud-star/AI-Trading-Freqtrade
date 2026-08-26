@@ -41,10 +41,14 @@ class CoinGeckoOHLCProvider(
         client: CoinGeckoOHLCClient | CoinGeckoHTTPClient,
         coin_ids: dict[str, str] | None = None,
         vs_currency: str = "usd",
+        timeframe: str = "4h",
+        source: str = "coingecko",
     ):
         self.client = client
         self.coin_ids = coin_ids or {}
         self.vs_currency = vs_currency
+        self.timeframe = timeframe
+        self.source = source
 
     def load(
         self,
@@ -98,6 +102,8 @@ class CoinGeckoOHLCProvider(
         return HistoricalMarketData(
             symbol=symbol,
             bars=bars,
+            timeframe=self.timeframe,
+            source=self.source,
         )
 
     @staticmethod

@@ -27,16 +27,44 @@ class HistoricalMarketData:
         self,
         symbol: str,
         bars: list[OHLCVBar],
+        timeframe: str = "unknown",
+        source: str = "unknown",
     ):
         if not symbol:
             raise ValueError(
                 "symbol must not be empty."
             )
 
+        if not timeframe:
+            raise ValueError(
+                "timeframe must not be empty."
+            )
+
+        if not source:
+            raise ValueError(
+                "source must not be empty."
+            )
+
         self.symbol = symbol
+        self.timeframe = timeframe
+        self.source = source
         self._bars = self._validate(
             bars
         )
+
+    @property
+    def start(self) -> datetime | None:
+        if not self._bars:
+            return None
+
+        return self._bars[0].timestamp
+
+    @property
+    def end(self) -> datetime | None:
+        if not self._bars:
+            return None
+
+        return self._bars[-1].timestamp
 
     @property
     def bars(self) -> tuple[OHLCVBar, ...]:
