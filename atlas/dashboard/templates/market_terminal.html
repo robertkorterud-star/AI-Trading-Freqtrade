@@ -1,0 +1,2776 @@
+{% extends "base.html" %}
+
+{% block title %}
+ATLAS - {{ asset.symbol }}
+{% endblock %}
+
+{% block content %}
+
+<div class="market-terminal-page">
+
+    <div class="market-terminal-header">
+
+        <div>
+
+            <div class="market-terminal-kicker">
+                {% if asset.type == "crypto" %}
+                    🪙 CRYPTO
+                {% else %}
+                    📈 STOCK
+                {% endif %}
+            </div>
+
+            <h1>
+                {{ asset.symbol }}
+            </h1>
+
+            <p>
+                {{ asset.name }}
+                {% if asset.market %}
+                    · {{ asset.market }}
+                {% endif %}
+            </p>
+
+        </div>
+
+        <div class="market-terminal-actions">
+
+            <a
+                href="/markets?q={{ asset.symbol|urlencode }}&research={{ asset.symbol|urlencode }}"
+                class="market-terminal-research"
+            >
+                🧠 Research strategies
+            </a>
+
+            <a
+                href="/markets?q={{ asset.symbol|urlencode }}"
+                class="market-terminal-back"
+            >
+                ← Markets
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <div class="market-terminal-grid">
+
+        <section class="market-chart-card">
+
+            <div class="market-chart-toolbar">
+
+                <div class="market-chart-symbol">
+                    {{ asset.symbol }}
+                    <span>· {{ asset.currency or "USD" }}</span>
+                </div>
+
+                <div class="market-timeframes">
+
+                    {% for timeframe in [
+                        ("1d", "1D"),
+                        ("5d", "5D"),
+                        ("1m", "1M"),
+                        ("3m", "3M"),
+                        ("6m", "6M"),
+                        ("1y", "1Y")
+                    ] %}
+
+                        <button
+                            type="button"
+                            class="market-timeframe"
+                            data-period="{{ timeframe[0] }}"
+                        >
+                            {{ timeframe[1] }}
+                        </button>
+
+                    {% endfor %}
+
+                </div>
+
+
+                <div class="market-chart-subtoolbar">
+
+                    <span class="market-chart-subtoolbar-label">
+                        Timeframe
+                    </span>
+
+                    <div class="market-timeframes">
+
+                        {% for timeframe in [
+                            ("5m", "5m"),
+                            ("15m", "15m"),
+                            ("1h", "1h"),
+                            ("4h", "4h"),
+                            ("1d", "1D")
+                        ] %}
+
+                            <button
+                                type="button"
+                                class="market-timeframe market-interval"
+                                data-interval="{{ timeframe[0] }}"
+                            >
+                                {{ timeframe[1] }}
+                            </button>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="market-chart-status">
+                <span id="market-chart-status-text">
+                    Loading market data...
+                </span>
+            </div>
+
+            <div class="market-chart-wrap">
+
+                <canvas
+                    id="market-chart"
+                ></canvas>
+
+            </div>
+
+        </section>
+
+
+        <aside class="market-terminal-sidebar">
+
+            <section class="market-terminal-info-card">
+
+                <div class="market-terminal-info-top">
+
+                    <div class="market-terminal-info-label">
+                        {{ asset.symbol }}
+                    </div>
+
+                    <label class="market-currency-select">
+
+                        <span>Currency</span>
+
+                        <select id="market-currency">
+                            <option value="NOK" selected>
+                                NOK
+                            </option>
+                            <option value="DKK">
+                                DKK
+                            </option>
+                            <option value="SEK">
+                                SEK
+                            </option>
+                            <option value="EUR">
+                                EUR
+                            </option>
+                            <option value="USD">
+                                USD
+                            </option>
+                        </select>
+
+                    </label>
+
+                </div>
+
+                <div
+                    class="market-terminal-price"
+                    id="market-current-price"
+                >
+                    —
+                </div>
+
+                <div
+                    class="market-terminal-change"
+                    id="market-current-change"
+                >
+                    —
+                </div>
+
+                <div class="market-terminal-info-grid">
+
+                    <div>
+                        <small>Market</small>
+                        <strong>
+                            {{ asset.market or "—" }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Currency</small>
+                        <strong>
+                            {{ asset.currency or "USD" }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Type</small>
+                        <strong>
+                            {{ asset.type }}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <small>Symbol</small>
+                        <strong>
+                            {{ asset.symbol }}
+                        </strong>
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <section class="market-terminal-info-card">
+
+                <button
+                    type="button"
+                    class="market-indicator-menu-button"
+                    id="market-indicator-menu-button"
+                >
+                    📊 Indicators
+                    <span>▾</span>
+                </button>
+
+                <div
+                    class="market-indicator-menu"
+                    id="market-indicator-menu"
+                >
+
+                    <div class="market-indicator-group">
+
+                        <div class="market-indicator-group-title">
+                            OVERLAYS
+                        </div>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-ma20"
+                                checked
+                            >
+                            <span>MA20</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-ma50"
+                                checked
+                            >
+                            <span>MA50</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-ema20"
+                            >
+                            <span>EMA20</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-ema50"
+                            >
+                            <span>EMA50</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-bollinger"
+                            >
+                            <span>Bollinger Bands</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-vwap"
+                            >
+                            <span>VWAP</span>
+                        </label>
+
+                    </div>
+
+                    <div class="market-indicator-group">
+
+                        <div class="market-indicator-group-title">
+                            OSCILLATORS
+                        </div>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-rsi"
+                            >
+                            <span>RSI 14</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-macd"
+                            >
+                            <span>MACD</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-stochastic"
+                            >
+                            <span>Stochastic</span>
+                        </label>
+
+                    </div>
+
+                    <div class="market-indicator-group">
+
+                        <div class="market-indicator-group-title">
+                            MARKET
+                        </div>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-volume"
+                                checked
+                            >
+                            <span>Volume</span>
+                        </label>
+
+                        <label class="market-indicator-toggle">
+                            <input
+                                type="checkbox"
+                                id="toggle-atr"
+                            >
+                            <span>ATR</span>
+                        </label>
+
+                    </div>
+
+                    <p class="market-indicator-note">
+                        Indicators are calculated from the same
+                        historical candles used by ATLAS research.
+                    </p>
+
+                </div>
+
+            </section>
+
+        </aside>
+
+    </div>
+
+
+    <section class="market-terminal-bottom">
+
+        <div class="market-terminal-bottom-card">
+
+            <h2>
+                🧠 ATLAS Intelligence
+            </h2>
+
+            <p>
+                Research, strategy learning, backtesting
+                and ATLAS decisions will live here.
+            </p>
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<script>
+(function () {
+
+    const symbol = {{ asset.symbol|tojson }};
+
+    const canvas =
+        document.getElementById(
+            "market-chart"
+        );
+
+    const status =
+        document.getElementById(
+            "market-chart-status-text"
+        );
+
+    const priceElement =
+        document.getElementById(
+            "market-current-price"
+        );
+
+    const changeElement =
+        document.getElementById(
+            "market-current-change"
+        );
+
+    const ma20Toggle =
+        document.getElementById(
+            "toggle-ma20"
+        );
+
+    const ma50Toggle =
+        document.getElementById(
+            "toggle-ma50"
+        );
+
+    const timeframeButtons =
+        document.querySelectorAll(
+            ".market-timeframe"
+        );
+
+    let candles = [];
+
+    const sourceCurrency =
+        "{{ asset.currency or 'USD' }}".toUpperCase();
+
+    let displayCurrency = "NOK";
+    let fxRate = 1.0;
+    let allCandles = [];
+
+    const chartStateKey =
+        "atlas.chart." +
+        "{{ asset.symbol }}";
+
+    let selectedPeriod = "3m";
+    let selectedInterval = "1h";
+
+    try {
+
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    chartStateKey
+                ) || "null"
+            );
+
+        if (saved) {
+
+            if (saved.period) {
+                selectedPeriod =
+                    saved.period;
+            }
+
+            if (saved.interval) {
+                selectedInterval =
+                    saved.interval;
+            }
+        }
+
+    } catch (_) {
+        // Ignore invalid saved chart state.
+    }
+
+    let viewStart = 0;
+    let viewEnd = 0;
+
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartViewStart = 0;
+    let dragStartViewEnd = 0;
+
+    function movingAverage(
+        values,
+        period
+    ) {
+
+        return values.map(
+            function (_, index) {
+
+                if (
+                    index + 1 < period
+                ) {
+                    return null;
+                }
+
+                let total = 0;
+
+                for (
+                    let i =
+                        index - period + 1;
+                    i <= index;
+                    i++
+                ) {
+                    total += values[i];
+                }
+
+                return total / period;
+            }
+        );
+    }
+
+
+    function currencyPrefix(
+        currency
+    ) {
+
+        const symbols = {
+            NOK: "NOK ",
+            DKK: "DKK ",
+            SEK: "SEK ",
+            EUR: "€",
+            USD: "$",
+        };
+
+        return (
+            symbols[currency] ||
+            currency + " "
+        );
+    }
+
+
+    function niceNumber(
+        value
+    ) {
+
+        if (!Number.isFinite(value)) {
+            return "—";
+        }
+
+        const absolute =
+            Math.abs(value);
+
+        if (absolute >= 1000) {
+            return value.toLocaleString(
+                undefined,
+                {
+                    maximumFractionDigits: 2,
+                }
+            );
+        }
+
+        if (absolute >= 1) {
+            return value.toLocaleString(
+                undefined,
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4,
+                }
+            );
+        }
+
+        return value.toLocaleString(
+            undefined,
+            {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 6,
+            }
+        );
+    }
+
+
+    function resizeCanvas() {
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        const ratio =
+            window.devicePixelRatio || 1;
+
+        canvas.width =
+            Math.max(
+                1,
+                rect.width * ratio
+            );
+
+        canvas.height =
+            Math.max(
+                1,
+                rect.height * ratio
+            );
+    }
+
+
+    function drawLine(
+        context,
+        values,
+        minValue,
+        maxValue,
+        left,
+        top,
+        width,
+        height
+    ) {
+
+        context.beginPath();
+
+        let started = false;
+
+        values.forEach(
+            function (value, index) {
+
+                if (value === null) {
+                    return;
+                }
+
+                const x =
+                    left +
+                    (
+                        index /
+                        Math.max(
+                            values.length - 1,
+                            1
+                        )
+                    ) *
+                    width;
+
+                const y =
+                    top +
+                    height -
+                    (
+                        (
+                            value -
+                            minValue
+                        ) /
+                        Math.max(
+                            maxValue -
+                            minValue,
+                            1e-9
+                        )
+                    ) *
+                    height;
+
+                if (!started) {
+                    context.moveTo(
+                        x,
+                        y
+                    );
+                    started = true;
+                } else {
+                    context.lineTo(
+                        x,
+                        y
+                    );
+                }
+            }
+        );
+
+        context.stroke();
+    }
+
+
+    function ema(values, period) {
+
+        if (!values.length) {
+            return [];
+        }
+
+        const result = [];
+        const multiplier =
+            2 / (period + 1);
+
+        let previous = values[0];
+
+        result.push(previous);
+
+        for (
+            let index = 1;
+            index < values.length;
+            index++
+        ) {
+            previous =
+                (
+                    values[index] -
+                    previous
+                ) * multiplier +
+                previous;
+
+            result.push(previous);
+        }
+
+        return result;
+    }
+
+
+    function bollinger(
+        values,
+        period = 20,
+        multiplier = 2
+    ) {
+
+        const middle =
+            movingAverage(
+                values,
+                period
+            );
+
+        const upper = [];
+        const lower = [];
+
+        values.forEach(
+            function (_, index) {
+
+                if (
+                    middle[index] === null
+                ) {
+                    upper.push(null);
+                    lower.push(null);
+                    return;
+                }
+
+                const window =
+                    values.slice(
+                        index - period + 1,
+                        index + 1
+                    );
+
+                const variance =
+                    window.reduce(
+                        function (
+                            sum,
+                            value
+                        ) {
+                            return sum +
+                                Math.pow(
+                                    value -
+                                    middle[index],
+                                    2
+                                );
+                        },
+                        0
+                    ) / period;
+
+                const deviation =
+                    Math.sqrt(
+                        variance
+                    );
+
+                upper.push(
+                    middle[index] +
+                    multiplier *
+                    deviation
+                );
+
+                lower.push(
+                    middle[index] -
+                    multiplier *
+                    deviation
+                );
+            }
+        );
+
+        return {
+            middle,
+            upper,
+            lower,
+        };
+    }
+
+
+    function rsi(
+        values,
+        period = 14
+    ) {
+
+        const result =
+            new Array(
+                values.length
+            ).fill(null);
+
+        if (
+            values.length <
+            period + 1
+        ) {
+            return result;
+        }
+
+        for (
+            let index = period;
+            index < values.length;
+            index++
+        ) {
+
+            let gains = 0;
+            let losses = 0;
+
+            for (
+                let cursor =
+                    index - period + 1;
+                cursor <= index;
+                cursor++
+            ) {
+
+                const change =
+                    values[cursor] -
+                    values[cursor - 1];
+
+                if (change > 0) {
+                    gains += change;
+                } else {
+                    losses -= change;
+                }
+            }
+
+            if (losses === 0) {
+                result[index] = 100;
+                continue;
+            }
+
+            const averageGain =
+                gains / period;
+
+            const averageLoss =
+                losses / period;
+
+            const relativeStrength =
+                averageGain /
+                averageLoss;
+
+            result[index] =
+                100 -
+                (
+                    100 /
+                    (
+                        1 +
+                        relativeStrength
+                    )
+                );
+        }
+
+        return result;
+    }
+
+
+    function vwap(candles) {
+
+        const result = [];
+
+        let cumulativePriceVolume = 0;
+        let cumulativeVolume = 0;
+
+        candles.forEach(
+            function (candle) {
+
+                const typicalPrice =
+                    (
+                        candle.high +
+                        candle.low +
+                        candle.close
+                    ) / 3;
+
+                cumulativePriceVolume +=
+                    typicalPrice *
+                    candle.volume;
+
+                cumulativeVolume +=
+                    candle.volume;
+
+                result.push(
+                    cumulativeVolume
+                        ? (
+                            cumulativePriceVolume /
+                            cumulativeVolume
+                        )
+                        : null
+                );
+            }
+        );
+
+        return result;
+    }
+
+
+    function macd(values) {
+
+        const fast =
+            ema(values, 12);
+
+        const slow =
+            ema(values, 26);
+
+        const line =
+            values.map(
+                function (_, index) {
+                    return (
+                        fast[index] -
+                        slow[index]
+                    );
+                }
+            );
+
+        const signal =
+            ema(line, 9);
+
+        const histogram =
+            line.map(
+                function (
+                    value,
+                    index
+                ) {
+                    return (
+                        value -
+                        signal[index]
+                    );
+                }
+            );
+
+        return {
+            line,
+            signal,
+            histogram,
+        };
+    }
+
+
+    function stochastic(
+        candles,
+        period = 14
+    ) {
+
+        const values = [];
+
+        candles.forEach(
+            function (
+                candle,
+                index
+            ) {
+
+                if (
+                    index + 1 <
+                    period
+                ) {
+                    values.push(null);
+                    return;
+                }
+
+                const window =
+                    candles.slice(
+                        index - period + 1,
+                        index + 1
+                    );
+
+                const highest =
+                    Math.max(
+                        ...window.map(
+                            item =>
+                                item.high
+                        )
+                    );
+
+                const lowest =
+                    Math.min(
+                        ...window.map(
+                            item =>
+                                item.low
+                        )
+                    );
+
+                if (
+                    highest === lowest
+                ) {
+                    values.push(50);
+                    return;
+                }
+
+                values.push(
+                    (
+                        (
+                            candle.close -
+                            lowest
+                        ) /
+                        (
+                            highest -
+                            lowest
+                        )
+                    ) * 100
+                );
+            }
+        );
+
+        return values;
+    }
+
+
+    function atr(
+        candles,
+        period = 14
+    ) {
+
+        const trueRanges = [];
+
+        candles.forEach(
+            function (
+                candle,
+                index
+            ) {
+
+                if (index === 0) {
+                    trueRanges.push(
+                        candle.high -
+                        candle.low
+                    );
+                    return;
+                }
+
+                const previous =
+                    candles[index - 1];
+
+                trueRanges.push(
+                    Math.max(
+                        candle.high -
+                            candle.low,
+
+                        Math.abs(
+                            candle.high -
+                            previous.close
+                        ),
+
+                        Math.abs(
+                            candle.low -
+                            previous.close
+                        )
+                    )
+                );
+            }
+        );
+
+        return movingAverage(
+            trueRanges,
+            period
+        );
+    }
+
+
+    function convertValue(value) {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+            return value;
+        }
+
+        if (
+            sourceCurrency ===
+            displayCurrency
+        ) {
+            return value;
+        }
+
+        return value * fxRate;
+    }
+
+
+    function convertCandles(
+        source
+    ) {
+
+        if (
+            sourceCurrency ===
+            displayCurrency
+        ) {
+            return source;
+        }
+
+        return source.map(
+            function (candle) {
+                return {
+                    ...candle,
+                    open: convertValue(
+                        candle.open
+                    ),
+                    high: convertValue(
+                        candle.high
+                    ),
+                    low: convertValue(
+                        candle.low
+                    ),
+                    close: convertValue(
+                        candle.close
+                    ),
+                };
+            }
+        );
+    }
+
+
+    function updateVisibleCandles() {
+
+        if (!allCandles.length) {
+            candles = [];
+            return;
+        }
+
+        viewStart = Math.max(
+            0,
+            Math.min(
+                viewStart,
+                allCandles.length - 1
+            )
+        );
+
+        viewEnd = Math.max(
+            viewStart + 1,
+            Math.min(
+                viewEnd,
+                allCandles.length
+            )
+        );
+
+        candles = allCandles.slice(
+            viewStart,
+            viewEnd
+        );
+    }
+
+
+    function drawChart() {
+
+        if (!candles.length) {
+            return;
+        }
+
+        resizeCanvas();
+
+        const context =
+            canvas.getContext("2d");
+
+        const ratio =
+            window.devicePixelRatio || 1;
+
+        context.setTransform(
+            ratio,
+            0,
+            0,
+            ratio,
+            0,
+            0
+        );
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        const width = rect.width;
+        const height = rect.height;
+
+        context.clearRect(
+            0,
+            0,
+            width,
+            height
+        );
+
+        const displayCandles =
+            convertCandles(candles);
+
+        const closes =
+            displayCandles.map(
+                item => item.close
+            );
+
+        const highs =
+            displayCandles.map(
+                item => item.high
+            );
+
+        const lows =
+            displayCandles.map(
+                item => item.low
+            );
+
+        const ma20 =
+            movingAverage(
+                closes,
+                20
+            );
+
+        const ma50 =
+            movingAverage(
+                closes,
+                50
+            );
+
+        const ema20Values =
+            ema(
+                closes,
+                20
+            );
+
+        const ema50Values =
+            ema(
+                closes,
+                50
+            );
+
+        const bands =
+            bollinger(
+                closes
+            );
+
+        const vwapValues =
+            vwap(
+                displayCandles
+            );
+
+        const rsiValues =
+            rsi(
+                closes
+            );
+
+        const macdValues =
+            macd(
+                closes
+            );
+
+        const stochasticValues =
+            stochastic(
+                displayCandles
+            );
+
+        const atrValues =
+            atr(
+                displayCandles
+            );
+
+        const enabledPanels = [];
+
+        if (
+            document.getElementById(
+                "toggle-rsi"
+            ).checked
+        ) {
+            enabledPanels.push("rsi");
+        }
+
+        if (
+            document.getElementById(
+                "toggle-macd"
+            ).checked
+        ) {
+            enabledPanels.push("macd");
+        }
+
+        if (
+            document.getElementById(
+                "toggle-stochastic"
+            ).checked
+        ) {
+            enabledPanels.push("stochastic");
+        }
+
+        if (
+            document.getElementById(
+                "toggle-volume"
+            ).checked
+        ) {
+            enabledPanels.push("volume");
+        }
+
+        if (
+            document.getElementById(
+                "toggle-atr"
+            ).checked
+        ) {
+            enabledPanels.push("atr");
+        }
+
+        const mainPanelHeight =
+            height *
+            (
+                enabledPanels.length
+                    ? 0.62
+                    : 0.86
+            );
+
+        const panelHeight =
+            enabledPanels.length
+                ? (
+                    height -
+                    mainPanelHeight -
+                    20
+                ) /
+                enabledPanels.length
+                : 0;
+
+        const left = 58;
+        const right = 18;
+        const top = 14;
+
+        const chartWidth =
+            width -
+            left -
+            right;
+
+        const overlayValues = [
+            ...highs,
+            ...lows,
+        ];
+
+        if (
+            document.getElementById(
+                "toggle-ema20"
+            ).checked
+        ) {
+            overlayValues.push(
+                ...ema20Values
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-ema50"
+            ).checked
+        ) {
+            overlayValues.push(
+                ...ema50Values
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-bollinger"
+            ).checked
+        ) {
+            overlayValues.push(
+                ...bands.upper.filter(
+                    value =>
+                        value !== null
+                )
+            );
+
+            overlayValues.push(
+                ...bands.lower.filter(
+                    value =>
+                        value !== null
+                )
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-vwap"
+            ).checked
+        ) {
+            overlayValues.push(
+                ...vwapValues.filter(
+                    value =>
+                        value !== null
+                )
+            );
+        }
+
+        const cleanOverlay =
+            overlayValues.filter(
+                value =>
+                    value !== null &&
+                    Number.isFinite(value)
+            );
+
+        let mainMin =
+            Math.min(...cleanOverlay);
+
+        let mainMax =
+            Math.max(...cleanOverlay);
+
+        if (
+            !Number.isFinite(mainMin) ||
+            !Number.isFinite(mainMax)
+        ) {
+            return;
+        }
+
+        const padding =
+            Math.max(
+                (
+                    mainMax -
+                    mainMin
+                ) * 0.08,
+                0.000001
+            );
+
+        mainMin -= padding;
+        mainMax += padding;
+
+        function drawGrid(
+            panelTop,
+            panelHeight
+        ) {
+
+            context.strokeStyle =
+                "rgba(148,163,184,.10)";
+
+            context.lineWidth = 1;
+
+            for (
+                let row = 0;
+                row <= 4;
+                row++
+            ) {
+
+                const y =
+                    panelTop +
+                    (
+                        row / 4
+                    ) *
+                    panelHeight;
+
+                context.beginPath();
+
+                context.moveTo(
+                    left,
+                    y
+                );
+
+                context.lineTo(
+                    width - right,
+                    y
+                );
+
+                context.stroke();
+            }
+        }
+
+        drawGrid(
+            top,
+            mainPanelHeight
+        );
+
+        context.fillStyle =
+            "#64748b";
+
+        context.font =
+            "11px Arial";
+
+        for (
+            let row = 0;
+            row <= 5;
+            row++
+        ) {
+
+            const value =
+                mainMax -
+                (
+                    row / 5
+                ) *
+                (
+                    mainMax -
+                    mainMin
+                );
+
+            const y =
+                top +
+                (
+                    row / 5
+                ) *
+                mainPanelHeight;
+
+            context.fillText(
+                niceNumber(
+                    value
+                ),
+                5,
+                y + 4
+            );
+        }
+
+        const candleWidth =
+            chartWidth /
+            Math.max(
+                displayCandles.length,
+                1
+            );
+
+        displayCandles.forEach(
+            function (
+                candle,
+                index
+            ) {
+
+                const x =
+                    left +
+                    index *
+                    candleWidth +
+                    candleWidth / 2;
+
+                const valueToY =
+                    value =>
+                        top +
+                        mainPanelHeight -
+                        (
+                            (
+                                value -
+                                mainMin
+                            ) /
+                            Math.max(
+                                mainMax -
+                                mainMin,
+                                1e-9
+                            )
+                        ) *
+                        mainPanelHeight;
+
+                const highY =
+                    valueToY(
+                        candle.high
+                    );
+
+                const lowY =
+                    valueToY(
+                        candle.low
+                    );
+
+                const openY =
+                    valueToY(
+                        candle.open
+                    );
+
+                const closeY =
+                    valueToY(
+                        candle.close
+                    );
+
+                const bullish =
+                    candle.close >=
+                    candle.open;
+
+                context.strokeStyle =
+                    bullish
+                        ? "#22c55e"
+                        : "#ef4444";
+
+                context.fillStyle =
+                    bullish
+                        ? "#22c55e"
+                        : "#ef4444";
+
+                context.beginPath();
+
+                context.moveTo(
+                    x,
+                    highY
+                );
+
+                context.lineTo(
+                    x,
+                    lowY
+                );
+
+                context.stroke();
+
+                const bodyWidth =
+                    Math.max(
+                        2,
+                        candleWidth * 0.62
+                    );
+
+                context.fillRect(
+                    x -
+                        bodyWidth / 2,
+                    Math.min(
+                        openY,
+                        closeY
+                    ),
+                    bodyWidth,
+                    Math.max(
+                        1,
+                        Math.abs(
+                            closeY -
+                            openY
+                        )
+                    )
+                );
+            }
+        );
+
+        const drawOverlay =
+            (
+                values,
+                lineColor,
+                lineWidth = 1.5
+            ) => {
+
+                drawLine(
+                    context,
+                    values,
+                    mainMin,
+                    mainMax,
+                    left,
+                    top,
+                    chartWidth,
+                    mainPanelHeight
+                );
+
+                context.strokeStyle =
+                    lineColor;
+
+                context.lineWidth =
+                    lineWidth;
+
+                drawLine(
+                    context,
+                    values,
+                    mainMin,
+                    mainMax,
+                    left,
+                    top,
+                    chartWidth,
+                    mainPanelHeight
+                );
+            };
+
+        if (
+            document.getElementById(
+                "toggle-ma20"
+            ).checked
+        ) {
+            drawOverlay(
+                ma20,
+                "#38bdf8"
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-ma50"
+            ).checked
+        ) {
+            drawOverlay(
+                ma50,
+                "#f59e0b"
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-ema20"
+            ).checked
+        ) {
+            drawOverlay(
+                ema20Values,
+                "#a78bfa"
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-ema50"
+            ).checked
+        ) {
+            drawOverlay(
+                ema50Values,
+                "#fb7185"
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-bollinger"
+            ).checked
+        ) {
+            drawOverlay(
+                bands.upper,
+                "#64748b",
+                1
+            );
+
+            drawOverlay(
+                bands.lower,
+                "#64748b",
+                1
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-vwap"
+            ).checked
+        ) {
+            drawOverlay(
+                vwapValues,
+                "#f97316",
+                1.4
+            );
+        }
+
+        let panelIndex = 0;
+
+        const nextPanel = () => {
+
+            const panelTop =
+                mainPanelHeight +
+                10 +
+                (
+                    panelIndex *
+                    panelHeight
+                );
+
+            panelIndex++;
+
+            return {
+                top: panelTop,
+                height:
+                    Math.max(
+                        50,
+                        panelHeight - 8
+                    ),
+            };
+        };
+
+        const drawReference =
+            (
+                panelTop,
+                heightValue,
+                value,
+                minValue,
+                maxValue,
+                label
+            ) => {
+
+                const y =
+                    panelTop +
+                    heightValue -
+                    (
+                        (
+                            value -
+                            minValue
+                        ) /
+                        Math.max(
+                            maxValue -
+                            minValue,
+                            1e-9
+                        )
+                    ) *
+                    heightValue;
+
+                context.save();
+
+                context.strokeStyle =
+                    "rgba(148,163,184,.20)";
+
+                context.setLineDash(
+                    [4, 4]
+                );
+
+                context.beginPath();
+
+                context.moveTo(
+                    left,
+                    y
+                );
+
+                context.lineTo(
+                    width - right,
+                    y
+                );
+
+                context.stroke();
+
+                context.restore();
+
+                context.fillStyle =
+                    "#64748b";
+
+                context.font =
+                    "10px Arial";
+
+                context.fillText(
+                    label,
+                    5,
+                    y + 3
+                );
+            };
+
+        if (
+            document.getElementById(
+                "toggle-rsi"
+            ).checked
+        ) {
+
+            const panel =
+                nextPanel();
+
+            drawGrid(
+                panel.top,
+                panel.height
+            );
+
+            drawLine(
+                context,
+                rsiValues,
+                0,
+                100,
+                left,
+                panel.top,
+                chartWidth,
+                panel.height
+            );
+
+            context.strokeStyle =
+                "#a78bfa";
+
+            drawReference(
+                panel.top,
+                panel.height,
+                70,
+                0,
+                100,
+                "70"
+            );
+
+            drawReference(
+                panel.top,
+                panel.height,
+                30,
+                0,
+                100,
+                "30"
+            );
+
+            context.fillStyle =
+                "#94a3b8";
+
+            context.fillText(
+                "RSI 14",
+                left,
+                panel.top + 12
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-macd"
+            ).checked
+        ) {
+
+            const panel =
+                nextPanel();
+
+            const values = [
+                ...macdValues.line,
+                ...macdValues.signal,
+                ...macdValues.histogram,
+            ].filter(
+                value =>
+                    Number.isFinite(value)
+            );
+
+            const minValue =
+                Math.min(...values);
+
+            const maxValue =
+                Math.max(...values);
+
+            drawGrid(
+                panel.top,
+                panel.height
+            );
+
+            drawLine(
+                context,
+                macdValues.line,
+                minValue,
+                maxValue,
+                left,
+                panel.top,
+                chartWidth,
+                panel.height
+            );
+
+            context.strokeStyle =
+                "#38bdf8";
+
+            drawLine(
+                context,
+                macdValues.signal,
+                minValue,
+                maxValue,
+                left,
+                panel.top,
+                chartWidth,
+                panel.height
+            );
+
+            context.fillStyle =
+                "#94a3b8";
+
+            context.fillText(
+                "MACD",
+                left,
+                panel.top + 12
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-stochastic"
+            ).checked
+        ) {
+
+            const panel =
+                nextPanel();
+
+            drawGrid(
+                panel.top,
+                panel.height
+            );
+
+            drawLine(
+                context,
+                stochasticValues,
+                0,
+                100,
+                left,
+                panel.top,
+                chartWidth,
+                panel.height
+            );
+
+            context.strokeStyle =
+                "#22c55e";
+
+            drawReference(
+                panel.top,
+                panel.height,
+                80,
+                0,
+                100,
+                "80"
+            );
+
+            drawReference(
+                panel.top,
+                panel.height,
+                20,
+                0,
+                100,
+                "20"
+            );
+
+            context.fillStyle =
+                "#94a3b8";
+
+            context.fillText(
+                "Stochastic 14",
+                left,
+                panel.top + 12
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-volume"
+            ).checked
+        ) {
+
+            const panel =
+                nextPanel();
+
+            const volumes =
+                displayCandles.map(
+                    item =>
+                        item.volume || 0
+                );
+
+            const maxVolume =
+                Math.max(
+                    ...volumes,
+                    1
+                );
+
+            drawGrid(
+                panel.top,
+                panel.height
+            );
+
+            displayCandles.forEach(
+                function (
+                    candle,
+                    index
+                ) {
+
+                    const x =
+                        left +
+                        index *
+                        candleWidth +
+                        candleWidth / 2;
+
+                    const barHeight =
+                        (
+                            (
+                                candle.volume ||
+                                0
+                            ) /
+                            maxVolume
+                        ) *
+                        panel.height;
+
+                    context.fillStyle =
+                        candle.close >=
+                        candle.open
+                            ? "rgba(34,197,94,.45)"
+                            : "rgba(239,68,68,.45)";
+
+                    context.fillRect(
+                        x -
+                            Math.max(
+                                1,
+                                candleWidth * .28
+                            ),
+                        panel.top +
+                            panel.height -
+                            barHeight,
+                        Math.max(
+                            2,
+                            candleWidth * .56
+                        ),
+                        barHeight
+                    );
+                }
+            );
+
+            context.fillStyle =
+                "#94a3b8";
+
+            context.fillText(
+                "Volume",
+                left,
+                panel.top + 12
+            );
+        }
+
+        if (
+            document.getElementById(
+                "toggle-atr"
+            ).checked
+        ) {
+
+            const panel =
+                nextPanel();
+
+            const cleanAtr =
+                atrValues.filter(
+                    value =>
+                        value !== null &&
+                        Number.isFinite(value)
+                );
+
+            if (cleanAtr.length) {
+
+                const minValue =
+                    Math.min(
+                        ...cleanAtr
+                    );
+
+                const maxValue =
+                    Math.max(
+                        ...cleanAtr
+                    );
+
+                drawGrid(
+                    panel.top,
+                    panel.height
+                );
+
+                drawLine(
+                    context,
+                    atrValues,
+                    minValue,
+                    maxValue,
+                    left,
+                    panel.top,
+                    chartWidth,
+                    panel.height
+                );
+
+                context.strokeStyle =
+                    "#fb7185";
+
+                context.fillStyle =
+                    "#94a3b8";
+
+                context.fillText(
+                    "ATR 14",
+                    left,
+                    panel.top + 12
+                );
+            }
+        }
+
+        const latest =
+            candles[
+                candles.length - 1
+            ];
+
+        const displayLatest =
+            convertValue(
+                latest.close
+            );
+
+        priceElement.textContent =
+            currencyPrefix(
+                displayCurrency
+            ) +
+            niceNumber(
+                displayLatest
+            );
+
+        const first =
+            candles[0].close;
+
+        const change =
+            first
+                ? (
+                    (
+                        latest.close -
+                        first
+                    ) /
+                    first
+                ) *
+                100
+                : 0;
+
+        changeElement.textContent =
+            (
+                change >= 0
+                    ? "+"
+                    : ""
+            ) +
+            change.toFixed(2) +
+            "%";
+
+        changeElement.className =
+            "market-terminal-change " +
+            (
+                change >= 0
+                    ? "positive"
+                    : "negative"
+            );
+    }
+
+
+    async function loadCandles(
+        period,
+        interval
+    ) {
+
+        status.textContent =
+            "Loading " +
+            period.toUpperCase() +
+            " market data...";
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/market-candles?" +
+                    new URLSearchParams({
+                        symbol,
+                        period,
+                        interval,
+                    })
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error ||
+                    "Market data unavailable."
+                );
+            }
+
+            allCandles =
+                data.candles || [];
+
+            if (!allCandles.length) {
+                throw new Error(
+                    "No market data available."
+                );
+            }
+
+            selectedPeriod =
+                period;
+
+            selectedInterval =
+                interval;
+
+            try {
+                localStorage.setItem(
+                    chartStateKey,
+                    JSON.stringify({
+                        period:
+                            selectedPeriod,
+                        interval:
+                            selectedInterval,
+                    })
+                );
+            } catch (_) {
+                // Ignore storage errors.
+            }
+
+            viewStart = 0;
+            viewEnd =
+                allCandles.length;
+
+            updateVisibleCandles();
+
+            status.textContent =
+                data.period.toUpperCase() +
+                " · " +
+                data.interval +
+                " · " +
+                allCandles.length +
+                " candles";
+
+            drawChart();
+
+        } catch (error) {
+
+            allCandles = [];
+            candles = [];
+
+            status.textContent =
+                error.message;
+        }
+    }
+
+
+    async function loadFxRate(
+        source,
+        target
+    ) {
+
+        if (
+            !source ||
+            !target ||
+            source === target
+        ) {
+            fxRate = 1.0;
+            return;
+        }
+
+        const response =
+            await fetch(
+                "/api/fx-rate?" +
+                new URLSearchParams({
+                    source,
+                    target,
+                })
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "Currency rate unavailable."
+            );
+        }
+
+        fxRate =
+            Number(data.rate);
+
+        if (
+            !Number.isFinite(fxRate) ||
+            fxRate <= 0
+        ) {
+            throw new Error(
+                "Invalid currency rate."
+            );
+        }
+    }
+
+
+    const currencySelect =
+        document.getElementById(
+            "market-currency"
+        );
+
+    currencySelect.addEventListener(
+        "change",
+        async function () {
+
+            try {
+
+                displayCurrency =
+                    currencySelect.value;
+
+                await loadFxRate(
+                    sourceCurrency,
+                    displayCurrency
+                );
+
+                drawChart();
+
+            } catch (error) {
+
+                displayCurrency =
+                    sourceCurrency;
+
+                currencySelect.value =
+                    sourceCurrency;
+
+                fxRate = 1.0;
+
+                status.textContent =
+                    error.message;
+
+                drawChart();
+            }
+        }
+    );
+
+
+
+    // -----------------------------------------------------
+    // INDICATOR MENU
+    // -----------------------------------------------------
+
+    const indicatorMenuButton =
+        document.getElementById(
+            "market-indicator-menu-button"
+        );
+
+    const indicatorMenu =
+        document.getElementById(
+            "market-indicator-menu"
+        );
+
+    if (
+        indicatorMenuButton &&
+        indicatorMenu
+    ) {
+        indicatorMenuButton.addEventListener(
+            "click",
+            function () {
+                indicatorMenu.classList.toggle(
+                    "open"
+                );
+            }
+        );
+    }
+
+
+    document.querySelectorAll(
+        "#market-indicator-menu input[type='checkbox']"
+    ).forEach(
+        function (checkbox) {
+            checkbox.addEventListener(
+                "change",
+                function () {
+                    drawChart();
+                }
+            );
+        }
+    );
+
+
+    // -----------------------------------------------------
+    // TIMEFRAME BUTTONS
+    // -----------------------------------------------------
+
+    timeframeButtons.forEach(
+        function (button) {
+
+            button.addEventListener(
+                "click",
+                async function () {
+
+                    timeframeButtons.forEach(
+                        function (item) {
+                            item.classList.remove(
+                                "active"
+                            );
+                        }
+                    );
+
+                    button.classList.add(
+                        "active"
+                    );
+
+                    const period =
+                        button.dataset.period ||
+                        selectedPeriod;
+
+                    const interval =
+                        button.dataset.interval ||
+                        selectedInterval;
+
+                    await loadCandles(
+                        period,
+                        interval
+                    );
+                }
+            );
+        }
+    );
+
+
+    // -----------------------------------------------------
+    // CHART ZOOM + PAN
+    // -----------------------------------------------------
+
+    function clampView() {
+
+        if (!allCandles.length) {
+            return;
+        }
+
+        const minimumVisible =
+            Math.min(
+                20,
+                allCandles.length
+            );
+
+        const maximumVisible =
+            allCandles.length;
+
+        let visible =
+            viewEnd -
+            viewStart;
+
+        visible =
+            Math.max(
+                minimumVisible,
+                Math.min(
+                    visible,
+                    maximumVisible
+                )
+            );
+
+        viewStart =
+            Math.max(
+                0,
+                Math.min(
+                    viewStart,
+                    allCandles.length -
+                    visible
+                )
+            );
+
+        viewEnd =
+            viewStart +
+            visible;
+    }
+
+
+    function zoomChart(
+        direction,
+        mouseX
+    ) {
+
+        if (!allCandles.length) {
+            return;
+        }
+
+        const currentVisible =
+            Math.max(
+                2,
+                viewEnd - viewStart
+            );
+
+        const factor =
+            direction > 0
+                ? 1.25
+                : 0.80;
+
+        const nextVisible =
+            Math.max(
+                20,
+                Math.min(
+                    allCandles.length,
+                    Math.round(
+                        currentVisible *
+                        factor
+                    )
+                )
+            );
+
+        const ratio =
+            mouseX /
+            Math.max(
+                canvas.clientWidth,
+                1
+            );
+
+        const anchor =
+            viewStart +
+            currentVisible *
+            ratio;
+
+        viewStart =
+            Math.round(
+                anchor -
+                nextVisible *
+                ratio
+            );
+
+        viewEnd =
+            viewStart +
+            nextVisible;
+
+        clampView();
+        updateVisibleCandles();
+        drawChart();
+    }
+
+
+    function resetChartZoom() {
+
+        if (!allCandles.length) {
+            return;
+        }
+
+        viewStart = 0;
+        viewEnd =
+            allCandles.length;
+
+        updateVisibleCandles();
+        drawChart();
+    }
+
+
+    canvas.addEventListener(
+        "wheel",
+        function (event) {
+
+            event.preventDefault();
+
+            zoomChart(
+                event.deltaY > 0
+                    ? 1
+                    : -1,
+                event.offsetX
+            );
+        },
+        {
+            passive: false,
+        }
+    );
+
+
+    canvas.addEventListener(
+        "pointerdown",
+        function (event) {
+
+            dragging = true;
+
+            dragStartX =
+                event.clientX;
+
+            dragStartViewStart =
+                viewStart;
+
+            dragStartViewEnd =
+                viewEnd;
+
+            canvas.setPointerCapture(
+                event.pointerId
+            );
+
+            canvas.style.cursor =
+                "grabbing";
+        }
+    );
+
+
+    canvas.addEventListener(
+        "pointermove",
+        function (event) {
+
+            if (!dragging) {
+                return;
+            }
+
+            if (!allCandles.length) {
+                return;
+            }
+
+            const width =
+                Math.max(
+                    canvas.clientWidth,
+                    1
+                );
+
+            const visible =
+                dragStartViewEnd -
+                dragStartViewStart;
+
+            const pixelsPerCandle =
+                width /
+                Math.max(
+                    visible,
+                    1
+                );
+
+            const deltaPixels =
+                event.clientX -
+                dragStartX;
+
+            const deltaCandles =
+                Math.round(
+                    deltaPixels /
+                    Math.max(
+                        pixelsPerCandle,
+                        1
+                    )
+                );
+
+            viewStart =
+                dragStartViewStart -
+                deltaCandles;
+
+            viewEnd =
+                dragStartViewEnd -
+                deltaCandles;
+
+            clampView();
+            updateVisibleCandles();
+            drawChart();
+        }
+    );
+
+
+    function stopDragging(
+        event
+    ) {
+
+        dragging = false;
+
+        canvas.style.cursor =
+            "grab";
+
+        if (
+            event &&
+            canvas.hasPointerCapture(
+                event.pointerId
+            )
+        ) {
+            canvas.releasePointerCapture(
+                event.pointerId
+            );
+        }
+    }
+
+
+    canvas.addEventListener(
+        "pointerup",
+        stopDragging
+    );
+
+    canvas.addEventListener(
+        "pointercancel",
+        stopDragging
+    );
+
+
+    canvas.addEventListener(
+        "dblclick",
+        resetChartZoom
+    );
+
+
+    canvas.style.cursor =
+        "grab";
+
+
+    loadFxRate(
+        sourceCurrency,
+        displayCurrency
+    )
+        .then(
+            function () {
+                drawChart();
+            }
+        )
+        .catch(
+            function (error) {
+
+                displayCurrency =
+                    sourceCurrency;
+
+                currencySelect.value =
+                    sourceCurrency;
+
+                fxRate = 1.0;
+
+                status.textContent =
+                    error.message;
+
+                drawChart();
+            }
+        );
+
+
+    const marketDataRefreshTimer =
+        window.setInterval(
+            async function () {
+
+                const previousStart =
+                    viewStart;
+
+                const previousEnd =
+                    viewEnd;
+
+                await loadCandles(
+                    selectedPeriod,
+                    selectedInterval
+                );
+
+                if (
+                    allCandles.length &&
+                    previousEnd >
+                    previousStart
+                ) {
+                    const visibleCount =
+                        previousEnd -
+                        previousStart;
+
+                    viewStart =
+                        Math.max(
+                            0,
+                            Math.min(
+                                previousStart,
+                                allCandles.length -
+                                visibleCount
+                            )
+                        );
+
+                    viewEnd =
+                        Math.min(
+                            allCandles.length,
+                            viewStart +
+                            visibleCount
+                        );
+
+                    updateVisibleCandles();
+                    drawChart();
+                }
+
+                try {
+                    await loadFxRate(
+                        sourceCurrency,
+                        displayCurrency
+                    );
+
+                    drawChart();
+
+                } catch (_) {
+                    // Keep current FX state.
+                }
+
+            },
+            30000
+        );
+
+
+    loadCandles(
+        selectedPeriod,
+        selectedInterval
+    );
+
+})();
+</script>
+
+{% endblock %}

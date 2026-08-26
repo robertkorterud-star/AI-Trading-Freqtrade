@@ -70,7 +70,17 @@
         }
 
         if (countdown <= 0) {
+
             window.clearInterval(timer);
+
+            if (
+                window.location.pathname.startsWith(
+                    "/market/"
+                )
+            ) {
+                return;
+            }
+
             window.location.reload();
         }
 

@@ -20,6 +20,9 @@ from atlas.adapters.intelligence_sources import (
 from atlas.adapters.web_research import (
     WebResearchAdapter,
 )
+from atlas.adapters.historical_market_data import (
+    HistoricalMarketDataAdapter,
+)
 
 app = FastAPI(title="ATLAS Dashboard")
 
@@ -42,6 +45,7 @@ templates.env.globals["t"] = template_translate
 service = DashboardService()
 settings_service = service.data.settings
 market_search = MarketSearchService()
+historical_market_data = HistoricalMarketDataAdapter()
 
 web_research = WebResearchAdapter()
 
@@ -148,6 +152,255 @@ async def analysis(
             "request": request,
             "dashboard": dashboard,
         },
+    )
+
+
+@app.get("/api/market-search")
+async def market_search_api(request: Request):
+
+    query = request.query_params.get(
+        "q",
+        "",
+    ).strip()
+
+    if not query:
+        return JSONResponse(
+            content={"results": []}
+        )
+
+    results = market_search.search(
+        query
+    )
+
+    return JSONResponse(
+        content={
+            "results": [
+                {
+                    "symbol": item["symbol"],
+                    "name": item["name"],
+                    "type": item["type"],
+                    "market": item.get("market"),
+                    "currency": item.get("currency"),
+                    "price_usd": item.get("price_usd"),
+                    "change": item.get("change"),
+                }
+                for item in results
+            ]
+        }
+    )
+
+
+@app.get("/market/{symbol}", response_class=HTMLResponse)
+async def market_terminal(
+    request: Request,
+    symbol: str,
+):
+    normalized = symbol.strip().upper()
+
+    results = market_search.search(
+        normalized
+    )
+
+    asset = next(
+        (
+            item
+            for item in results
+            if item.get("symbol", "").upper()
+            == normalized
+        ),
+        None,
+    )
+
+    if asset is None:
+        return RedirectResponse(
+            url="/markets?q="
+            + normalized,
+            status_code=302,
+        )
+
+    trading_status = settings_service.get_trading_status()
+
+    dashboard = {
+        "status": "ATLAS Online",
+        "trading": trading_status,
+    }
+
+    return templates.TemplateResponse(
+        request=request,
+        name="market_terminal.html",
+        context={
+            "request": request,
+            "asset": asset,
+            "dashboard": dashboard,
+        },
+    )
+
+
+@app.get("/api/fx-rate")
+async def fx_rate_api(
+    request: Request,
+):
+    source = request.query_params.get(
+        "source",
+        "USD",
+    ).strip().upper()
+
+    target = request.query_params.get(
+        "target",
+        "NOK",
+    ).strip().upper()
+
+    supported = {
+        "USD",
+        "NOK",
+        "DKK",
+        "SEK",
+        "EUR",
+    }
+
+    if source not in supported or target not in supported:
+        return JSONResponse(
+            content={
+                "error": "Unsupported currency."
+            },
+            status_code=400,
+        )
+
+    if source == target:
+        return JSONResponse(
+            content={
+                "source": source,
+                "target": target,
+                "rate": 1.0,
+            }
+        )
+
+    def usd_per_currency(currency: str) -> float:
+
+        if currency == "USD":
+            return 1.0
+
+        symbol = f"USD{currency}=X"
+
+        candles = historical_market_data.get(
+            symbol,
+            period="5d",
+            interval="1d",
+        )
+
+        if not candles:
+            raise ValueError(
+                f"FX rate unavailable for {currency}."
+            )
+
+        return float(
+            candles[-1]["close"]
+        )
+
+    try:
+        source_usd_rate = usd_per_currency(
+            source
+        )
+
+        target_usd_rate = usd_per_currency(
+            target
+        )
+
+        # Convert source currency -> USD -> target currency.
+        rate = (
+            target_usd_rate /
+            source_usd_rate
+        )
+
+        return JSONResponse(
+            content={
+                "source": source,
+                "target": target,
+                "rate": rate,
+            }
+        )
+
+    except Exception as exc:
+        return JSONResponse(
+            content={
+                "error": str(exc),
+            },
+            status_code=502,
+        )
+
+
+@app.get("/api/market-candles")
+async def market_candles_api(
+    request: Request,
+):
+    symbol = request.query_params.get(
+        "symbol",
+        "",
+    ).strip().upper()
+
+    period = request.query_params.get(
+        "period",
+        "3m",
+    ).strip().lower()
+
+    interval = request.query_params.get(
+        "interval",
+        "1h",
+    ).strip().lower()
+
+    valid_periods = {
+        "1d": "1d",
+        "5d": "5d",
+        "1m": "1mo",
+        "3m": "3mo",
+        "6m": "6mo",
+        "1y": "1y",
+    }
+
+    valid_intervals = {
+        "5m": "5m",
+        "15m": "15m",
+        "1h": "1h",
+        "4h": "4h",
+        "1d": "1d",
+    }
+
+    if not symbol:
+        return JSONResponse(
+            content={
+                "error": "Symbol is required."
+            },
+            status_code=400,
+        )
+
+    if period not in valid_periods:
+        period = "3m"
+
+    if interval not in valid_intervals:
+        interval = "1h"
+
+    try:
+        candles = historical_market_data.get(
+            symbol,
+            period=valid_periods[period],
+            interval=valid_intervals[interval],
+        )
+    except Exception as exc:
+        return JSONResponse(
+            content={
+                "error": str(exc),
+                "candles": [],
+            },
+            status_code=502,
+        )
+
+    return JSONResponse(
+        content={
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "candles": candles[-2000:],
+        }
     )
 
 

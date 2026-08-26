@@ -28,6 +28,10 @@ class MarketData:
 
     volume_ratio: float
 
+    currency: str = "USD"
+
+    currency: str = "USD"
+
 
 class MarketDataAdapter:
     """Fetches market data."""
@@ -93,6 +97,30 @@ class MarketDataAdapter:
 
         previous = float(info["previousClose"])
 
+        currency = (
+            getattr(
+                ticker,
+                "fast_info",
+                {},
+            ).get(
+                "currency",
+                None,
+            )
+            or getattr(
+                ticker,
+                "info",
+                {},
+            ).get(
+                "currency",
+                None,
+            )
+            or "USD"
+        )
+
+        currency = str(
+            currency
+        ).upper()
+
         change = ((price - previous) / previous) * 100
 
         return MarketData(
@@ -100,6 +128,8 @@ class MarketDataAdapter:
             symbol=symbol,
 
             price=price,
+
+            currency=currency,
 
             previous_close=previous,
 

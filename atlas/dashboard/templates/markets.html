@@ -2,6 +2,9 @@
 
 {% block title %}
 ATLAS - Markets
+
+
+
 {% endblock %}
 
 {% block content %}
@@ -16,25 +19,25 @@ ATLAS - Markets
             Search for stocks and cryptocurrencies to analyze with ATLAS.
         </p>
 
-        <form
-            method="get"
-            action="/markets"
-            class="market-search-form"
+        <button
+            type="button"
+            class="market-search-trigger"
+            id="market-search-trigger"
         >
+            <span class="market-search-trigger-icon">⌕</span>
 
-            <input
-                type="search"
-                name="q"
-                value="{{ query }}"
-                placeholder="Search for a stock or cryptocurrency..."
-                autocomplete="off"
-            >
+            <span class="market-search-trigger-text">
+                {% if query %}
+                    {{ query }}
+                {% else %}
+                    Search for a stock or cryptocurrency...
+                {% endif %}
+            </span>
 
-            <button type="submit">
-                🔎 Search
-            </button>
-
-        </form>
+            <span class="market-search-trigger-key">
+                ⌘ K
+            </span>
+        </button>
 
     </div>
 
@@ -481,5 +484,566 @@ ATLAS - Markets
     {% endif %}
 
 </div>
+
+<div
+    class="market-search-modal"
+    id="market-search-modal"
+    aria-hidden="true"
+>
+    <div
+        class="market-search-overlay"
+        id="market-search-overlay"
+    ></div>
+
+    <div
+        class="market-search-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="market-search-title"
+    >
+
+        <div class="market-search-dialog-header">
+            <h2 id="market-search-title">
+                Symbol search
+            </h2>
+
+            <button
+                type="button"
+                class="market-search-close"
+                id="market-search-close"
+                aria-label="Close search"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="market-search-input-wrap">
+
+            <span class="market-search-input-icon">
+                🔍
+            </span>
+
+            <input
+                id="market-search-input"
+                type="search"
+                autocomplete="off"
+                placeholder="Search symbol or company..."
+            >
+
+            <button
+                type="button"
+                class="market-search-clear"
+                id="market-search-clear"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div class="market-search-tabs">
+
+            <button
+                type="button"
+                class="market-search-tab active"
+                data-market-filter="all"
+            >
+                All
+            </button>
+
+            <button
+                type="button"
+                class="market-search-tab"
+                data-market-filter="stock"
+            >
+                Stocks
+            </button>
+
+            <button
+                type="button"
+                class="market-search-tab"
+                data-market-filter="crypto"
+            >
+                Crypto
+            </button>
+
+        </div>
+
+        <div
+            class="market-search-results"
+            id="market-search-results"
+        ></div>
+
+        <div
+            class="market-search-empty"
+            id="market-search-empty"
+            hidden
+        >
+            No markets found.
+        </div>
+
+        <div class="market-search-footer">
+            <span>↑ ↓ Navigate</span>
+            <span>Enter Select</span>
+            <span>Esc Close</span>
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+(function () {
+
+    const trigger =
+        document.getElementById(
+            "market-search-trigger"
+        );
+
+    const modal =
+        document.getElementById(
+            "market-search-modal"
+        );
+
+    const overlay =
+        document.getElementById(
+            "market-search-overlay"
+        );
+
+    const closeButton =
+        document.getElementById(
+            "market-search-close"
+        );
+
+    const input =
+        document.getElementById(
+            "market-search-input"
+        );
+
+    const clearButton =
+        document.getElementById(
+            "market-search-clear"
+        );
+
+    const resultsContainer =
+        document.getElementById(
+            "market-search-results"
+        );
+
+    const empty =
+        document.getElementById(
+            "market-search-empty"
+        );
+
+    const tabs =
+        document.querySelectorAll(
+            ".market-search-tab"
+        );
+
+    if (
+        !trigger ||
+        !modal ||
+        !input ||
+        !resultsContainer
+    ) {
+        return;
+    }
+
+    let results = [];
+    let selectedIndex = -1;
+    let filter = "all";
+    let debounceTimer = null;
+    let controller = null;
+
+    function openSearch() {
+        modal.classList.add("open");
+        modal.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        input.focus();
+        input.select();
+    }
+
+    function closeSearch() {
+        modal.classList.remove("open");
+        modal.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+        trigger.focus();
+    }
+
+    function visibleResults() {
+
+        if (filter === "all") {
+            return results;
+        }
+
+        return results.filter(
+            function (item) {
+                return item.type === filter;
+            }
+        );
+    }
+
+    function renderResults() {
+
+        resultsContainer.innerHTML = "";
+
+        const visible =
+            visibleResults();
+
+        selectedIndex =
+            Math.min(
+                selectedIndex,
+                visible.length - 1
+            );
+
+        empty.hidden =
+            visible.length !== 0;
+
+        visible.forEach(
+            function (item, index) {
+
+                const row =
+                    document.createElement(
+                        "button"
+                    );
+
+                row.type = "button";
+                row.className =
+                    "market-search-result";
+
+                if (
+                    index === selectedIndex
+                ) {
+                    row.classList.add(
+                        "selected"
+                    );
+                }
+
+                const icon =
+                    item.type === "crypto"
+                        ? "🪙"
+                        : "📈";
+
+                const price =
+                    item.price_usd !== null &&
+                    item.price_usd !== undefined
+                        ? (
+                            (
+                                item.currency ||
+                                "USD"
+                            ).toUpperCase() +
+                            " " +
+                            Number(
+                                item.price_usd
+                            ).toLocaleString(
+                                undefined,
+                                {
+                                    minimumFractionDigits:
+                                        Math.abs(
+                                            Number(
+                                                item.price_usd
+                                            )
+                                        ) < 1
+                                            ? 4
+                                            : 2,
+                                    maximumFractionDigits: 4,
+                                }
+                            )
+                        )
+                        : "—";
+
+                const change =
+                    item.change !== null &&
+                    item.change !== undefined
+                        ? (
+                            Number(item.change) >= 0
+                                ? "+"
+                                : ""
+                        ) +
+                        Number(
+                            item.change
+                        ).toFixed(2) +
+                        "%"
+                        : "—";
+
+                row.innerHTML = `
+                    <span class="market-search-result-icon">
+                        ${icon}
+                    </span>
+
+                    <span class="market-search-result-main">
+                        <strong>${item.symbol}</strong>
+                        <small>${item.name}</small>
+                    </span>
+
+                    <span class="market-search-result-type">
+                        ${item.type}
+                    </span>
+
+                    <span class="market-search-result-price">
+                        ${price}
+                        <small>${change}</small>
+                    </span>
+                `;
+
+                row.addEventListener(
+                    "click",
+                    function () {
+                        selectItem(item);
+                    }
+                );
+
+                resultsContainer.appendChild(
+                    row
+                );
+            }
+        );
+    }
+
+    function selectItem(item) {
+
+        localStorage.setItem(
+            "atlas.last_market_search",
+            item.symbol
+        );
+
+        window.location.href =
+            "/market/" +
+            encodeURIComponent(
+                item.symbol
+            );
+    }
+
+    async function search(query) {
+
+        if (controller) {
+            controller.abort();
+        }
+
+        controller =
+            new AbortController();
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/market-search?q=" +
+                    encodeURIComponent(
+                        query
+                    ),
+                    {
+                        signal:
+                            controller.signal,
+                    }
+                );
+
+            if (!response.ok) {
+                throw new Error(
+                    "Market search failed."
+                );
+            }
+
+            const data =
+                await response.json();
+
+            results =
+                data.results || [];
+
+            selectedIndex = -1;
+
+            renderResults();
+
+        } catch (error) {
+
+            if (
+                error.name ===
+                "AbortError"
+            ) {
+                return;
+            }
+
+            results = [];
+            selectedIndex = -1;
+
+            renderResults();
+        }
+    }
+
+    input.addEventListener(
+        "input",
+        function () {
+
+            const query =
+                input.value.trim();
+
+            clearTimeout(
+                debounceTimer
+            );
+
+            if (!query) {
+                results = [];
+                selectedIndex = -1;
+                renderResults();
+                return;
+            }
+
+            debounceTimer =
+                setTimeout(
+                    function () {
+                        search(query);
+                    },
+                    180
+                );
+        }
+    );
+
+    input.addEventListener(
+        "keydown",
+        function (event) {
+
+            const visible =
+                visibleResults();
+
+            if (
+                event.key === "ArrowDown"
+            ) {
+                event.preventDefault();
+
+                if (visible.length) {
+                    selectedIndex =
+                        Math.min(
+                            selectedIndex + 1,
+                            visible.length - 1
+                        );
+                }
+
+                renderResults();
+                return;
+            }
+
+            if (
+                event.key === "ArrowUp"
+            ) {
+                event.preventDefault();
+
+                if (visible.length) {
+                    selectedIndex =
+                        Math.max(
+                            selectedIndex - 1,
+                            0
+                        );
+                }
+
+                renderResults();
+                return;
+            }
+
+            if (
+                event.key === "Enter" &&
+                visible[selectedIndex]
+            ) {
+                event.preventDefault();
+
+                selectItem(
+                    visible[selectedIndex]
+                );
+
+                return;
+            }
+
+            if (event.key === "Escape") {
+                event.preventDefault();
+                closeSearch();
+            }
+        }
+    );
+
+    tabs.forEach(
+        function (tab) {
+
+            tab.addEventListener(
+                "click",
+                function () {
+
+                    tabs.forEach(
+                        function (item) {
+                            item.classList.remove(
+                                "active"
+                            );
+                        }
+                    );
+
+                    tab.classList.add(
+                        "active"
+                    );
+
+                    filter =
+                        tab.dataset.marketFilter;
+
+                    selectedIndex = -1;
+
+                    renderResults();
+                }
+            );
+        }
+    );
+
+    clearButton.addEventListener(
+        "click",
+        function () {
+
+            input.value = "";
+            results = [];
+            selectedIndex = -1;
+
+            renderResults();
+            input.focus();
+        }
+    );
+
+    trigger.addEventListener(
+        "click",
+        openSearch
+    );
+
+    closeButton.addEventListener(
+        "click",
+        closeSearch
+    );
+
+    overlay.addEventListener(
+        "click",
+        closeSearch
+    );
+
+    document.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                (event.metaKey ||
+                 event.ctrlKey) &&
+                event.key.toLowerCase() === "k"
+            ) {
+                event.preventDefault();
+                openSearch();
+            }
+
+            if (
+                event.key === "Escape" &&
+                modal.classList.contains("open")
+            ) {
+                closeSearch();
+            }
+        }
+    );
+
+})();
+</script>
 
 {% endblock %}

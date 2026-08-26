@@ -144,8 +144,9 @@ class MarketSearchService:
                     {
                         "price_usd": round(
                             data.price,
-                            2,
+                            4,
                         ),
+                        "currency": getattr(data, "currency", "USD"),
                         "change": round(
                             data.change_percent,
                             2,
@@ -199,8 +200,9 @@ class MarketSearchService:
                     {
                         "price_usd": round(
                             data.price,
-                            2,
+                            4,
                         ),
+                        "currency": getattr(data, "currency", "USD"),
                         "change": round(
                             data.change_percent,
                             2,

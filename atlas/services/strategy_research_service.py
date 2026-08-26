@@ -25,6 +25,10 @@ from atlas.trading.indicators import (
 from atlas.trading.strategy_hypothesis import (
     StrategyHypothesis,
 )
+from atlas.trading.timing_analysis import (
+    TimingOpportunity,
+    TimingAnalyzer,
+)
 from atlas.agents.strategy_learning_agent import (
     StrategyLearningAgent,
 )
@@ -36,6 +40,9 @@ class StrategyResearchResult:
     strategies: list[StrategyHypothesis]
     backtests: list[BacktestResult]
     assessments: list[BacktestAssessment]
+    timing: list[TimingOpportunity] = field(
+        default_factory=list
+    )
     history: list["StrategyResearchResult"] = field(
         default_factory=list
     )
@@ -68,6 +75,8 @@ class StrategyResearchService:
             if backtest_engine is not None
             else BacktestEngine()
         )
+
+        self.timing_analyzer = TimingAnalyzer()
 
     def research(
         self,
@@ -134,6 +143,7 @@ class StrategyResearchService:
 
         backtests = []
         assessments = []
+        timing = []
 
         for strategy in strategies:
 
@@ -151,9 +161,17 @@ class StrategyResearchService:
                 )
             )
 
+            timing.append(
+                self.timing_analyzer.analyze(
+                    strategy,
+                    enriched_candles,
+                )
+            )
+
         return StrategyResearchResult(
             symbol=symbol,
             strategies=strategies,
             backtests=backtests,
             assessments=assessments,
+            timing=timing,
         )
