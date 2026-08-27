@@ -11,6 +11,9 @@ from atlas.database.connection import Database
 from atlas.trading.strategy_memory import (
     StrategyMemoryRecord,
 )
+from atlas.trading.strategy_memory_history_record import (
+    StrategyMemoryHistoryRecord,
+)
 
 
 class StrategyMemoryRepository:
@@ -407,7 +410,8 @@ class StrategyMemoryRepository:
 
     @staticmethod
     def _history_row_to_record(row):
-        return StrategyMemoryRecord(
+        return StrategyMemoryHistoryRecord(
+            research_run_id=row["research_run_id"],
             symbol=row["symbol"],
             regime=row["regime"],
             strategy_name=row["strategy_name"],
@@ -427,7 +431,7 @@ class StrategyMemoryRepository:
             robust_winner=bool(
                 row["robust_winner"]
             ),
-            updated_at=datetime.fromisoformat(
+            recorded_at=datetime.fromisoformat(
                 row["recorded_at"]
             ),
         )

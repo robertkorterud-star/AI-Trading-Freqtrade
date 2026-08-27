@@ -7,7 +7,7 @@ Research-only.
 This module does not generate trading decisions.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import pstdev
 
 from atlas.trading.strategy_memory import StrategyMemoryRecord
@@ -27,6 +27,7 @@ class StrategyMemoryLongitudinalAnalysis:
     consistency_score: float
     confidence: float
     classification: str
+    independent_run_count: int = 0
 
 
 class StrategyMemoryLongitudinalAnalyzer:
@@ -71,6 +72,29 @@ class StrategyMemoryLongitudinalAnalyzer:
         ]
 
         observation_count = len(history)
+
+        research_run_ids = {
+            getattr(record, "research_run_id", None)
+            for record in history
+        }
+
+        if None in research_run_ids:
+            independent_run_count = (
+                len(research_run_ids - {None})
+                + sum(
+                    1
+                    for record in history
+                    if not getattr(
+                        record,
+                        "research_run_id",
+                        None,
+                    )
+                )
+            )
+        else:
+            independent_run_count = len(
+                research_run_ids
+            )
 
         average_return = (
             sum(returns) / observation_count
@@ -121,6 +145,7 @@ class StrategyMemoryLongitudinalAnalyzer:
 
         return StrategyMemoryLongitudinalAnalysis(
             observation_count=observation_count,
+            independent_run_count=independent_run_count,
             average_return_percent=round(
                 average_return,
                 4,
@@ -267,6 +292,7 @@ class StrategyMemoryLongitudinalAnalyzer:
     def _insufficient() -> StrategyMemoryLongitudinalAnalysis:
         return StrategyMemoryLongitudinalAnalysis(
             observation_count=0,
+            independent_run_count=0,
             average_return_percent=0.0,
             best_return_percent=0.0,
             worst_return_percent=0.0,
