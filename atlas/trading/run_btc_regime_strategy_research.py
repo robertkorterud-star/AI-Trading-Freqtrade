@@ -5,7 +5,8 @@ Research-only executable script.
 
 Loads historical BTC OHLC data through the existing
 CoinGecko adapter, evaluates the real ATLAS strategies
-by market regime, and prints strategy recommendations.
+by market regime, prints strategy recommendations,
+and stores the research results in Strategy Memory.
 
 No trading, orders, or DecisionEngine calls are performed.
 """
@@ -13,11 +14,29 @@ No trading, orders, or DecisionEngine calls are performed.
 from datetime import datetime, timedelta, timezone
 
 from atlas.adapters.coingecko import CoinGeckoAdapter
+from atlas.core.database_config import DatabaseConfig
+from atlas.database.connection import Database
+from atlas.database.schema import initialize_database
+from atlas.database.strategy_memory_repository import (
+    StrategyMemoryRepository,
+)
 from atlas.trading.coingecko_ohlc import (
     CoinGeckoOHLCProvider,
 )
 from atlas.trading.regime_strategy_backtest import (
     RegimeStrategyBacktestResearch,
+)
+from atlas.trading.strategy_memory import (
+    StrategyMemory,
+)
+from atlas.trading.strategy_memory_service import (
+    StrategyMemoryService,
+)
+from atlas.trading.strategy_memory import (
+    StrategyMemory,
+)
+from atlas.trading.strategy_memory_service import (
+    StrategyMemoryService,
 )
 from atlas.trading.strategy_regime_recommendation import (
     StrategyRegimeRecommender,
@@ -67,10 +86,14 @@ def main() -> None:
     print(f"Source:     {data.source}")
 
     if data.start is not None:
-        print(f"Data start: {data.start.isoformat()}")
+        print(
+            f"Data start: {data.start.isoformat()}"
+        )
 
     if data.end is not None:
-        print(f"Data end:   {data.end.isoformat()}")
+        print(
+            f"Data end:   {data.end.isoformat()}"
+        )
 
     print()
 
@@ -87,7 +110,43 @@ def main() -> None:
         .run(data)
     )
 
+    database_config = DatabaseConfig()
+
+    database = Database(
+        database_config.path
+    )
+
+    initialize_database(database)
+
+    memory = StrategyMemory()
+
+    repository = StrategyMemoryRepository(
+        database
+    )
+
+    memory_service = StrategyMemoryService(
+        memory=memory,
+        repository=repository,
+    )
+
+    memory_service.remember(
+        symbol=symbol,
+        summary=backtest,
+    )
+
     recommender = StrategyRegimeRecommender()
+
+    memory = StrategyMemory()
+
+    memory_service = StrategyMemoryService(
+        memory=memory,
+        recommender=recommender,
+    )
+
+    memory_service.remember(
+        symbol=symbol,
+        summary=backtest,
+    )
 
     regimes = sorted(
         {
@@ -106,27 +165,25 @@ def main() -> None:
             regime,
         )
 
-        historical_leader = next(
+        historical_candidates = [
             result
             for result in backtest.results
             if result.regime == regime
             and result.trade_count > 0
-            and result.strategy_name
-            == max(
-                (
-                    item
-                    for item in backtest.results
-                    if item.regime == regime
-                    and item.trade_count > 0
-                ),
-                key=lambda item: (
-                    item.total_return_percent,
-                    item.average_trade_return_percent,
-                    item.trade_count,
-                    -item.losing_trades,
-                    item.strategy_name,
-                ),
-            ).strategy_name
+        ]
+
+        if not historical_candidates:
+            continue
+
+        historical_leader = max(
+            historical_candidates,
+            key=lambda item: (
+                item.total_return_percent,
+                item.average_trade_return_percent,
+                item.trade_count,
+                -item.losing_trades,
+                item.strategy_name,
+            ),
         )
 
         print()
@@ -178,6 +235,26 @@ def main() -> None:
             )
 
     print()
+    print("STRATEGY MEMORY")
+    print("---------------")
+
+    print(
+        f"Stored records: {len(memory.all())}"
+    )
+
+    for record in memory.all():
+        print(
+            f"  {record.regime:18} "
+            f"{record.strategy_name:20} "
+            f"trades={record.trade_count:4} "
+            f"win_rate={record.win_rate_percent:6.1f}% "
+            f"avg={record.average_trade_return_percent:7.3f}% "
+            f"total={record.total_return_percent:8.3f}% "
+            f"evidence={record.evidence_strength:10} "
+            f"robust={record.robust_winner}"
+        )
+
+    print()
     print("RESEARCH CONCLUSION")
     print("-------------------")
 
@@ -185,6 +262,14 @@ def main() -> None:
         print(
             "Historical strategy performance "
             "was evaluated by entry regime."
+        )
+        print(
+            "Research results were stored in "
+            "Strategy Memory."
+        )
+        print(
+            "Research results were stored in "
+            "Strategy Memory."
         )
         print(
             "A historical leader is not automatically "

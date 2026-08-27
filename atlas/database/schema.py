@@ -74,6 +74,33 @@ ON outcomes(timestamp);
 
 CREATE INDEX IF NOT EXISTS idx_predictions_evaluated
 ON predictions(evaluated);
+
+
+CREATE TABLE IF NOT EXISTS strategy_memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    regime TEXT NOT NULL,
+    strategy_name TEXT NOT NULL,
+    trade_count INTEGER NOT NULL,
+    winning_trades INTEGER NOT NULL,
+    losing_trades INTEGER NOT NULL,
+    win_rate_percent REAL NOT NULL,
+    average_trade_return_percent REAL NOT NULL,
+    total_return_percent REAL NOT NULL,
+    evidence_strength TEXT NOT NULL,
+    robust_winner INTEGER NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(symbol, regime, strategy_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_memory_symbol
+ON strategy_memory(symbol);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_memory_regime
+ON strategy_memory(symbol, regime);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_memory_updated_at
+ON strategy_memory(updated_at);
 """
 
 
