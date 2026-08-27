@@ -153,7 +153,9 @@ def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit():
     assert portfolio["positions"] == []
 
 
-def test_atlas_engine_start_sends_decision_to_paper_runtime(monkeypatch):
+def test_atlas_engine_start_sends_decision_to_paper_runtime(
+    monkeypatch,
+):
 
     from atlas.models.action import Action
     from atlas.models.decision_result import DecisionResult
@@ -170,13 +172,43 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(monkeypatch):
         evidence=95.0,
     )
 
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": [],
+        "decision": decision,
+    }
+
     calls = []
+
+    def fake_decide_candidates(
+        limit=3,
+        minimum_score=0.0,
+    ):
+        return [selected]
+
+    def fake_select_best_candidate(
+        candidates,
+        investable_only=False,
+    ):
+        return selected
 
     def fake_analyze(symbol):
         return []
 
-    def fake_evaluate(results):
-        return decision
+    def fake_snapshot(symbol):
+        return type(
+            "Snapshot",
+            (),
+            {"price": 100000.0},
+        )()
+
+    def fake_exchange():
+        return type(
+            "ExchangeRate",
+            (),
+            {"rate": 10.0},
+        )()
 
     def fake_print_decision(decision):
         pass
@@ -201,15 +233,33 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(monkeypatch):
         }
 
     monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        fake_select_best_candidate,
+    )
+
+    monkeypatch.setattr(
         engine.analysis_service,
         "analyze",
         fake_analyze,
     )
 
     monkeypatch.setattr(
-        engine.decision_engine,
-        "evaluate",
-        fake_evaluate,
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        fake_exchange,
     )
 
     monkeypatch.setattr(
@@ -224,12 +274,20 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(monkeypatch):
         fake_execute,
     )
 
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
     engine.start()
 
     assert len(calls) == 1
     assert calls[0]["decision"] == decision
     assert calls[0]["decision"].symbol == "BTC-USD"
-
+    assert calls[0]["price_usd"] == 100000.0
+    assert calls[0]["usd_nok"] == 10.0
+    assert calls[0]["amount_nok"] == 1000.0
 
 def test_atlas_config_defaults_to_safe_advisor_mode():
 
