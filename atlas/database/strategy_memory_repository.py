@@ -431,3 +431,37 @@ class StrategyMemoryRepository:
                 row["recorded_at"]
             ),
         )
+
+
+    def history_groups(
+        self,
+    ) -> tuple[tuple[str, str, str], ...]:
+        """
+        Return all distinct symbol/regime/strategy history groups.
+
+        Groups are returned in deterministic order.
+        """
+
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT DISTINCT
+                    symbol,
+                    regime,
+                    strategy_name
+                FROM strategy_memory_history
+                ORDER BY
+                    symbol,
+                    regime,
+                    strategy_name
+                """
+            ).fetchall()
+
+        return tuple(
+            (
+                row["symbol"],
+                row["regime"],
+                row["strategy_name"],
+            )
+            for row in rows
+        )
