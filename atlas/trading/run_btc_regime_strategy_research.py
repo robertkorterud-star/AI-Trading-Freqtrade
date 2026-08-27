@@ -268,10 +268,6 @@ def main() -> None:
             "Strategy Memory."
         )
         print(
-            "Research results were stored in "
-            "Strategy Memory."
-        )
-        print(
             "A historical leader is not automatically "
             "a robust winner."
         )

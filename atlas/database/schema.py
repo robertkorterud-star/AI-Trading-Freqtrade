@@ -101,6 +101,34 @@ ON strategy_memory(symbol, regime);
 
 CREATE INDEX IF NOT EXISTS idx_strategy_memory_updated_at
 ON strategy_memory(updated_at);
+
+
+CREATE TABLE IF NOT EXISTS strategy_memory_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    regime TEXT NOT NULL,
+    strategy_name TEXT NOT NULL,
+    trade_count INTEGER NOT NULL,
+    winning_trades INTEGER NOT NULL,
+    losing_trades INTEGER NOT NULL,
+    win_rate_percent REAL NOT NULL,
+    average_trade_return_percent REAL NOT NULL,
+    total_return_percent REAL NOT NULL,
+    evidence_strength TEXT NOT NULL,
+    robust_winner INTEGER NOT NULL,
+    recorded_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_memory_history_lookup
+ON strategy_memory_history(
+    symbol,
+    regime,
+    strategy_name,
+    recorded_at
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_memory_history_recorded_at
+ON strategy_memory_history(recorded_at);
 """
 
 

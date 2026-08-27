@@ -22,9 +22,19 @@ class StrategyMemoryRepository:
         self,
         record: StrategyMemoryRecord,
     ):
-        """Insert or replace a strategy memory record."""
+        """
+        Store a strategy memory record.
+
+        The current record is updated in strategy_memory while
+        every save is also preserved in strategy_memory_history.
+        """
+
+        recorded_at = record.updated_at.isoformat(
+            timespec="seconds"
+        )
 
         with self.database.connect() as connection:
+
             cursor = connection.execute(
                 """
                 INSERT INTO strategy_memory (
@@ -75,9 +85,41 @@ class StrategyMemoryRepository:
                     record.total_return_percent,
                     record.evidence_strength,
                     int(record.robust_winner),
-                    record.updated_at.isoformat(
-                        timespec="seconds"
-                    ),
+                    recorded_at,
+                ),
+            )
+
+            connection.execute(
+                """
+                INSERT INTO strategy_memory_history (
+                    symbol,
+                    regime,
+                    strategy_name,
+                    trade_count,
+                    winning_trades,
+                    losing_trades,
+                    win_rate_percent,
+                    average_trade_return_percent,
+                    total_return_percent,
+                    evidence_strength,
+                    robust_winner,
+                    recorded_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.symbol,
+                    record.regime,
+                    record.strategy_name,
+                    record.trade_count,
+                    record.winning_trades,
+                    record.losing_trades,
+                    record.win_rate_percent,
+                    record.average_trade_return_percent,
+                    record.total_return_percent,
+                    record.evidence_strength,
+                    int(record.robust_winner),
+                    recorded_at,
                 ),
             )
 
@@ -113,6 +155,48 @@ class StrategyMemoryRepository:
             return None
 
         return self._row_to_record(row)
+
+    def history(
+        self,
+        *,
+        symbol: str,
+        regime: str,
+        strategy_name: str,
+    ) -> tuple[StrategyMemoryRecord, ...]:
+
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT *
+                FROM strategy_memory_history
+                WHERE symbol = ?
+                  AND regime = ?
+                  AND strategy_name = ?
+                ORDER BY id
+                """,
+                (
+                    symbol,
+                    regime,
+                    strategy_name,
+                ),
+            ).fetchall()
+
+        return tuple(
+            self._history_row_to_record(row)
+            for row in rows
+        )
+
+    def history_count(self) -> int:
+
+        with self.database.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM strategy_memory_history
+                """
+            ).fetchone()
+
+        return int(row["count"])
 
     def for_regime(
         self,
@@ -206,5 +290,32 @@ class StrategyMemoryRepository:
             ),
             updated_at=datetime.fromisoformat(
                 row["updated_at"]
+            ),
+        )
+
+    @staticmethod
+    def _history_row_to_record(row):
+        return StrategyMemoryRecord(
+            symbol=row["symbol"],
+            regime=row["regime"],
+            strategy_name=row["strategy_name"],
+            trade_count=int(row["trade_count"]),
+            winning_trades=int(row["winning_trades"]),
+            losing_trades=int(row["losing_trades"]),
+            win_rate_percent=float(
+                row["win_rate_percent"]
+            ),
+            average_trade_return_percent=float(
+                row["average_trade_return_percent"]
+            ),
+            total_return_percent=float(
+                row["total_return_percent"]
+            ),
+            evidence_strength=row["evidence_strength"],
+            robust_winner=bool(
+                row["robust_winner"]
+            ),
+            updated_at=datetime.fromisoformat(
+                row["recorded_at"]
             ),
         )
