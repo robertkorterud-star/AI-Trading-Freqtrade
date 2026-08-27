@@ -292,3 +292,98 @@ def test_remember_without_repository_still_works():
     )
 
     assert len(memory.all()) == 3
+
+
+def test_remember_persists_one_history_record_per_research_run(
+    tmp_path,
+):
+    from atlas.database.connection import Database
+    from atlas.database.schema import initialize_database
+    from atlas.database.strategy_memory_repository import (
+        StrategyMemoryRepository,
+    )
+
+    database = Database(
+        tmp_path / "strategy_memory.db"
+    )
+
+    initialize_database(database)
+
+    memory = StrategyMemory()
+
+    repository = StrategyMemoryRepository(
+        database
+    )
+
+    service = StrategyMemoryService(
+        memory=memory,
+        repository=repository,
+    )
+
+    service.remember(
+        symbol="BTC-USD",
+        summary=_summary(),
+        research_run_id="run-001",
+    )
+
+    assert repository.count() == 3
+    assert repository.history_count() == 3
+
+    history = repository.history(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy_name="Momentum",
+    )
+
+    assert len(history) == 1
+    assert history[0].total_return_percent == 12.0
+
+
+def test_different_research_runs_create_separate_history(
+    tmp_path,
+):
+    from atlas.database.connection import Database
+    from atlas.database.schema import initialize_database
+    from atlas.database.strategy_memory_repository import (
+        StrategyMemoryRepository,
+    )
+
+    database = Database(
+        tmp_path / "strategy_memory.db"
+    )
+
+    initialize_database(database)
+
+    memory = StrategyMemory()
+
+    repository = StrategyMemoryRepository(
+        database
+    )
+
+    service = StrategyMemoryService(
+        memory=memory,
+        repository=repository,
+    )
+
+    service.remember(
+        symbol="BTC-USD",
+        summary=_summary(),
+        research_run_id="run-001",
+    )
+
+    service.remember(
+        symbol="BTC-USD",
+        summary=_summary(),
+        research_run_id="run-002",
+    )
+
+    assert repository.count() == 3
+    assert repository.history_count() == 6
+
+    history = repository.history(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy_name="Momentum",
+    )
+
+    assert len(history) == 2

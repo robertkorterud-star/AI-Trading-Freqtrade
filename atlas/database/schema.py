@@ -105,6 +105,7 @@ ON strategy_memory(updated_at);
 
 CREATE TABLE IF NOT EXISTS strategy_memory_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    research_run_id TEXT NOT NULL,
     symbol TEXT NOT NULL,
     regime TEXT NOT NULL,
     strategy_name TEXT NOT NULL,
@@ -137,6 +138,51 @@ def initialize_database(database: Database):
 
     with database.connect() as connection:
         connection.executescript(SCHEMA)
+
+        history_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(strategy_memory_history)"
+            ).fetchall()
+        }
+
+        if "research_run_id" not in history_columns:
+            connection.execute(
+                "ALTER TABLE strategy_memory_history "
+                "ADD COLUMN research_run_id TEXT"
+            )
+
+            connection.execute(
+                "UPDATE strategy_memory_history "
+                "SET research_run_id = 'legacy-' || id "
+                "WHERE research_run_id IS NULL"
+            )
+
+        connection.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+            idx_strategy_memory_history_run_unique
+            ON strategy_memory_history(
+                research_run_id,
+                symbol,
+                regime,
+                strategy_name
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+            idx_strategy_memory_history_research_run
+            ON strategy_memory_history(
+                research_run_id,
+                symbol,
+                regime,
+                strategy_name
+            )
+            """
+        )
 
         columns = {
             row["name"]

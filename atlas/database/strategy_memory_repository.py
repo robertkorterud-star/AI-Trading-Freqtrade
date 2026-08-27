@@ -5,6 +5,7 @@ Persistent database access for strategy/regime research.
 """
 
 from datetime import datetime
+from uuid import uuid4
 
 from atlas.database.connection import Database
 from atlas.trading.strategy_memory import (
@@ -21,12 +22,18 @@ class StrategyMemoryRepository:
     def save(
         self,
         record: StrategyMemoryRecord,
+        *,
+        research_run_id: str | None = None,
     ):
         """
         Store a strategy memory record.
 
         The current record is updated in strategy_memory while
         every save is also preserved in strategy_memory_history.
+
+        When research_run_id is supplied, it identifies the
+        historical research run. Otherwise a unique legacy run
+        identifier is generated for this save.
         """
 
         recorded_at = record.updated_at.isoformat(
@@ -89,9 +96,15 @@ class StrategyMemoryRepository:
                 ),
             )
 
+            if research_run_id is None:
+                research_run_id = (
+                    f"legacy-{uuid4().hex}"
+                )
+
             connection.execute(
                 """
                 INSERT INTO strategy_memory_history (
+                    research_run_id,
                     symbol,
                     regime,
                     strategy_name,
@@ -105,9 +118,31 @@ class StrategyMemoryRepository:
                     robust_winner,
                     recorded_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(
+                    research_run_id,
+                    symbol,
+                    regime,
+                    strategy_name
+                )
+                DO UPDATE SET
+                    trade_count = excluded.trade_count,
+                    winning_trades = excluded.winning_trades,
+                    losing_trades = excluded.losing_trades,
+                    win_rate_percent = excluded.win_rate_percent,
+                    average_trade_return_percent =
+                        excluded.average_trade_return_percent,
+                    total_return_percent =
+                        excluded.total_return_percent,
+                    evidence_strength =
+                        excluded.evidence_strength,
+                    robust_winner =
+                        excluded.robust_winner,
+                    recorded_at =
+                        excluded.recorded_at
                 """,
                 (
+                    research_run_id,
                     record.symbol,
                     record.regime,
                     record.strategy_name,
@@ -126,6 +161,83 @@ class StrategyMemoryRepository:
             connection.commit()
 
             return cursor.lastrowid
+
+    def save_history(
+        self,
+        record: StrategyMemoryRecord,
+        *,
+        research_run_id: str,
+    ) -> str:
+        """Persist one historical research observation."""
+
+        if not research_run_id:
+            raise ValueError(
+                "research_run_id must not be empty."
+            )
+
+        with self.database.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO strategy_memory_history (
+                    research_run_id,
+                    symbol,
+                    regime,
+                    strategy_name,
+                    trade_count,
+                    winning_trades,
+                    losing_trades,
+                    win_rate_percent,
+                    average_trade_return_percent,
+                    total_return_percent,
+                    evidence_strength,
+                    robust_winner,
+                    recorded_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(
+                    research_run_id,
+                    symbol,
+                    regime,
+                    strategy_name
+                )
+                DO UPDATE SET
+                    trade_count = excluded.trade_count,
+                    winning_trades = excluded.winning_trades,
+                    losing_trades = excluded.losing_trades,
+                    win_rate_percent = excluded.win_rate_percent,
+                    average_trade_return_percent =
+                        excluded.average_trade_return_percent,
+                    total_return_percent =
+                        excluded.total_return_percent,
+                    evidence_strength =
+                        excluded.evidence_strength,
+                    robust_winner =
+                        excluded.robust_winner,
+                    recorded_at =
+                        excluded.recorded_at
+                """,
+                (
+                    research_run_id,
+                    record.symbol,
+                    record.regime,
+                    record.strategy_name,
+                    record.trade_count,
+                    record.winning_trades,
+                    record.losing_trades,
+                    record.win_rate_percent,
+                    record.average_trade_return_percent,
+                    record.total_return_percent,
+                    record.evidence_strength,
+                    int(record.robust_winner),
+                    record.updated_at.isoformat(
+                        timespec="seconds"
+                    ),
+                ),
+            )
+
+            connection.commit()
+
+        return research_run_id
 
     def get(
         self,

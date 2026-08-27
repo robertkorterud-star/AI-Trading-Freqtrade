@@ -12,6 +12,7 @@ No trading, orders, or DecisionEngine calls are performed.
 """
 
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from atlas.adapters.coingecko import CoinGeckoAdapter
 from atlas.core.database_config import DatabaseConfig
@@ -25,12 +26,6 @@ from atlas.trading.coingecko_ohlc import (
 )
 from atlas.trading.regime_strategy_backtest import (
     RegimeStrategyBacktestResearch,
-)
-from atlas.trading.strategy_memory import (
-    StrategyMemory,
-)
-from atlas.trading.strategy_memory_service import (
-    StrategyMemoryService,
 )
 from atlas.trading.strategy_memory import (
     StrategyMemory,
@@ -110,6 +105,15 @@ def main() -> None:
         .run(data)
     )
 
+    research_run_id = (
+        f"btc-regime-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
+        f"-{uuid4().hex[:8]}"
+    )
+
+    print(
+        f"Research run: {research_run_id}"
+    )
+
     database_config = DatabaseConfig()
 
     database = Database(
@@ -132,21 +136,10 @@ def main() -> None:
     memory_service.remember(
         symbol=symbol,
         summary=backtest,
+        research_run_id=research_run_id,
     )
 
     recommender = StrategyRegimeRecommender()
-
-    memory = StrategyMemory()
-
-    memory_service = StrategyMemoryService(
-        memory=memory,
-        recommender=recommender,
-    )
-
-    memory_service.remember(
-        symbol=symbol,
-        summary=backtest,
-    )
 
     regimes = sorted(
         {

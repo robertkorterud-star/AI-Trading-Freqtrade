@@ -50,6 +50,7 @@ class StrategyMemoryService:
         *,
         symbol: str,
         summary: RegimeStrategyBacktestSummary,
+        research_run_id: str | None = None,
     ) -> None:
 
         if not symbol:
@@ -108,7 +109,10 @@ class StrategyMemoryService:
             )
 
             if self.repository is not None:
-                self.repository.save(record)
+                self.repository.save(
+                    record,
+                    research_run_id=research_run_id,
+                )
 
     @staticmethod
     def _evidence_strength(
