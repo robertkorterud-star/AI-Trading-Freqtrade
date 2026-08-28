@@ -62,6 +62,9 @@ from atlas.market.candidate_selector import CandidateSelector
 from atlas.market.candidate_decision_ranker import (
     CandidateDecisionRanker,
 )
+from atlas.market.candidate_selection_report import (
+    CandidateSelectionReport,
+)
 from atlas.adapters.market_data import MarketDataAdapter
 
 
@@ -460,9 +463,30 @@ class AtlasEngine:
 
         for item in candidates:
             if item["symbol"] == selected_symbol:
+                item = dict(item)
+
                 if selected_evidence is not None:
-                    item = dict(item)
-                    item["ranking_evidence"] = selected_evidence
+                    item["ranking_evidence"] = (
+                        selected_evidence
+                    )
+
+                    item["selection_report"] = (
+                        CandidateSelectionReport(
+                            symbol=selected_symbol,
+                            action=str(
+                                item["decision"].action.value
+                                if hasattr(
+                                    item["decision"].action,
+                                    "value",
+                                )
+                                else item["decision"].action
+                            ),
+                            ranking_evidence=(
+                                selected_evidence
+                            ),
+                        )
+                    )
+
                 return item
 
         return None

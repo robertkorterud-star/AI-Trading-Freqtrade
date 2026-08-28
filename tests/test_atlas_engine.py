@@ -1321,3 +1321,66 @@ def test_select_best_candidate_returns_ranking_evidence():
     # Ranking evidence explains the selected candidate;
     # it must not change the authoritative BUY action.
     assert selected["decision"].action == Action.BUY
+
+
+def test_select_best_candidate_returns_selection_report():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    btc_decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=85.0,
+        robustness=88.0,
+        decision_margin=82.0,
+    )
+
+    eth_decision = DecisionResult(
+        symbol="ETH-USD",
+        action=Action.BUY,
+        confidence=60.0,
+        evidence=55.0,
+        robustness=58.0,
+        decision_margin=52.0,
+    )
+
+    candidates = [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": btc_decision,
+            "regime_decision": None,
+        },
+        {
+            "symbol": "ETH-USD",
+            "discovery_score": 80.0,
+            "decision": eth_decision,
+            "regime_decision": None,
+        },
+    ]
+
+    selected = engine.select_best_candidate(
+        candidates
+    )
+
+    assert selected is not None
+    assert selected["symbol"] == "BTC-USD"
+    assert "ranking_evidence" in selected
+    assert "selection_report" in selected
+
+    report = selected["selection_report"]
+
+    assert report.symbol == "BTC-USD"
+    assert report.action == "BUY"
+    assert report.ranking_evidence is selected[
+        "ranking_evidence"
+    ]
+
+    assert report.reasoning[0] == (
+        "Selected candidate: BTC-USD."
+    )
+    assert report.reasoning[1] == "Action: BUY."
+
