@@ -1226,3 +1226,98 @@ def test_rank_candidate_decisions_preserves_regime_memory_context():
     # The regime-memory representation itself remains HOLD.
     # It must not alter the authoritative BUY action.
     assert regime_decision.action == Action.HOLD
+
+
+def test_select_best_candidate_returns_ranking_evidence():
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.candidate_decision_ranker import (
+        CandidateDecisionRanker,
+    )
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+
+    engine = object.__new__(AtlasEngine)
+
+    engine.candidate_decision_ranker = (
+        CandidateDecisionRanker()
+    )
+
+    strong = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        robustness=90.0,
+        decision_margin=30.0,
+        reasoning=["strong"],
+    )
+
+    weaker = DecisionResult(
+        symbol="ETH-USD",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        robustness=80.0,
+        decision_margin=20.0,
+        reasoning=["weaker"],
+    )
+
+    candidates = [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": strong,
+            "regime_decision": StrategyMemoryRegimeDecision(
+                symbol="BTC-USD",
+                regime="LOW_VOLATILITY",
+                strategy="Momentum",
+                action=Action.HOLD,
+                confidence=80.0,
+                independent_run_count=8,
+                robust_winner=True,
+            ),
+        },
+        {
+            "symbol": "ETH-USD",
+            "discovery_score": 80.0,
+            "decision": weaker,
+            "regime_decision": StrategyMemoryRegimeDecision(
+                symbol="ETH-USD",
+                regime="LOW_VOLATILITY",
+                strategy=None,
+                action=Action.HOLD,
+                confidence=0.0,
+                independent_run_count=0,
+                robust_winner=False,
+            ),
+        },
+    ]
+
+    selected = engine.select_best_candidate(
+        candidates,
+    )
+
+    assert selected is not None
+    assert selected["symbol"] == "BTC-USD"
+
+    assert "ranking_evidence" in selected
+
+    evidence = selected["ranking_evidence"]
+
+    assert evidence.symbol == "BTC-USD"
+    assert evidence.base_score > 0.0
+    assert evidence.regime_fit > 0.0
+    assert evidence.final_score > 0.0
+
+    assert evidence.regime == "LOW_VOLATILITY"
+    assert evidence.strategy == "Momentum"
+    assert evidence.regime_confidence == 80.0
+    assert evidence.independent_run_count == 8
+    assert evidence.robust_winner is True
+
+    # Ranking evidence explains the selected candidate;
+    # it must not change the authoritative BUY action.
+    assert selected["decision"].action == Action.BUY

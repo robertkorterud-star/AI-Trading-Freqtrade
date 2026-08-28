@@ -292,6 +292,33 @@ class AtlasEngine:
             regime_decisions=regime_decisions,
         )
 
+    def rank_candidate_decisions_with_evidence(
+        self,
+        candidates,
+        investable_only=False,
+    ):
+        """Return candidate ranking evidence in ranking order."""
+
+        if not candidates:
+            return []
+
+        decisions = [
+            item["decision"]
+            for item in candidates
+        ]
+
+        regime_decisions = {
+            item["symbol"]: item.get("regime_decision")
+            for item in candidates
+            if item.get("regime_decision") is not None
+        }
+
+        return self.candidate_decision_ranker.rank_with_evidence(
+            decisions,
+            investable_only=investable_only,
+            regime_decisions=regime_decisions,
+        )
+
     def decide_candidates(
         self,
         limit: int = 3,
@@ -413,12 +440,29 @@ class AtlasEngine:
         if not ranked_decisions:
             return None
 
+        ranked_evidence = (
+            self.rank_candidate_decisions_with_evidence(
+                candidates,
+                investable_only=investable_only,
+            )
+        )
+
         selected_symbol = (
             ranked_decisions[0].symbol
         )
 
+        selected_evidence = None
+
+        for evidence in ranked_evidence:
+            if evidence.symbol == selected_symbol:
+                selected_evidence = evidence
+                break
+
         for item in candidates:
             if item["symbol"] == selected_symbol:
+                if selected_evidence is not None:
+                    item = dict(item)
+                    item["ranking_evidence"] = selected_evidence
                 return item
 
         return None
