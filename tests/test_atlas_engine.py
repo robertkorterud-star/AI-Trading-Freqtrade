@@ -974,3 +974,190 @@ def test_atlas_engine_rejects_mismatching_regime_symbol():
             decision,
             regime_decision,
         )
+
+
+def test_get_regime_memory_decision_uses_regime_memory_pipeline():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+    from atlas.trading.strategy_memory_regime_evidence import (
+        StrategyMemoryRegimeEvidenceResult,
+    )
+    from atlas.trading.strategy_memory_regime_recommendation_service import (
+        StrategyMemoryRegimeRecommendation,
+    )
+
+    class FakeEvidenceService:
+
+        def analyze(self, *, symbol, regime):
+            assert symbol == "BTC-USD"
+            assert regime == "LOW_VOLATILITY"
+
+            return StrategyMemoryRegimeEvidenceResult(
+                symbol=symbol,
+                regime=regime,
+                recommended_strategy="Momentum",
+                confidence=80.0,
+                independent_run_count=8,
+                robust_winner=True,
+            )
+
+    class FakeRecommendationService:
+
+        def recommend(self, evidence):
+            assert evidence.recommended_strategy == "Momentum"
+
+            return StrategyMemoryRegimeRecommendation(
+                symbol=evidence.symbol,
+                regime=evidence.regime,
+                recommended_strategy="Momentum",
+                confidence=80.0,
+                independent_run_count=8,
+                robust_winner=True,
+            )
+
+    class FakeAdapter:
+
+        def adapt(self, recommendation):
+            assert recommendation.recommended_strategy == "Momentum"
+
+            return StrategyMemoryRegimeDecision(
+                symbol=recommendation.symbol,
+                regime=recommendation.regime,
+                strategy=recommendation.recommended_strategy,
+                action=Action.HOLD,
+                confidence=recommendation.confidence,
+                independent_run_count=(
+                    recommendation.independent_run_count
+                ),
+                robust_winner=recommendation.robust_winner,
+            )
+
+    # Import the engine class without constructing the full runtime.
+    from atlas.core.engine import AtlasEngine
+
+    engine = object.__new__(AtlasEngine)
+
+    engine.strategy_memory_regime_evidence_service = (
+        FakeEvidenceService()
+    )
+    engine.strategy_memory_regime_recommendation_service = (
+        FakeRecommendationService()
+    )
+    engine.strategy_memory_regime_decision_adapter = (
+        FakeAdapter()
+    )
+
+    result = engine.get_regime_memory_decision(
+        "BTC-USD",
+        "LOW_VOLATILITY",
+    )
+
+    assert isinstance(
+        result,
+        StrategyMemoryRegimeDecision,
+    )
+    assert result.symbol == "BTC-USD"
+    assert result.regime == "LOW_VOLATILITY"
+    assert result.strategy == "Momentum"
+    assert result.action == Action.HOLD
+    assert result.confidence == 80.0
+    assert result.independent_run_count == 8
+    assert result.robust_winner is True
+
+
+def test_decide_candidates_integrates_regime_memory():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+
+    engine = object.__new__(AtlasEngine)
+
+    analysis = object()
+
+    engine.analyze_candidates = lambda **kwargs: [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 95.0,
+            "analysis": analysis,
+            "market_snapshot": SimpleNamespace(
+                regime="LOW_VOLATILITY",
+            ),
+        }
+    ]
+
+    original_decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=85.0,
+        evidence=90.0,
+        robustness=82.0,
+        decision_margin=25.0,
+    )
+
+    engine.decision_engine = SimpleNamespace(
+        evaluate=lambda received_analysis: (
+            original_decision
+            if received_analysis is analysis
+            else None
+        )
+    )
+
+    regime_decision = StrategyMemoryRegimeDecision(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy="Momentum",
+        action=Action.HOLD,
+        confidence=80.0,
+        independent_run_count=8,
+        robust_winner=True,
+    )
+
+    calls = []
+
+    def fake_get_regime_memory_decision(symbol, regime):
+        calls.append((symbol, regime))
+        return regime_decision
+
+    engine.get_regime_memory_decision = (
+        fake_get_regime_memory_decision
+    )
+
+    def fake_integrate(decision, received_regime_decision):
+        assert decision is original_decision
+        assert received_regime_decision is regime_decision
+
+        return DecisionResult(
+            symbol=decision.symbol,
+            action=decision.action,
+            confidence=decision.confidence,
+            evidence=decision.evidence,
+            robustness=decision.robustness,
+            decision_margin=decision.decision_margin,
+            reasoning=list(decision.reasoning)
+            + ["regime-memory-integrated"],
+        )
+
+    engine.integrate_regime_decision = fake_integrate
+
+    results = engine.decide_candidates()
+
+    assert calls == [
+        ("BTC-USD", "LOW_VOLATILITY"),
+    ]
+
+    assert len(results) == 1
+    assert results[0]["symbol"] == "BTC-USD"
+    assert results[0]["regime_decision"] is regime_decision
+    assert results[0]["decision"].action == Action.BUY
+    assert (
+        "regime-memory-integrated"
+        in results[0]["decision"].reasoning
+    )

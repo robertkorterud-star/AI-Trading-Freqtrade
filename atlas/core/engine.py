@@ -33,10 +33,22 @@ from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.trading.strategy_memory_regime_decision_integration import (
     StrategyMemoryRegimeDecisionIntegration,
 )
+from atlas.trading.strategy_memory_regime_evidence_service import (
+    StrategyMemoryRegimeEvidenceService,
+)
+from atlas.trading.strategy_memory_regime_recommendation_service import (
+    StrategyMemoryRegimeRecommendationService,
+)
+from atlas.trading.strategy_memory_regime_decision_adapter import (
+    StrategyMemoryRegimeDecisionAdapter,
+)
 
 from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
 from atlas.database.outcome_repository import OutcomeRepository
+from atlas.database.strategy_memory_repository import (
+    StrategyMemoryRepository,
+)
 from atlas.database.analysis_snapshot_repository import (
     AnalysisSnapshotRepository,
 )
@@ -141,6 +153,26 @@ class AtlasEngine:
             self.database
         )
 
+        self.strategy_memory_repository = (
+            StrategyMemoryRepository(
+                self.database
+            )
+        )
+
+        self.strategy_memory_regime_evidence_service = (
+            StrategyMemoryRegimeEvidenceService(
+                repository=self.strategy_memory_repository
+            )
+        )
+
+        self.strategy_memory_regime_recommendation_service = (
+            StrategyMemoryRegimeRecommendationService()
+        )
+
+        self.strategy_memory_regime_decision_adapter = (
+            StrategyMemoryRegimeDecisionAdapter()
+        )
+
         self.analysis_snapshot_repository = (
             AnalysisSnapshotRepository(
                 self.database
@@ -231,11 +263,16 @@ class AtlasEngine:
                 candidate.symbol
             )
 
+            market_snapshot = self._get_market_snapshot(
+                candidate.symbol
+            )
+
             results.append(
                 {
                     "symbol": candidate.symbol,
                     "discovery_score": candidate.score,
                     "analysis": analysis,
+                    "market_snapshot": market_snapshot,
                 }
             )
 
@@ -272,6 +309,27 @@ class AtlasEngine:
                 item["analysis"]
             )
 
+            regime = getattr(
+                item.get("market_snapshot"),
+                "regime",
+                None,
+            )
+
+            regime_decision = None
+
+            if regime:
+                regime_decision = (
+                    self.get_regime_memory_decision(
+                        item["symbol"],
+                        regime,
+                    )
+                )
+
+                decision = self.integrate_regime_decision(
+                    decision,
+                    regime_decision,
+                )
+
             results.append(
                 {
                     "symbol": item["symbol"],
@@ -279,6 +337,7 @@ class AtlasEngine:
                         "discovery_score"
                     ],
                     "decision": decision,
+                    "regime_decision": regime_decision,
                 }
             )
 
@@ -294,6 +353,30 @@ class AtlasEngine:
         return self.strategy_memory_decision_integration.integrate(
             decision,
             regime_decision,
+        )
+
+    def get_regime_memory_decision(
+        self,
+        symbol,
+        regime,
+    ):
+        """Build a safe regime-memory decision for a symbol and regime."""
+
+        evidence = (
+            self.strategy_memory_regime_evidence_service.analyze(
+                symbol=symbol,
+                regime=regime,
+            )
+        )
+
+        recommendation = (
+            self.strategy_memory_regime_recommendation_service.recommend(
+                evidence
+            )
+        )
+
+        return self.strategy_memory_regime_decision_adapter.adapt(
+            recommendation
         )
 
     def select_best_candidate(
