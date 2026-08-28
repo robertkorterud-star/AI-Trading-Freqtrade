@@ -144,3 +144,70 @@ def test_ranker_does_not_modify_decisions():
     )
 
     assert ranked[0] is decision
+
+
+def test_regime_memory_can_change_ranking_without_changing_actions():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+
+    strong_base = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        robustness=90.0,
+        decision_margin=30.0,
+    )
+
+    weaker_base = DecisionResult(
+        symbol="ETH-USD",
+        action=Action.BUY,
+        confidence=88.0,
+        evidence=88.0,
+        robustness=88.0,
+        decision_margin=25.0,
+    )
+
+    regime_decisions = {
+        "BTC-USD": StrategyMemoryRegimeDecision(
+            symbol="BTC-USD",
+            regime="LOW_VOLATILITY",
+            strategy=None,
+            action=Action.HOLD,
+            confidence=0.0,
+            independent_run_count=0,
+            robust_winner=False,
+        ),
+        "ETH-USD": StrategyMemoryRegimeDecision(
+            symbol="ETH-USD",
+            regime="LOW_VOLATILITY",
+            strategy="Momentum",
+            action=Action.HOLD,
+            confidence=100.0,
+            independent_run_count=12,
+            robust_winner=True,
+        ),
+    }
+
+    ranked = CandidateDecisionRanker().rank(
+        [strong_base, weaker_base],
+        regime_decisions=regime_decisions,
+    )
+
+    assert [decision.symbol for decision in ranked] == [
+        "ETH-USD",
+        "BTC-USD",
+    ]
+
+    # Regime-memory influences ranking only.
+    assert strong_base.action == Action.BUY
+    assert weaker_base.action == Action.BUY
+
+    # The regime representation itself remains non-directional.
+    assert (
+        regime_decisions["ETH-USD"].action
+        == Action.HOLD
+    )

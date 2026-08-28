@@ -1,5 +1,8 @@
 from atlas.models.action import Action
 from atlas.models.decision_result import DecisionResult
+from atlas.market.candidate_regime_fit_scorer import (
+    CandidateRegimeFitScorer,
+)
 
 
 class CandidateDecisionRanker:
@@ -17,10 +20,14 @@ class CandidateDecisionRanker:
     }
 
     @classmethod
-    def score(cls, decision: DecisionResult) -> float:
+    def score(
+        cls,
+        decision: DecisionResult,
+        regime_decision=None,
+    ) -> float:
         'Calculate a comparable decision-quality score.'
 
-        score = (
+        base_score = (
             float(decision.confidence)
             * cls.CONFIDENCE_WEIGHT
             + float(decision.evidence)
@@ -29,6 +36,16 @@ class CandidateDecisionRanker:
             * cls.ROBUSTNESS_WEIGHT
             + float(decision.decision_margin)
             * cls.MARGIN_WEIGHT
+        )
+
+        regime_fit = CandidateRegimeFitScorer.score(
+            decision,
+            regime_decision,
+        )
+
+        score = (
+            base_score * 0.80
+            + regime_fit * 0.20
         )
 
         return round(
@@ -59,6 +76,7 @@ class CandidateDecisionRanker:
         self,
         decisions: list[DecisionResult],
         investable_only: bool = False,
+        regime_decisions=None,
     ) -> list[DecisionResult]:
         'Return decisions ranked strongest first.'
 
@@ -74,8 +92,21 @@ class CandidateDecisionRanker:
                 }
             ]
 
+        regime_decisions = regime_decisions or {}
+
         valid.sort(
-            key=self._sort_key,
+            key=lambda decision: (
+                self.ACTION_PRIORITY.get(
+                    decision.action,
+                    0,
+                ),
+                self.score(
+                    decision,
+                    regime_decisions.get(
+                        decision.symbol
+                    ),
+                ),
+            ),
             reverse=True,
         )
 
