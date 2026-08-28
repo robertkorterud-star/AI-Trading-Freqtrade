@@ -68,6 +68,18 @@ class CandidateSelectionReport:
 
         return result
 
+    @property
+    def selection_snapshot(self) -> dict:
+        """Return a compact machine-readable selection snapshot."""
+
+        snapshot = self.to_dict()
+
+        snapshot["reasoning"] = list(
+            self.reasoning
+        )
+
+        return snapshot
+
     def to_dict(self) -> dict:
         """Return a machine-readable selection report."""
 

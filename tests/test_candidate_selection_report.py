@@ -140,3 +140,78 @@ def test_candidate_selection_report_to_dict_preserves_missing_regime():
     assert result["ranking_evidence"]["strategy"] is None
     assert result["ranking_evidence"]["independent_run_count"] == 0
     assert result["ranking_evidence"]["robust_winner"] is False
+
+
+def test_candidate_selection_report_selection_snapshot():
+    evidence = CandidateRankingEvidence(
+        symbol="BTC-USD",
+        base_score=86.25,
+        regime_fit=80.0,
+        final_score=85.0,
+        regime="LOW_VOLATILITY",
+        strategy="Momentum",
+        regime_confidence=80.0,
+        independent_run_count=8,
+        robust_winner=True,
+    )
+
+    report = CandidateSelectionReport(
+        symbol="BTC-USD",
+        action="BUY",
+        ranking_evidence=evidence,
+    )
+
+    snapshot = report.selection_snapshot
+
+    assert snapshot["symbol"] == "BTC-USD"
+    assert snapshot["action"] == "BUY"
+
+    assert (
+        snapshot["ranking_evidence"]["base_score"]
+        == 86.25
+    )
+
+    assert (
+        snapshot["ranking_evidence"]["regime_fit"]
+        == 80.0
+    )
+
+    assert (
+        snapshot["ranking_evidence"]["final_score"]
+        == 85.0
+    )
+
+    assert (
+        snapshot["ranking_evidence"]["regime"]
+        == "LOW_VOLATILITY"
+    )
+
+    assert (
+        snapshot["ranking_evidence"]["strategy"]
+        == "Momentum"
+    )
+
+    assert snapshot["reasoning"] == (
+        report.reasoning
+    )
+
+
+def test_candidate_selection_report_selection_snapshot_is_independent():
+    evidence = CandidateRankingEvidence(
+        symbol="ETH-USD",
+        base_score=70.0,
+        regime_fit=50.0,
+        final_score=66.0,
+    )
+
+    report = CandidateSelectionReport(
+        symbol="ETH-USD",
+        action="BUY",
+        ranking_evidence=evidence,
+    )
+
+    snapshot = report.selection_snapshot
+
+    snapshot["reasoning"].append("extra")
+
+    assert "extra" not in report.reasoning
