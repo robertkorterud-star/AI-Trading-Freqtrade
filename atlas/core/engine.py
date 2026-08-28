@@ -556,6 +556,17 @@ class AtlasEngine:
             candidate_decisions,
         )
 
+        if selected is not None:
+            selection_report = selected.get(
+                "selection_report"
+            )
+
+            if selection_report is not None:
+                self.logger.info(
+                    "ATLAS selection report ready for "
+                    f"{selected['symbol']}."
+                )
+
         if selected is None:
             self.logger.info(
                 "No viable candidate found."
