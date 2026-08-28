@@ -67,3 +67,26 @@ class CandidateSelectionReport:
             )
 
         return result
+
+    def to_dict(self) -> dict:
+        """Return a machine-readable selection report."""
+
+        evidence = self.ranking_evidence
+
+        return {
+            "symbol": self.symbol,
+            "action": self.action,
+            "ranking_evidence": {
+                "symbol": evidence.symbol,
+                "base_score": evidence.base_score,
+                "regime_fit": evidence.regime_fit,
+                "final_score": evidence.final_score,
+                "regime": evidence.regime,
+                "strategy": evidence.strategy,
+                "regime_confidence": evidence.regime_confidence,
+                "independent_run_count": (
+                    evidence.independent_run_count
+                ),
+                "robust_winner": evidence.robust_winner,
+            },
+        }
