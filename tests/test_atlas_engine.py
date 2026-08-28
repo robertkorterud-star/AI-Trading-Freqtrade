@@ -1245,6 +1245,12 @@ def test_select_best_candidate_returns_ranking_evidence():
         CandidateDecisionRanker()
     )
 
+    class FakeLogger:
+        def info(self, message):
+            pass
+
+    engine.logger = FakeLogger()
+
     strong = DecisionResult(
         symbol="BTC-USD",
         action=Action.BUY,

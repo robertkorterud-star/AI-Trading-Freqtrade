@@ -487,6 +487,18 @@ class AtlasEngine:
                         )
                     )
 
+                    self.logger.info(
+                        "ATLAS candidate selected: "
+                        f"{selected_symbol}"
+                    )
+
+                    for line in (
+                        item["selection_report"].reasoning
+                    ):
+                        self.logger.info(
+                            f"ATLAS selection evidence: {line}"
+                        )
+
                 return item
 
         return None
