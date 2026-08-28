@@ -749,6 +749,72 @@ def test_atlas_engine_selects_best_candidate_decision():
     assert selected["discovery_score"] == 95.0
 
 
+def test_get_candidate_selection_report_returns_report():
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.candidate_decision_ranker import (
+        CandidateDecisionRanker,
+    )
+    from atlas.market.candidate_selection_report import (
+        CandidateSelectionReport,
+    )
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    engine.candidate_decision_ranker = (
+        CandidateDecisionRanker()
+    )
+
+    class FakeLogger:
+        def info(self, message):
+            pass
+
+    engine.logger = FakeLogger()
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        robustness=90.0,
+        decision_margin=30.0,
+        reasoning=["strong"],
+    )
+
+    candidates = [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": decision,
+        }
+    ]
+
+    report = engine.get_candidate_selection_report(
+        candidates,
+    )
+
+    assert isinstance(
+        report,
+        CandidateSelectionReport,
+    )
+
+    assert report.symbol == "BTC-USD"
+    assert report.action == "BUY"
+    assert report.ranking_evidence.symbol == "BTC-USD"
+
+
+def test_get_candidate_selection_report_returns_none_without_candidates():
+    from atlas.core.engine import AtlasEngine
+
+    engine = object.__new__(AtlasEngine)
+
+    assert (
+        engine.get_candidate_selection_report([])
+        is None
+    )
+
+
 def test_atlas_engine_start_uses_selected_candidate(
     monkeypatch,
 ):
