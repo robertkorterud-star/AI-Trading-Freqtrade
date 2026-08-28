@@ -522,6 +522,23 @@ class AtlasEngine:
             "selection_report"
         )
 
+    def get_candidate_selection_snapshot(
+        self,
+        candidates,
+        investable_only=False,
+    ):
+        """Return the machine-readable snapshot for the selected candidate."""
+
+        report = self.get_candidate_selection_report(
+            candidates,
+            investable_only=investable_only,
+        )
+
+        if report is None:
+            return None
+
+        return report.selection_snapshot
+
     def start(self):
 
         self.logger.info("Starting ATLAS")

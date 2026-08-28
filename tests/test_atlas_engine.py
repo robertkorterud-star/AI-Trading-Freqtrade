@@ -1526,3 +1526,65 @@ def test_get_candidate_selection_report_supports_serialization():
     assert evidence["strategy"] == "Momentum"
     assert evidence["independent_run_count"] == 8
     assert evidence["robust_winner"] is True
+
+
+def test_get_candidate_selection_snapshot_returns_dict():
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.candidate_decision_ranker import (
+        CandidateDecisionRanker,
+    )
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    engine.candidate_decision_ranker = (
+        CandidateDecisionRanker()
+    )
+
+    class LoggerStub:
+        def info(self, message):
+            pass
+
+    engine.logger = LoggerStub()
+
+    strong = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        robustness=90.0,
+        decision_margin=30.0,
+        reasoning=["strong"],
+    )
+
+    candidates = [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": strong,
+        },
+    ]
+
+    snapshot = (
+        engine.get_candidate_selection_snapshot(
+            candidates,
+        )
+    )
+
+    assert isinstance(snapshot, dict)
+    assert snapshot["symbol"] == "BTC-USD"
+    assert snapshot["action"] == "BUY"
+    assert "ranking_evidence" in snapshot
+    assert "reasoning" in snapshot
+
+
+def test_get_candidate_selection_snapshot_returns_none_without_candidates():
+    from atlas.core.engine import AtlasEngine
+
+    engine = object.__new__(AtlasEngine)
+
+    assert (
+        engine.get_candidate_selection_snapshot([])
+        is None
+    )
