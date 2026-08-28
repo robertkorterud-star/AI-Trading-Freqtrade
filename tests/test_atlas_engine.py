@@ -1161,3 +1161,68 @@ def test_decide_candidates_integrates_regime_memory():
         "regime-memory-integrated"
         in results[0]["decision"].reasoning
     )
+
+
+def test_rank_candidate_decisions_preserves_regime_memory_context():
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.candidate_decision_ranker import (
+        CandidateDecisionRanker,
+    )
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+
+    engine = object.__new__(AtlasEngine)
+
+    engine.candidate_decision_ranker = (
+        CandidateDecisionRanker()
+    )
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=85.0,
+        evidence=90.0,
+        robustness=82.0,
+        decision_margin=25.0,
+        reasoning=[
+            "base-decision",
+            "Strategy-memory regime: LOW_VOLATILITY.",
+            "Strategy-memory recommendation: Momentum "
+            "(confidence 80.0/100, 8 independent runs).",
+            "Strategy-memory recommendation is supported "
+            "by a robust historical regime winner.",
+        ],
+    )
+
+    regime_decision = StrategyMemoryRegimeDecision(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy="Momentum",
+        action=Action.HOLD,
+        confidence=80.0,
+        independent_run_count=8,
+        robust_winner=True,
+    )
+
+    ranked = engine.rank_candidate_decisions(
+        [decision],
+    )
+
+    assert len(ranked) == 1
+    assert ranked[0] is decision
+    assert ranked[0].action == Action.BUY
+    assert ranked[0].reasoning == [
+        "base-decision",
+        "Strategy-memory regime: LOW_VOLATILITY.",
+        "Strategy-memory recommendation: Momentum "
+        "(confidence 80.0/100, 8 independent runs).",
+        "Strategy-memory recommendation is supported "
+        "by a robust historical regime winner.",
+    ]
+
+    # The regime-memory representation itself remains HOLD.
+    # It must not alter the authoritative BUY action.
+    assert regime_decision.action == Action.HOLD
