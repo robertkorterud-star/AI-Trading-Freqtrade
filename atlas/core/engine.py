@@ -282,12 +282,14 @@ class AtlasEngine:
         self,
         decisions,
         investable_only=False,
+        regime_decisions=None,
     ):
         'Rank candidate decisions for portfolio selection.'
 
         return self.candidate_decision_ranker.rank(
             decisions,
             investable_only=investable_only,
+            regime_decisions=regime_decisions,
         )
 
     def decide_candidates(
@@ -394,10 +396,17 @@ class AtlasEngine:
             for item in candidates
         ]
 
+        regime_decisions = {
+            item["symbol"]: item.get("regime_decision")
+            for item in candidates
+            if item.get("regime_decision") is not None
+        }
+
         ranked_decisions = (
             self.rank_candidate_decisions(
                 decisions,
                 investable_only=investable_only,
+                regime_decisions=regime_decisions,
             )
         )
 
