@@ -1456,3 +1456,73 @@ def test_select_best_candidate_returns_selection_report():
     )
     assert report.reasoning[1] == "Action: BUY."
 
+
+
+def test_get_candidate_selection_report_supports_serialization():
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.candidate_decision_ranker import (
+        CandidateDecisionRanker,
+    )
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+
+    engine = object.__new__(AtlasEngine)
+
+    engine.candidate_decision_ranker = (
+        CandidateDecisionRanker()
+    )
+
+    class LoggerStub:
+        def info(self, message):
+            pass
+
+    engine.logger = LoggerStub()
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        robustness=90.0,
+        decision_margin=30.0,
+        reasoning=["strong"],
+    )
+
+    candidates = [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 90.0,
+            "decision": decision,
+            "regime_decision": StrategyMemoryRegimeDecision(
+                symbol="BTC-USD",
+                regime="LOW_VOLATILITY",
+                strategy="Momentum",
+                action=Action.HOLD,
+                confidence=80.0,
+                independent_run_count=8,
+                robust_winner=True,
+            ),
+        }
+    ]
+
+    report = engine.get_candidate_selection_report(
+        candidates,
+    )
+
+    assert report is not None
+
+    serialized = report.to_dict()
+
+    assert serialized["symbol"] == "BTC-USD"
+    assert serialized["action"] == "BUY"
+
+    evidence = serialized["ranking_evidence"]
+
+    assert evidence["symbol"] == "BTC-USD"
+    assert evidence["regime"] == "LOW_VOLATILITY"
+    assert evidence["strategy"] == "Momentum"
+    assert evidence["independent_run_count"] == 8
+    assert evidence["robust_winner"] is True
