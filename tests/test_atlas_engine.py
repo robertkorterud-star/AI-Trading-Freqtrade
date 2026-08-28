@@ -832,3 +832,145 @@ def test_atlas_engine_start_uses_selected_candidate(
 
     assert analyzed_symbols
     assert analyzed_symbols[-1] == "NVDA"
+
+
+def test_atlas_engine_integrates_regime_context_without_overriding_buy():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecisionAdapter,
+    )
+    from atlas.trading.strategy_memory_regime_recommendation_service import (
+        StrategyMemoryRegimeRecommendation,
+    )
+
+    engine = AtlasEngine()
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=85.0,
+        evidence=90.0,
+        robustness=82.0,
+        decision_margin=25.0,
+        reasoning=["Strong market evidence."],
+    )
+
+    recommendation = StrategyMemoryRegimeRecommendation(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        recommended_strategy="Momentum",
+        confidence=80.0,
+        independent_run_count=8,
+        robust_winner=True,
+    )
+
+    regime_decision = StrategyMemoryRegimeDecisionAdapter().adapt(
+        recommendation
+    )
+
+    integrated = engine.integrate_regime_decision(
+        decision,
+        regime_decision,
+    )
+
+    assert integrated.action == Action.BUY
+    assert integrated.symbol == "BTC-USD"
+    assert any(
+        "Strategy-memory regime: LOW_VOLATILITY."
+        in item
+        for item in integrated.reasoning
+    )
+    assert any(
+        "Strategy-memory recommendation: Momentum"
+        in item
+        for item in integrated.reasoning
+    )
+
+
+def test_atlas_engine_integrates_missing_regime_recommendation():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecisionAdapter,
+    )
+    from atlas.trading.strategy_memory_regime_recommendation_service import (
+        StrategyMemoryRegimeRecommendation,
+    )
+
+    engine = AtlasEngine()
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.HOLD,
+        confidence=60.0,
+        evidence=60.0,
+        robustness=55.0,
+        decision_margin=5.0,
+        reasoning=["Insufficient conviction."],
+    )
+
+    recommendation = StrategyMemoryRegimeRecommendation(
+        symbol="BTC-USD",
+        regime="HIGH_VOLATILITY",
+        recommended_strategy=None,
+        confidence=0.0,
+        independent_run_count=1,
+        robust_winner=False,
+    )
+
+    regime_decision = StrategyMemoryRegimeDecisionAdapter().adapt(
+        recommendation
+    )
+
+    integrated = engine.integrate_regime_decision(
+        decision,
+        regime_decision,
+    )
+
+    assert integrated.action == Action.HOLD
+    assert any(
+        "No robust strategy-memory recommendation"
+        in item
+        for item in integrated.reasoning
+    )
+
+
+def test_atlas_engine_rejects_mismatching_regime_symbol():
+    import pytest
+
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.trading.strategy_memory_regime_decision_adapter import (
+        StrategyMemoryRegimeDecision,
+    )
+
+    engine = AtlasEngine()
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        robustness=75.0,
+        decision_margin=20.0,
+    )
+
+    regime_decision = StrategyMemoryRegimeDecision(
+        symbol="ETH-USD",
+        regime="LOW_VOLATILITY",
+        strategy="Momentum",
+        action=Action.HOLD,
+        confidence=80.0,
+        independent_run_count=8,
+        robust_winner=True,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="symbols must match",
+    ):
+        engine.integrate_regime_decision(
+            decision,
+            regime_decision,
+        )

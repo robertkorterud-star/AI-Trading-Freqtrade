@@ -30,6 +30,9 @@ from pathlib import Path
 from atlas.trading.prediction_evaluator import PredictionEvaluator
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
 from atlas.trading.agent_weight_engine import AgentWeightEngine
+from atlas.trading.strategy_memory_regime_decision_integration import (
+    StrategyMemoryRegimeDecisionIntegration,
+)
 
 from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
@@ -108,6 +111,10 @@ class AtlasEngine:
         )
 
         self.decision_engine = DecisionEngine()
+
+        self.strategy_memory_decision_integration = (
+            StrategyMemoryRegimeDecisionIntegration()
+        )
 
         self.report = ReportBuilder()
 
@@ -276,6 +283,18 @@ class AtlasEngine:
             )
 
         return results
+
+    def integrate_regime_decision(
+        self,
+        decision,
+        regime_decision,
+    ):
+        """Add strategy-memory regime context to a decision."""
+
+        return self.strategy_memory_decision_integration.integrate(
+            decision,
+            regime_decision,
+        )
 
     def select_best_candidate(
         self,
