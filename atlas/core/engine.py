@@ -503,6 +503,25 @@ class AtlasEngine:
 
         return None
 
+    def get_candidate_selection_report(
+        self,
+        candidates,
+        investable_only=False,
+    ):
+        """Return the explainable report for the selected candidate."""
+
+        selected = self.select_best_candidate(
+            candidates,
+            investable_only=investable_only,
+        )
+
+        if selected is None:
+            return None
+
+        return selected.get(
+            "selection_report"
+        )
+
     def start(self):
 
         self.logger.info("Starting ATLAS")
