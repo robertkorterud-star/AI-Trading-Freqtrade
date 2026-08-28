@@ -138,7 +138,7 @@ class StrategyMemoryLongitudinalAnalyzer:
         )
 
         confidence = self._confidence(
-            observation_count=observation_count,
+            independent_run_count=independent_run_count,
             positive_ratio=positive_ratio,
             consistency_score=consistency_score,
         )
@@ -262,17 +262,17 @@ class StrategyMemoryLongitudinalAnalyzer:
     @staticmethod
     def _confidence(
         *,
-        observation_count: int,
+        independent_run_count: int,
         positive_ratio: float,
         consistency_score: float,
     ) -> float:
 
-        if observation_count < 2:
+        if independent_run_count < 2:
             return 0.0
 
         observation_factor = min(
             1.0,
-            observation_count / 10.0,
+            independent_run_count / 10.0,
         )
 
         confidence = (
