@@ -1,146 +1,91 @@
-from atlas.agents.intelligence import IntelligenceResult
-from atlas.algorithms.decision_core import DecisionCore, RiskContext
-from atlas.algorithms.multi_horizon import (
+from atlas.algorithms import (
+    AlgorithmSignal,
+    DecisionAction,
+    DecisionOrchestrator,
     HorizonSignal,
-    MultiHorizonDecisionEngine,
+    RiskContext,
     TradingHorizon,
 )
-from atlas.algorithms.position_exit import PositionAction, PositionContext
-from atlas.core.decision_orchestrator import DecisionOrchestrator
 from atlas.models.action import Action
 
 
-def _intelligence(score=0.9, confidence=0.9, direction="bullish"):
-    return IntelligenceResult(
-        symbol="BTC-USD",
-        score=score,
+def signal(symbol="BTC-USD", action=Action.BUY, confidence=0.90):
+    return AlgorithmSignal(
+        algorithm="test",
+        symbol=symbol,
+        timeframe="5m",
+        action=action,
+        score=90.0 if action is Action.BUY else 10.0,
         confidence=confidence,
-        direction=direction,
-        observations=(),
     )
 
 
-def _horizon(action=Action.BUY, score=90.0, confidence=90.0):
-    engine = MultiHorizonDecisionEngine()
-    return engine.decide(
+def test_orchestrator_produces_buy_from_strong_signal():
+    result = DecisionOrchestrator().decide(
         "BTC-USD",
-        [
-            HorizonSignal(
-                TradingHorizon.INTRADAY,
-                action,
-                score,
-                confidence,
-            ),
-            HorizonSignal(
-                TradingHorizon.SWING,
-                action,
-                score,
-                confidence,
-            ),
-            HorizonSignal(
-                TradingHorizon.POSITION,
-                action,
-                score,
-                confidence,
-            ),
-        ],
+        [signal()],
     )
 
+    assert result.decision.action is DecisionAction.BUY
+    assert result.symbol == "BTC-USD"
 
-def test_strong_consensus_enters_position():
+
+def test_orchestrator_normalizes_multi_horizon_confidence():
+    horizons = [
+        HorizonSignal(TradingHorizon.INTRADAY, Action.BUY, 90.0, 90.0),
+        HorizonSignal(TradingHorizon.SWING, Action.BUY, 85.0, 80.0),
+        HorizonSignal(TradingHorizon.POSITION, Action.BUY, 80.0, 75.0),
+    ]
+
     result = DecisionOrchestrator().decide(
-        _intelligence(),
-        _horizon(),
-        position=PositionContext(),
+        "BTC-USD",
+        [],
+        horizons=horizons,
     )
 
-    assert result.decision.action is not Action.HOLD
-    assert result.position.action is PositionAction.ENTER
-    assert result.combined_score > 0.55
+    assert result.horizon_result is not None
+    assert result.decision.action is DecisionAction.BUY
+    assert 0.0 <= result.decision.confidence <= 1.0
 
 
-def test_high_risk_blocks_entry():
+def test_risk_gate_blocks_high_risk_decision():
     result = DecisionOrchestrator().decide(
-        _intelligence(),
-        _horizon(),
-        risk=RiskContext(risk_score=1.0),
-        position=PositionContext(),
+        "BTC-USD",
+        [signal()],
+        risk=RiskContext(
+            risk_score=1.0,
+            volatility_score=1.0,
+            drawdown_score=1.0,
+            position_score=1.0,
+        ),
     )
 
-    assert result.decision.action is Action.HOLD
-    assert result.position.action is PositionAction.HOLD
-    assert "risk gate" in result.decision.reason
+    assert result.decision.action is DecisionAction.HOLD
+    assert result.decision.reason == "risk gate blocked decision"
 
 
-def test_conflicting_intelligence_and_horizon_can_cancel():
+def test_orchestrator_preserves_agent_observations():
+    observations = [
+        {"agent": "trend", "score": 0.8},
+        {"agent": "volatility", "score": 0.2},
+    ]
+
     result = DecisionOrchestrator().decide(
-        _intelligence(score=-0.9, direction="bearish"),
-        _horizon(action=Action.BUY, score=70.0),
+        "BTC-USD",
+        [signal()],
+        observations=observations,
     )
 
-    assert result.combined_score < 0.0
-    assert result.decision.action is Action.HOLD
+    assert result.observations == tuple(observations)
 
 
-def test_strong_sell_exits_existing_position():
-    result = DecisionOrchestrator().decide(
-        _intelligence(score=-0.95, direction="bearish"),
-        _horizon(action=Action.SELL, score=10.0),
-        position=PositionContext(current_position=0.8, confidence=0.95),
-    )
-
-    assert result.decision.action is Action.SELL
-    assert result.position.action is PositionAction.EXIT
-    assert result.position.target_position == 0.0
-
-
-def test_symbol_mismatch_is_rejected():
-    horizon = _horizon()
-    other = IntelligenceResult(
-        symbol="ETH-USD",
-        score=0.9,
-        confidence=0.9,
-        direction="bullish",
-        observations=(),
-    )
-
+def test_orchestrator_rejects_wrong_symbol():
     try:
-        DecisionOrchestrator().decide(other, horizon)
+        DecisionOrchestrator().decide(
+            "BTC-USD",
+            [signal(symbol="ETH-USD")],
+        )
     except ValueError as exc:
-        assert "symbols must match" in str(exc)
+        assert "match symbol" in str(exc)
     else:
-        raise AssertionError("symbol mismatch should raise ValueError")
-
-
-def test_weights_are_normalized():
-    orchestrator = DecisionOrchestrator(
-        intelligence_weight=7.0,
-        horizon_weight=3.0,
-    )
-
-    assert orchestrator.intelligence_weight == 0.7
-    assert orchestrator.horizon_weight == 0.3
-
-
-def test_result_contains_reproducible_trace():
-    result = DecisionOrchestrator().decide(_intelligence(), _horizon())
-    payload = result.as_dict()
-
-    assert payload["symbol"] == "BTC-USD"
-    assert payload["decision"]["action"] == result.decision.action.value
-    assert len(payload["reasoning"]) >= 6
-
-
-def test_custom_decision_core_can_be_injected():
-    core = DecisionCore(
-        buy_threshold=0.40,
-        minimum_confidence=0.40,
-        maximum_risk=0.90,
-    )
-
-    result = DecisionOrchestrator(decision_core=core).decide(
-        _intelligence(score=0.6, confidence=0.7),
-        _horizon(score=75.0, confidence=70.0),
-    )
-
-    assert result.decision.action is Action.BUY
+        raise AssertionError("expected ValueError")

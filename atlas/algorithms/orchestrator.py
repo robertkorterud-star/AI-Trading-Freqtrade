@@ -1,14 +1,25 @@
-"""ATLAS decision orchestrator.
+"""
+ATLAS Decision Orchestrator.
 
-Combines algorithm, multi-horizon and agent observations into the final
-risk-gated trading decision. This layer does not execute orders.
+Combines algorithm signals, multi-horizon intelligence and agent
+observations into one auditable, risk-gated trading decision.
+
+This layer decides.
+It does not execute orders.
 """
 
 from dataclasses import dataclass
 
 from atlas.algorithms.base import AlgorithmSignal
-from atlas.algorithms.decision_core import DecisionCore, DecisionResult, RiskContext
-from atlas.algorithms.multi_horizon import HorizonSignal, MultiHorizonDecisionEngine
+from atlas.algorithms.decision_core import (
+    DecisionCore,
+    DecisionResult,
+    RiskContext,
+)
+from atlas.algorithms.multi_horizon import (
+    HorizonSignal,
+    MultiHorizonDecisionEngine,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +42,9 @@ class DecisionOrchestrator:
         horizon_engine: MultiHorizonDecisionEngine | None = None,
     ):
         self.decision_core = decision_core or DecisionCore()
-        self.horizon_engine = horizon_engine or MultiHorizonDecisionEngine()
+        self.horizon_engine = (
+            horizon_engine or MultiHorizonDecisionEngine()
+        )
 
     def decide(
         self,
@@ -42,13 +55,18 @@ class DecisionOrchestrator:
         observations: list[object] | None = None,
     ) -> OrchestrationResult:
         """Run the complete decision chain without executing a trade."""
+
         self._validate_symbols(symbol, signals)
 
         horizon_result = None
         decision_inputs = list(signals)
 
         if horizons:
-            horizon_result = self.horizon_engine.decide(symbol, horizons)
+            horizon_result = self.horizon_engine.decide(
+                symbol,
+                horizons,
+            )
+
             decision_inputs.append(
                 AlgorithmSignal(
                     algorithm="multi_horizon",
@@ -60,7 +78,10 @@ class DecisionOrchestrator:
                 )
             )
 
-        decision = self.decision_core.decide(decision_inputs, risk)
+        decision = self.decision_core.decide(
+            decision_inputs,
+            risk,
+        )
 
         reasoning = (
             "ATLAS orchestration completed.",
@@ -88,4 +109,6 @@ class DecisionOrchestrator:
     ) -> None:
         for signal in signals:
             if signal.symbol != symbol:
-                raise ValueError("all algorithm signals must match symbol")
+                raise ValueError(
+                    "all algorithm signals must match symbol"
+                )
