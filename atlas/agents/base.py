@@ -17,11 +17,12 @@ class AgentObservation:
 
     agent: str
     symbol: str
-    timestamp: str | None
-    category: str
-    score: float
-    confidence: float
-    direction: str
+    timestamp: str | None = None
+    category: str = "general"
+    score: float = 0.0
+    confidence: float = 0.0
+    direction: str = "neutral"
+    reason: str | None = None
     source: str | None = None
     features: dict[str, float] = field(default_factory=dict)
     evidence: list[str] = field(default_factory=list)
@@ -35,6 +36,7 @@ class AgentObservation:
             "score": self.score,
             "confidence": self.confidence,
             "direction": self.direction,
+            "reason": self.reason,
             "source": self.source,
             "features": dict(self.features),
             "evidence": list(self.evidence),
