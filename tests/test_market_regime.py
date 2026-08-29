@@ -1,126 +1,187 @@
-from dataclasses import replace
+import pytest
 
-from atlas.trading.indicator_engine import (
-    IndicatorEngine,
+from atlas.algorithms.regime import (
+    MarketRegime,
+    MarketRegimeEngine,
+    MarketRegimeResult,
 )
-from atlas.trading.market_regime import (
-    MarketRegimeAnalyzer,
-)
 
 
-def _candles(
-    start=100.0,
-    step=0.5,
-    count=250,
-):
-    result = []
+def candles_from_closes(closes):
+    return [
+        {
+            "timestamp": str(index),
+            "open": close,
+            "high": close,
+            "low": close,
+            "close": close,
+            "volume": 1.0,
+        }
+        for index, close in enumerate(closes)
+    ]
 
-    for index in range(count):
-        close = start + index * step
 
-        result.append(
-            {
-                "timestamp": str(index),
-                "open": close - 0.1,
-                "high": close + 0.2,
-                "low": close - 0.2,
-                "close": close,
-                "volume": 1000,
-            }
+def test_bull_trend_is_detected():
+    engine = MarketRegimeEngine(
+        trend_window=5,
+        volatility_window=5,
+    )
+
+    closes = [100.0] * 5 + [
+        101.0,
+        102.0,
+        103.0,
+        104.0,
+        106.0,
+    ]
+
+    result = engine.analyze(
+        "BTC-USD",
+        candles_from_closes(closes),
+    )
+
+    assert isinstance(result, MarketRegimeResult)
+    assert result.regime is MarketRegime.BULL_TREND
+    assert result.trend_score == pytest.approx(6.0)
+    assert result.symbol == "BTC-USD"
+    assert result.timeframe == "1h"
+
+
+def test_bear_trend_is_detected():
+    engine = MarketRegimeEngine(
+        trend_window=5,
+        volatility_window=5,
+    )
+
+    closes = [100.0] * 5 + [
+        99.0,
+        98.0,
+        97.0,
+        96.0,
+        94.0,
+    ]
+
+    result = engine.analyze(
+        "BTC-USD",
+        candles_from_closes(closes),
+    )
+
+    assert result.regime is MarketRegime.BEAR_TREND
+    assert result.trend_score == pytest.approx(-6.0)
+
+
+def test_sideways_market_is_detected():
+    engine = MarketRegimeEngine(
+        trend_window=5,
+        volatility_window=5,
+    )
+
+    closes = [
+        100.0,
+        100.2,
+        99.9,
+        100.1,
+        100.0,
+        100.1,
+    ]
+
+    result = engine.analyze(
+        "BTC-USD",
+        candles_from_closes(closes),
+    )
+
+    assert result.regime is MarketRegime.SIDEWAYS
+
+
+def test_high_volatility_takes_priority():
+    engine = MarketRegimeEngine(
+        trend_window=5,
+        volatility_window=5,
+        high_volatility_threshold=4.0,
+    )
+
+    closes = [
+        100.0,
+        110.0,
+        100.0,
+        110.0,
+        100.0,
+        110.0,
+    ]
+
+    result = engine.analyze(
+        "BTC-USD",
+        candles_from_closes(closes),
+    )
+
+    assert result.regime is MarketRegime.HIGH_VOLATILITY
+    assert result.volatility_percent > 4.0
+
+
+def test_insufficient_candles_raise():
+    engine = MarketRegimeEngine(
+        trend_window=5,
+        volatility_window=5,
+    )
+
+    with pytest.raises(ValueError, match="at least 6 candles"):
+        engine.analyze(
+            "BTC-USD",
+            candles_from_closes([100.0] * 5),
         )
 
-    return result
 
+def test_invalid_close_prices_raise():
+    engine = MarketRegimeEngine()
 
-def test_market_regime_detects_bullish_trend():
-    indicators = IndicatorEngine().calculate(
-        _candles(
-            start=100,
-            step=1.0,
+    closes = [100.0] * 20 + [0.0]
+
+    with pytest.raises(
+        ValueError,
+        match="finite positive close prices",
+    ):
+        engine.analyze(
+            "BTC-USD",
+            candles_from_closes(closes),
         )
-    )
-
-    regime = MarketRegimeAnalyzer().analyze(
-        indicators
-    )
-
-    assert regime.regime == "BREAKOUT_UP"
-    assert regime.confidence > 0
-    assert regime.trend_strength >= 0
 
 
-def test_market_regime_detects_missing_data():
-    indicators = IndicatorEngine().calculate([])
+def test_invalid_configuration_raises():
+    with pytest.raises(ValueError):
+        MarketRegimeEngine(trend_window=1)
 
-    regime = MarketRegimeAnalyzer().analyze(
-        indicators
-    )
+    with pytest.raises(ValueError):
+        MarketRegimeEngine(volatility_window=1)
 
-    assert regime.regime == "UNKNOWN"
-    assert regime.confidence == 0.0
-    assert regime.volatility_level == "UNKNOWN"
+    with pytest.raises(ValueError):
+        MarketRegimeEngine(bull_threshold=0)
 
+    with pytest.raises(ValueError):
+        MarketRegimeEngine(bear_threshold=0)
 
-def test_market_regime_detects_high_volatility():
-    indicators = IndicatorEngine().calculate(
-        _candles(
-            start=100,
-            step=0.5,
+    with pytest.raises(ValueError):
+        MarketRegimeEngine(
+            high_volatility_threshold=0
         )
+
+
+def test_regime_confidence_is_bounded():
+    engine = MarketRegimeEngine(
+        trend_window=5,
+        volatility_window=5,
     )
 
-    indicators = replace(
-        indicators,
-        atr_percent=5.0,
-        bollinger_width=12.0,
-        adx14=10.0,
-        ema20=100.0,
-        ema50=100.0,
+    closes = [100.0] * 5 + [
+        120.0,
+        130.0,
+        140.0,
+        150.0,
+        160.0,
+    ]
+
+    result = engine.analyze(
+        "BTC-USD",
+        candles_from_closes(closes),
     )
 
-    regime = MarketRegimeAnalyzer().analyze(
-        indicators
-    )
-
-    assert regime.regime == "HIGH_VOLATILITY"
-    assert regime.volatility_level == "HIGH"
-
-
-def test_market_regime_detects_low_volatility():
-    indicators = IndicatorEngine().calculate(
-        _candles(
-            start=100,
-            step=0.01,
-        )
-    )
-
-    indicators = replace(
-        indicators,
-        atr_percent=0.5,
-        bollinger_width=2.0,
-        adx14=10.0,
-        ema20=100.0,
-        ema50=100.0,
-    )
-
-    regime = MarketRegimeAnalyzer().analyze(
-        indicators
-    )
-
-    assert regime.regime == "LOW_VOLATILITY"
-    assert regime.volatility_level == "LOW"
-
-
-def test_market_regime_does_not_trade():
-    indicators = IndicatorEngine().calculate(
-        _candles()
-    )
-
-    regime = MarketRegimeAnalyzer().analyze(
-        indicators
-    )
-
-    assert regime.regime not in {
-        "BUY",
-        "SELL",
-    }
+    assert 50.0 <= result.confidence <= 90.0

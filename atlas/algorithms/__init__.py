@@ -7,6 +7,7 @@ from atlas.algorithms.breakout import IntradayBreakoutAlgorithm
 from atlas.algorithms.vwap import IntradayVWAPAlgorithm
 from atlas.algorithms.registry import AlgorithmRegistry
 from atlas.algorithms.fusion import FusionResult, SignalFusion
+from atlas.algorithms.regime import MarketRegime, MarketRegimeEngine, MarketRegimeResult
 
 __all__ = [
     "AlgorithmSignal",
@@ -18,4 +19,7 @@ __all__ = [
     "IntradayVWAPAlgorithm",
     "FusionResult",
     "SignalFusion",
+    "MarketRegime",
+    "MarketRegimeEngine",
+    "MarketRegimeResult",
 ]
