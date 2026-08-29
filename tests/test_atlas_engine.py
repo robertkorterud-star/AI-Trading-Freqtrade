@@ -1590,6 +1590,54 @@ def test_get_candidate_selection_snapshot_returns_none_without_candidates():
     )
 
 
+def test_start_selection_snapshot_log_is_valid_json():
+    import json
+
+    selection_snapshot = {
+        "symbol": "BTC-USD",
+        "action": "BUY",
+        "ranking_evidence": {
+            "symbol": "BTC-USD",
+            "base_score": 90.0,
+            "regime_fit": 0.0,
+            "final_score": 90.0,
+            "regime": None,
+            "strategy": None,
+            "regime_confidence": None,
+            "independent_run_count": 0,
+            "robust_winner": False,
+        },
+        "reasoning": [
+            "Selected candidate: BTC-USD.",
+            "Action: BUY.",
+        ],
+    }
+
+    logged_message = (
+        "ATLAS selection snapshot: "
+        + json.dumps(
+            selection_snapshot,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+
+    payload = logged_message.split(
+        "ATLAS selection snapshot: ",
+        1,
+    )[1]
+
+    decoded = json.loads(payload)
+
+    assert decoded["symbol"] == "BTC-USD"
+    assert decoded["action"] == "BUY"
+    assert decoded["ranking_evidence"]["final_score"] == 90.0
+    assert decoded["reasoning"] == [
+        "Selected candidate: BTC-USD.",
+        "Action: BUY.",
+    ]
+
+
 def test_start_logs_selection_snapshot():
     from atlas.core.engine import AtlasEngine
 
