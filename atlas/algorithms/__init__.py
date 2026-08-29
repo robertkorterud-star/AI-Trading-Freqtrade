@@ -3,6 +3,7 @@
 from atlas.algorithms.base import AlgorithmSignal, TradingAlgorithm
 from atlas.algorithms.momentum import IntradayMomentumAlgorithm
 from atlas.algorithms.mean_reversion import IntradayMeanReversionAlgorithm
+from atlas.algorithms.breakout import IntradayBreakoutAlgorithm
 from atlas.algorithms.registry import AlgorithmRegistry
 
 __all__ = [
@@ -11,4 +12,5 @@ __all__ = [
     "IntradayMomentumAlgorithm",
     "AlgorithmRegistry",
     "IntradayMeanReversionAlgorithm",
+    "IntradayBreakoutAlgorithm",
 ]

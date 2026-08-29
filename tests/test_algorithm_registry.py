@@ -127,3 +127,18 @@ def test_registry_supports_mean_reversion_algorithm():
     assert registry.get(
         "intraday_mean_reversion"
     ) is algorithm
+
+
+def test_registry_supports_breakout_algorithm():
+    from atlas.algorithms.breakout import (
+        IntradayBreakoutAlgorithm,
+    )
+
+    registry = AlgorithmRegistry()
+    algorithm = IntradayBreakoutAlgorithm()
+
+    registry.register(algorithm)
+
+    assert registry.get(
+        "intraday_breakout"
+    ) is algorithm
