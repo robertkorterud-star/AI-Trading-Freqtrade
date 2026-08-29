@@ -26,6 +26,7 @@ from atlas.trading.trading_service import TradingService
 from atlas.trading.prediction_tracker import PredictionTracker
 from atlas.trading.outcome_tracker import OutcomeTracker
 from pathlib import Path
+import json
 
 from atlas.trading.prediction_evaluator import PredictionEvaluator
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
@@ -609,7 +610,7 @@ class AtlasEngine:
 
                 self.logger.info(
                     "ATLAS selection snapshot: "
-                    f"{selection_snapshot}"
+                    f"{json.dumps(selection_snapshot, ensure_ascii=False, sort_keys=True)}"
                 )
 
         if selected is None:
