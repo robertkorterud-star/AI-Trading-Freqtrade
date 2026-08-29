@@ -1,20 +1,22 @@
 """
 ATLAS Market Intelligence.
 
-Combines observations from independent agents without directly
-creating buy/sell orders.
+Aggregates observations from registered market-intelligence agents.
+Agents observe markets; this layer combines their observations without
+executing trades.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterable
 
-from atlas.agents.base import AgentObservation
+from atlas.agents.base import AgentObservation, MarketAgent
 
 
 @dataclass(frozen=True, slots=True)
 class IntelligenceResult:
-    """Aggregated intelligence available to the decision layer."""
+    """Aggregated result produced by the market-intelligence layer."""
 
     symbol: str
     score: float
@@ -22,32 +24,119 @@ class IntelligenceResult:
     direction: str
     observations: tuple[AgentObservation, ...]
 
-    def as_dict(self) -> dict:
-        return {
-            "symbol": self.symbol,
-            "score": self.score,
-            "confidence": self.confidence,
-            "direction": self.direction,
-            "observations": [
-                observation.as_dict()
-                for observation in self.observations
-            ],
-        }
+    @property
+    def average_score(self) -> float:
+        if not self.observations:
+            return 0.0
+
+        return sum(
+            observation.score
+            for observation in self.observations
+        ) / len(self.observations)
+
+    @property
+    def average_confidence(self) -> float:
+        if not self.observations:
+            return 0.0
+
+        return sum(
+            observation.confidence
+            for observation in self.observations
+        ) / len(self.observations)
+
+    @property
+    def bullish_count(self) -> int:
+        return sum(
+            observation.direction == "bullish"
+            for observation in self.observations
+        )
+
+    @property
+    def bearish_count(self) -> int:
+        return sum(
+            observation.direction == "bearish"
+            for observation in self.observations
+        )
+
+    @property
+    def neutral_count(self) -> int:
+        return sum(
+            observation.direction == "neutral"
+            for observation in self.observations
+        )
 
 
 class MarketIntelligence:
     """
     Aggregates independent agent observations.
 
-    Scores are weighted by confidence. Conflicting observations
-    naturally reduce the aggregate score.
+    Supports both the original explicit-observation API:
+
+        analyze(symbol, observations)
+
+    and the agent-pipeline API:
+
+        MarketIntelligence(agents).analyze(snapshot)
     """
 
-    def analyze(
-        self,
+    def __init__(self, agents=None):
+        self.agents = tuple(agents or ())
+
+    def analyze(self, symbol_or_snapshot, observations=None) -> IntelligenceResult:
+        """
+        Analyze either explicit observations or a market snapshot.
+
+        The explicit-observation API is retained for backwards
+        compatibility with the existing intelligence tests.
+        """
+
+        if observations is not None:
+            return self._aggregate(
+                symbol_or_snapshot,
+                observations,
+            )
+
+        snapshot = symbol_or_snapshot
+
+        generated = []
+
+        for agent in self.agents:
+            analyze = getattr(agent, "analyze", None)
+
+            if analyze is not None:
+                generated.append(analyze(snapshot))
+                continue
+
+            observe = getattr(agent, "observe", None)
+
+            if observe is None:
+                raise TypeError(
+                    f"Agent {agent!r} must implement analyze() or observe()"
+                )
+
+            generated.append(
+                observe(
+                    snapshot.symbol,
+                    {
+                        "snapshot": snapshot,
+                        "price": snapshot.price,
+                        "candles": snapshot.candles,
+                    },
+                )
+            )
+
+        return self._aggregate(
+            snapshot.symbol,
+            generated,
+        )
+
+    @staticmethod
+    def _aggregate(
         symbol: str,
-        observations: list[AgentObservation],
+        observations,
     ) -> IntelligenceResult:
+        observations = tuple(observations)
+
         if not observations:
             return IntelligenceResult(
                 symbol=symbol,
@@ -61,8 +150,12 @@ class MarketIntelligence:
         confidence_weight = 0.0
 
         for observation in observations:
-            confidence = self._clamp(observation.confidence)
-            score = self._clamp_signed(observation.score)
+            confidence = MarketIntelligence._clamp(
+                observation.confidence
+            )
+            score = MarketIntelligence._clamp_signed(
+                observation.score
+            )
 
             weighted_score += score * confidence
             confidence_weight += confidence
@@ -89,7 +182,7 @@ class MarketIntelligence:
             score=score,
             confidence=confidence,
             direction=direction,
-            observations=tuple(observations),
+            observations=observations,
         )
 
     @staticmethod
@@ -99,3 +192,4 @@ class MarketIntelligence:
     @staticmethod
     def _clamp_signed(value: float) -> float:
         return max(-1.0, min(1.0, value))
+
