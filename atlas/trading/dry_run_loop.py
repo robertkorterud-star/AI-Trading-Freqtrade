@@ -47,7 +47,7 @@ class DryRunLoop:
 
     def process(self, snapshot: MarketSnapshot) -> DryRunCycleResult:
         observations = tuple(
-            agent.analyze(snapshot)
+            self._observe_agent(agent, snapshot)
             for agent in self.agents
         )
 
@@ -86,6 +86,37 @@ class DryRunLoop:
             intelligence_confidence=intelligence.confidence,
             decision=decision,
             execution=execution,
+        )
+
+    @staticmethod
+    def _observe_agent(agent, snapshot: MarketSnapshot) -> AgentObservation:
+        """
+        Produce an observation from an ATLAS agent.
+
+        Native ATLAS agents implement observe(). Older/simple test
+        agents may implement analyze(). Support both contracts so the
+        dry-run loop remains backwards compatible.
+        """
+
+        observe = getattr(agent, "observe", None)
+
+        if observe is not None:
+            return observe(
+                snapshot.symbol,
+                {
+                    "snapshot": snapshot,
+                    "price": snapshot.price,
+                    "candles": snapshot.candles,
+                },
+            )
+
+        analyze = getattr(agent, "analyze", None)
+
+        if analyze is not None:
+            return analyze(snapshot)
+
+        raise TypeError(
+            f"Agent {agent!r} must implement observe() or analyze()"
         )
 
     @staticmethod
