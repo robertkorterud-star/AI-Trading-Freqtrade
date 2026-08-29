@@ -142,3 +142,18 @@ def test_registry_supports_breakout_algorithm():
     assert registry.get(
         "intraday_breakout"
     ) is algorithm
+
+
+def test_registry_supports_vwap_algorithm():
+    from atlas.algorithms.vwap import (
+        IntradayVWAPAlgorithm,
+    )
+
+    registry = AlgorithmRegistry()
+    algorithm = IntradayVWAPAlgorithm()
+
+    registry.register(algorithm)
+
+    assert registry.get(
+        "intraday_vwap"
+    ) is algorithm
