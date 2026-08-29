@@ -10,31 +10,17 @@ from atlas.algorithms.fusion import FusionResult, SignalFusion
 from atlas.algorithms.decision_core import DecisionAction, DecisionCore, DecisionResult, RiskContext
 from atlas.algorithms.position_exit import PositionAction, PositionContext, PositionDecision, PositionExitEngine
 from atlas.algorithms.multi_horizon import HorizonSignal, MultiHorizonDecisionEngine, MultiHorizonResult, TradingHorizon
+from atlas.algorithms.orchestrator import DecisionOrchestrator, OrchestrationResult
 from atlas.algorithms.regime import MarketRegime, MarketRegimeEngine, MarketRegimeResult
 
 __all__ = [
-    "AlgorithmSignal",
-    "TradingAlgorithm",
-    "IntradayMomentumAlgorithm",
-    "AlgorithmRegistry",
-    "IntradayMeanReversionAlgorithm",
-    "IntradayBreakoutAlgorithm",
-    "IntradayVWAPAlgorithm",
-    "FusionResult",
-    "SignalFusion",
-    "DecisionAction",
-    "DecisionCore",
-    "DecisionResult",
-    "RiskContext",
-    "PositionAction",
-    "PositionContext",
-    "PositionDecision",
-    "PositionExitEngine",
-    "HorizonSignal",
-    "MultiHorizonDecisionEngine",
-    "MultiHorizonResult",
-    "TradingHorizon",
-    "MarketRegime",
-    "MarketRegimeEngine",
+    "AlgorithmSignal", "TradingAlgorithm", "IntradayMomentumAlgorithm",
+    "AlgorithmRegistry", "IntradayMeanReversionAlgorithm",
+    "IntradayBreakoutAlgorithm", "IntradayVWAPAlgorithm", "FusionResult",
+    "SignalFusion", "DecisionAction", "DecisionCore", "DecisionResult",
+    "RiskContext", "PositionAction", "PositionContext", "PositionDecision",
+    "PositionExitEngine", "HorizonSignal", "MultiHorizonDecisionEngine",
+    "MultiHorizonResult", "TradingHorizon", "DecisionOrchestrator",
+    "OrchestrationResult", "MarketRegime", "MarketRegimeEngine",
     "MarketRegimeResult",
 ]
