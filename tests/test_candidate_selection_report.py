@@ -196,6 +196,70 @@ def test_candidate_selection_report_selection_snapshot():
     )
 
 
+
+
+def test_candidate_selection_report_selection_snapshot_has_stable_contract():
+    from atlas.market.candidate_selection_report import (
+        CandidateSelectionReport,
+    )
+    from atlas.market.candidate_ranking_evidence import (
+        CandidateRankingEvidence,
+    )
+
+    evidence = CandidateRankingEvidence(
+        symbol="BTC-USD",
+        base_score=90.0,
+        regime_fit=85.0,
+        final_score=88.5,
+        regime="TREND",
+        strategy="MOMENTUM",
+        regime_confidence=92.0,
+        independent_run_count=12,
+        robust_winner=True,
+    )
+
+    report = CandidateSelectionReport(
+        symbol="BTC-USD",
+        action="BUY",
+        ranking_evidence=evidence,
+    )
+
+    snapshot = report.selection_snapshot
+
+    assert set(snapshot) == {
+        "symbol",
+        "action",
+        "ranking_evidence",
+        "reasoning",
+    }
+
+    assert snapshot["symbol"] == "BTC-USD"
+    assert snapshot["action"] == "BUY"
+
+    assert set(snapshot["ranking_evidence"]) == {
+        "symbol",
+        "base_score",
+        "regime_fit",
+        "final_score",
+        "regime",
+        "strategy",
+        "regime_confidence",
+        "independent_run_count",
+        "robust_winner",
+    }
+
+    assert snapshot["ranking_evidence"]["symbol"] == "BTC-USD"
+    assert snapshot["ranking_evidence"]["base_score"] == 90.0
+    assert snapshot["ranking_evidence"]["regime_fit"] == 85.0
+    assert snapshot["ranking_evidence"]["final_score"] == 88.5
+    assert snapshot["ranking_evidence"]["regime"] == "TREND"
+    assert snapshot["ranking_evidence"]["strategy"] == "MOMENTUM"
+    assert snapshot["ranking_evidence"]["regime_confidence"] == 92.0
+    assert snapshot["ranking_evidence"]["independent_run_count"] == 12
+    assert snapshot["ranking_evidence"]["robust_winner"] is True
+
+    assert snapshot["reasoning"] == report.reasoning
+
 def test_candidate_selection_report_selection_snapshot_is_independent():
     evidence = CandidateRankingEvidence(
         symbol="ETH-USD",
