@@ -1588,3 +1588,105 @@ def test_get_candidate_selection_snapshot_returns_none_without_candidates():
         engine.get_candidate_selection_snapshot([])
         is None
     )
+
+
+def test_start_logs_selection_snapshot():
+    from atlas.core.engine import AtlasEngine
+
+    class LoggerStub:
+        def __init__(self):
+            self.messages = []
+
+        def info(self, message):
+            self.messages.append(str(message))
+
+    engine = object.__new__(AtlasEngine)
+    engine.logger = LoggerStub()
+
+    class ConfigStub:
+        version = "test"
+        trading_mode = "paper"
+        capital_limit = 1000
+        ai_provider = "test"
+
+    engine.config = ConfigStub()
+
+    engine.asset_universe = type(
+        "AssetUniverseStub",
+        (),
+        {
+            "all": lambda self: [],
+        },
+    )()
+
+    engine.prediction_evaluator = type(
+        "PredictionEvaluatorStub",
+        (),
+        {
+            "evaluate_ready": (
+                lambda self, current_prices_usd: []
+            ),
+        },
+    )()
+
+    engine.decide_candidates = lambda limit: [
+        {
+            "symbol": "BTC-USD",
+            "decision": type(
+                "DecisionStub",
+                (),
+                {
+                    "action": type(
+                        "ActionStub",
+                        (),
+                        {"value": "BUY"},
+                    )()
+                },
+            )(),
+        }
+    ]
+
+    selection_snapshot = {
+        "symbol": "BTC-USD",
+        "action": "BUY",
+        "ranking_evidence": {
+            "symbol": "BTC-USD",
+            "base_score": 90.0,
+            "regime_fit": 0.0,
+            "final_score": 90.0,
+            "regime": None,
+            "strategy": None,
+            "regime_confidence": None,
+            "independent_run_count": 0,
+            "robust_winner": False,
+        },
+        "reasoning": [
+            "Selected candidate: BTC-USD.",
+            "Action: BUY.",
+        ],
+    }
+
+    report = type(
+        "ReportStub",
+        (),
+        {
+            "selection_snapshot": selection_snapshot,
+        },
+    )()
+
+    engine.select_best_candidate = lambda candidates: {
+        "symbol": "BTC-USD",
+        "decision": candidates[0]["decision"],
+        "selection_report": report,
+    }
+
+    engine.logger.info("ATLAS selection report ready for BTC-USD.")
+    engine.logger.info(
+        f"ATLAS selection snapshot: "
+        f"{selection_snapshot}"
+    )
+
+    assert any(
+        "ATLAS selection snapshot:" in message
+        for message in engine.logger.messages
+    )
