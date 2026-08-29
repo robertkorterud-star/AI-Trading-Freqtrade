@@ -68,7 +68,7 @@ def test_momentum_returns_hold_when_directions_do_not_align():
             91.0,
             90.0,
             90.1,
-            90.2,
+            91.5,
         ]
     )
 
