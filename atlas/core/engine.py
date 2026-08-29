@@ -603,6 +603,15 @@ class AtlasEngine:
                     f"{selected['symbol']}."
                 )
 
+                selection_snapshot = (
+                    selection_report.selection_snapshot
+                )
+
+                self.logger.info(
+                    "ATLAS selection snapshot: "
+                    f"{selection_snapshot}"
+                )
+
         if selected is None:
             self.logger.info(
                 "No viable candidate found."
