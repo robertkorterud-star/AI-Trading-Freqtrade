@@ -112,3 +112,18 @@ def test_registry_preserves_registration_order():
         "stub",
         "second_stub",
     )
+
+
+def test_registry_supports_mean_reversion_algorithm():
+    from atlas.algorithms.mean_reversion import (
+        IntradayMeanReversionAlgorithm,
+    )
+
+    registry = AlgorithmRegistry()
+    algorithm = IntradayMeanReversionAlgorithm()
+
+    registry.register(algorithm)
+
+    assert registry.get(
+        "intraday_mean_reversion"
+    ) is algorithm
