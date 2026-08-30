@@ -31,6 +31,7 @@ class DryRunResult:
     realized_pnl: float
     equity: float
     reason: str
+    executed: bool = True
 
 
 class DryRunTrader:
