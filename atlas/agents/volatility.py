@@ -18,6 +18,11 @@ class VolatilityAgent:
     ) -> AgentObservation:
         candles = market_data.get("candles", [])
 
+        def candle_value(candle, field, default=None):
+            if isinstance(candle, dict):
+                return candle.get(field, default)
+            return getattr(candle, field, default)
+
         if len(candles) < 8:
             return AgentObservation(
                 agent=self.name,
@@ -36,8 +41,8 @@ class VolatilityAgent:
             candles[-8:-1],
             candles[-7:],
         ):
-            previous_close = float(previous["close"])
-            current_close = float(current["close"])
+            previous_close = float(candle_value(previous, "close"))
+            current_close = float(candle_value(current, "close"))
 
             if previous_close > 0.0:
                 returns.append(
@@ -67,7 +72,7 @@ class VolatilityAgent:
         return AgentObservation(
             agent=self.name,
             symbol=symbol,
-            timestamp=candles[-1].get("timestamp"),
+            timestamp=candle_value(candles[-1], "timestamp"),
             category=self.category,
             score=0.0,
             confidence=normalized,

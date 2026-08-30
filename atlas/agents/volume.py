@@ -30,12 +30,19 @@ class VolumeAgent:
                 evidence=["insufficient candle history"],
             )
 
+        def candle_value(candle, field, default=None):
+            if isinstance(candle, dict):
+                return candle.get(field, default)
+            return getattr(candle, field, default)
+
         recent = [
-            float(candle.get("volume", 0.0))
+            float(candle_value(candle, "volume", 0.0))
             for candle in candles[-6:-1]
         ]
 
-        current = float(candles[-1].get("volume", 0.0))
+        current = float(
+            candle_value(candles[-1], "volume", 0.0)
+        )
         average = sum(recent) / len(recent)
 
         if average <= 0.0:
@@ -44,8 +51,12 @@ class VolumeAgent:
             ratio = current / average
 
         price_change = 0.0
-        previous_close = float(candles[-2].get("close", 0.0))
-        current_close = float(candles[-1].get("close", 0.0))
+        previous_close = float(
+            candle_value(candles[-2], "close", 0.0)
+        )
+        current_close = float(
+            candle_value(candles[-1], "close", 0.0)
+        )
 
         if previous_close > 0.0:
             price_change = (
@@ -77,7 +88,10 @@ class VolumeAgent:
         return AgentObservation(
             agent=self.name,
             symbol=symbol,
-            timestamp=candles[-1].get("timestamp"),
+            timestamp=candle_value(
+                candles[-1],
+                "timestamp",
+            ),
             category=self.category,
             score=score,
             confidence=volume_strength,

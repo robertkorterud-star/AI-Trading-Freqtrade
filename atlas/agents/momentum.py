@@ -30,8 +30,13 @@ class MomentumAgent:
                 evidence=["insufficient candle history"],
             )
 
+        def candle_value(candle, field, default=None):
+            if isinstance(candle, dict):
+                return candle.get(field, default)
+            return getattr(candle, field, default)
+
         closes = [
-            float(candle["close"])
+            float(candle_value(candle, "close", 0.0))
             for candle in candles
         ]
 
@@ -55,7 +60,10 @@ class MomentumAgent:
         return AgentObservation(
             agent=self.name,
             symbol=symbol,
-            timestamp=candles[-1].get("timestamp"),
+            timestamp=candle_value(
+                candles[-1],
+                "timestamp",
+            ),
             category=self.category,
             score=score,
             confidence=min(1.0, abs(score)),

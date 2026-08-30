@@ -13,30 +13,24 @@ def snapshot(price=106):
         symbol="BTC-USD",
         timestamp=3,
         price=price,
-        candles=(
+        candles=tuple(
             Candle(
-                timestamp=1,
-                open=100,
-                high=102,
-                low=99,
-                close=101,
-                volume=1000,
-            ),
+                timestamp=i,
+                open=100 + (i - 1) * 0.15,
+                high=101 + (i - 1) * 0.15,
+                low=99 + (i - 1) * 0.15,
+                close=100 + (i - 1) * 0.15,
+                volume=1000 + i * 100,
+            )
+            for i in range(1, 23)
+        ) + (
             Candle(
-                timestamp=2,
-                open=101,
+                timestamp=23,
+                open=103,
                 high=105,
-                low=100,
-                close=104,
-                volume=1200,
-            ),
-            Candle(
-                timestamp=3,
-                open=104,
-                high=108,
-                low=103,
+                low=102,
                 close=price,
-                volume=1500,
+                volume=3300,
             ),
         ),
     )

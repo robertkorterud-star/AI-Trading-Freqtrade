@@ -34,22 +34,26 @@ class BearishAgent:
 def snapshot():
     candles = [
         Candle(
-            timestamp=1,
-            open=100,
-            high=102,
-            low=99,
-            close=101,
-            volume=1000,
-        ),
-        Candle(
-            timestamp=2,
-            open=101,
-            high=105,
-            low=100,
-            close=104,
-            volume=1200,
-        ),
+            timestamp=i,
+            open=100 + (i - 1) * 0.15,
+            high=101 + (i - 1) * 0.15,
+            low=99 + (i - 1) * 0.15,
+            close=100 + (i - 1) * 0.15,
+            volume=1000 + i * 100,
+        )
+        for i in range(1, 23)
     ]
+
+    candles.append(
+        Candle(
+            timestamp=23,
+            open=103,
+            high=105,
+            low=102,
+            close=104,
+            volume=3300,
+        )
+    )
 
     return MarketSnapshot.from_candles(
         "BTC-USD",
@@ -93,3 +97,27 @@ def test_loop_never_uses_live_exchange():
 
     assert result.execution.equity > 0
     assert loop.trader.portfolio.cash > 0
+
+
+def test_dry_run_loop_uses_algorithm_pipeline():
+    from atlas.algorithms.pipeline import AlgorithmPipeline
+
+    loop = DryRunLoop(
+        agents=[BullishAgent()],
+    )
+
+    assert isinstance(loop.algorithm_pipeline, AlgorithmPipeline)
+
+    result = loop.process(snapshot())
+
+    assert len(result.algorithm_signals) == 5
+    assert {
+        signal.algorithm
+        for signal in result.algorithm_signals
+    } == {
+        "intraday_momentum",
+        "intraday_trend",
+        "intraday_breakout",
+        "intraday_mean_reversion",
+        "intraday_vwap",
+    }

@@ -9,6 +9,15 @@ from dataclasses import dataclass
 
 from atlas.algorithms.base import Action, AlgorithmSignal
 from atlas.algorithms.orchestrator import DecisionOrchestrator
+from atlas.algorithms.pipeline import AlgorithmPipeline
+from atlas.algorithms.registry import AlgorithmRegistry
+from atlas.algorithms import (
+    IntradayMomentumAlgorithm,
+    IntradayTrendAlgorithm,
+    IntradayBreakoutAlgorithm,
+    IntradayMeanReversionAlgorithm,
+    IntradayVWAPAlgorithm,
+)
 from atlas.agents.base import AgentObservation
 from atlas.agents.intelligence import MarketIntelligence
 from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
@@ -22,6 +31,7 @@ class DryRunCycleResult:
     observations: tuple[AgentObservation, ...]
     intelligence_score: float
     intelligence_confidence: float
+    algorithm_signals: tuple[AlgorithmSignal, ...]
     decision: object
     execution: DryRunResult
 
@@ -39,11 +49,28 @@ class DryRunLoop:
         intelligence: MarketIntelligence | None = None,
         orchestrator: DecisionOrchestrator | None = None,
         trader: DryRunTrader | None = None,
+        algorithm_pipeline: AlgorithmPipeline | None = None,
     ):
         self.agents = tuple(agents)
         self.intelligence = intelligence or MarketIntelligence()
         self.orchestrator = orchestrator or DecisionOrchestrator()
         self.trader = trader or DryRunTrader()
+        self.algorithm_pipeline = algorithm_pipeline or self._default_algorithm_pipeline()
+
+    @staticmethod
+    def _default_algorithm_pipeline() -> AlgorithmPipeline:
+        registry = AlgorithmRegistry()
+
+        for algorithm in (
+            IntradayMomentumAlgorithm(),
+            IntradayTrendAlgorithm(),
+            IntradayBreakoutAlgorithm(),
+            IntradayMeanReversionAlgorithm(),
+            IntradayVWAPAlgorithm(),
+        ):
+            registry.register(algorithm)
+
+        return AlgorithmPipeline(registry)
 
     def process(self, snapshot: MarketSnapshot) -> DryRunCycleResult:
         observations = tuple(
@@ -56,10 +83,32 @@ class DryRunLoop:
             list(observations),
         )
 
-        signals = self._signals_from_intelligence(
+        market_data = {
+            "price": snapshot.price,
+            "candles": [
+                {
+                    "timestamp": candle.timestamp,
+                    "open": candle.open,
+                    "high": candle.high,
+                    "low": candle.low,
+                    "close": candle.close,
+                    "volume": candle.volume,
+                }
+                for candle in snapshot.candles
+            ],
+        }
+
+        algorithm_signals = self.algorithm_pipeline.generate_signals(
+            snapshot.symbol,
+            market_data,
+        )
+
+        intelligence_signal = self._signals_from_intelligence(
             snapshot,
             intelligence,
         )
+
+        signals = list(algorithm_signals) + intelligence_signal
 
         orchestration = self.orchestrator.decide(
             snapshot.symbol,
@@ -84,6 +133,7 @@ class DryRunLoop:
             observations=observations,
             intelligence_score=intelligence.score,
             intelligence_confidence=intelligence.confidence,
+            algorithm_signals=tuple(algorithm_signals),
             decision=decision,
             execution=execution,
         )
