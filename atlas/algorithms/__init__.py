@@ -43,3 +43,5 @@ __all__ = [
     "MarketRegimeEngine",
     "MarketRegimeResult",
 ]
+
+from atlas.algorithms.pipeline import AlgorithmPipeline
