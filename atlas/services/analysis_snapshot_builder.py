@@ -78,6 +78,17 @@ class AnalysisSnapshotBuilder:
             "dominant_weight": float(
                 decision.dominant_weight
             ),
+            "action_support_analyst": (
+                decision.action_support_analyst
+            ),
+            "action_support_action": (
+                decision.action_support_action.value
+                if decision.action_support_action
+                else None
+            ),
+            "action_support_weight": float(
+                decision.action_support_weight
+            ),
             "opposing_analysts": list(
                 decision.opposing_analysts
             ),

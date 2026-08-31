@@ -181,6 +181,19 @@ class DashboardDataService:
             dominant_weight=float(
                 data.get("dominant_weight", 0.0)
             ),
+            action_support_analyst=data.get(
+                "action_support_analyst"
+            ),
+            action_support_action=(
+                Action(
+                    data["action_support_action"]
+                )
+                if data.get("action_support_action")
+                else None
+            ),
+            action_support_weight=float(
+                data.get("action_support_weight", 0.0)
+            ),
             opposing_analysts=list(
                 data.get("opposing_analysts", [])
             ),
