@@ -10,9 +10,12 @@ intraday, swing, or longer-term decisions.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable, Mapping
+from typing import TYPE_CHECKING, Iterable, Mapping
 
 from atlas.algorithms.base import Action
+
+if TYPE_CHECKING:
+    from atlas.trading.agent_weight_engine import AgentWeightEngine
 
 
 class DecisionAction(str, Enum):
@@ -60,6 +63,7 @@ class DecisionCore:
         horizon_weight: float = 1.25,
         agent_weight: float = 0.75,
         signal_weights: Mapping[str, float] | None = None,
+        agent_weight_engine: "AgentWeightEngine | None" = None,
     ):
         if not 0.0 <= buy_threshold <= 1.0:
             raise ValueError("buy_threshold must be between 0 and 1")
@@ -100,6 +104,7 @@ class DecisionCore:
         self.horizon_weight = horizon_weight
         self.agent_weight = agent_weight
         self.signal_weights = configured_weights
+        self.agent_weight_engine = agent_weight_engine
 
     def decide(
         self,
@@ -161,7 +166,10 @@ class DecisionCore:
             else:
                 weighted_score = direction * confidence
 
-            weight = self._signal_weight(signal)
+            weight = self._signal_weight(
+                signal,
+                action_value=action_value,
+            )
             weighted_scores.append(weighted_score * weight)
             weighted_confidences.append(confidence * weight)
             total_weight += weight
@@ -215,10 +223,19 @@ class DecisionCore:
             reason="no directional consensus",
         )
 
-    def _signal_weight(self, signal) -> float:
+    def _signal_weight(
+        self,
+        signal,
+        action_value=None,
+    ) -> float:
         """Return the configured influence weight for a signal source."""
 
-        algorithm = str(getattr(signal, "algorithm", "")).strip().lower()
+        algorithm_raw = str(
+            getattr(signal, "algorithm", "")
+        ).strip()
+
+        algorithm = algorithm_raw.lower()
+
         configured_weight = self.signal_weights.get(algorithm)
 
         if configured_weight is not None:
@@ -231,9 +248,61 @@ class DecisionCore:
             return self.horizon_weight
 
         if algorithm.startswith("agent:"):
+            learned_weight = self._learned_agent_weight(
+                algorithm_raw,
+                action_value,
+            )
+
+            if learned_weight is not None:
+                return learned_weight
+
             return self.agent_weight
 
         return 1.0
+
+    def _learned_agent_weight(
+        self,
+        algorithm: str,
+        action_value,
+    ) -> float | None:
+        """Return learned agent weight when sufficient history exists."""
+
+        if self.agent_weight_engine is None:
+            return None
+
+        analyst = algorithm.split(":", 1)[1].strip()
+
+        if not analyst:
+            return None
+
+        normalized_action = str(
+            getattr(action_value, "value", action_value)
+        ).strip().upper()
+
+        try:
+            if normalized_action in {"BUY", "SELL"}:
+                weights = self.agent_weight_engine.calculate(
+                    action=normalized_action,
+                )
+            else:
+                weights = self.agent_weight_engine.calculate()
+        except (AttributeError, TypeError, ValueError):
+            return None
+
+        weight = weights.get(analyst)
+
+        if weight is None:
+            return None
+
+        try:
+            weight = float(weight)
+        except (TypeError, ValueError):
+            return None
+
+        if weight <= 0.0:
+            return None
+
+        return weight
 
     @staticmethod
     def _calculate_risk(risk: RiskContext | None) -> float:
