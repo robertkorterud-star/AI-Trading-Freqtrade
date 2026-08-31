@@ -14,6 +14,7 @@ from atlas.algorithms.position_exit import (
     PositionExitEngine,
 )
 from atlas.models.action import Action
+from atlas.risk.risk_engine import RiskEngine
 
 from atlas.trading.paper_portfolio import PaperPortfolio
 from atlas.trading.trade_journal import TradeJournal
@@ -48,6 +49,7 @@ class DryRunTrader:
         portfolio: PaperPortfolio | None = None,
         journal: TradeJournal | None = None,
         position_engine: PositionExitEngine | None = None,
+        risk_engine: RiskEngine | None = None,
         max_position_value: float = 10_000.0,
     ):
         if max_position_value <= 0.0:
@@ -60,6 +62,7 @@ class DryRunTrader:
         self.position_engine = (
             position_engine or PositionExitEngine()
         )
+        self.risk_engine = risk_engine or RiskEngine()
         self.max_position_value = max_position_value
 
     def process_signal(
@@ -84,6 +87,89 @@ class DryRunTrader:
         current = self.portfolio.positions.get(symbol)
 
         current_position = 0.0
+
+        if current is not None:
+            current_position = min(
+                1.0,
+                (current.quantity * price)
+                / self.max_position_value,
+            )
+
+        portfolio_equity = self.portfolio.equity(
+            {symbol: price}
+        )
+
+        # RiskEngine must evaluate the actual order value,
+        # not the configured maximum position size.
+        if action is Action.BUY:
+            requested_amount = max(
+                0.0,
+                min(
+                    self.max_position_value,
+                    self.portfolio.cash,
+                ),
+            )
+        elif action is Action.SELL and current is not None:
+            requested_amount = max(
+                0.0,
+                current.quantity * price,
+            )
+        else:
+            requested_amount = 0.0
+
+        risk_result = self.risk_engine.evaluate(
+            decision=type(
+                "DryRunDecision",
+                (),
+                {
+                    "symbol": symbol,
+                    "action": action,
+                },
+            )(),
+            total_equity_nok=portfolio_equity,
+            cash_nok=self.portfolio.cash,
+            requested_amount_nok=requested_amount,
+            position_exists=current is not None,
+        )
+
+        if not risk_result.approved:
+            context = PositionContext(
+                current_position=current_position,
+                entry_price=(
+                    current.average_price
+                    if current is not None
+                    else None
+                ),
+                current_price=price,
+                peak_price=(
+                    current.average_price
+                    if current is not None
+                    else None
+                ),
+                confidence=confidence,
+                risk_score=risk_score,
+            )
+
+            blocked = self.position_engine.decide(
+                Action.HOLD,
+                context,
+            )
+
+            equity = self.portfolio.equity(
+                {symbol: price}
+            )
+
+            return DryRunResult(
+                symbol=symbol,
+                action=blocked.action,
+                quantity=0.0,
+                price=price,
+                target_position=blocked.target_position,
+                realized_pnl=0.0,
+                equity=equity,
+                reason=f"Risk blocked: {risk_result.reason}",
+                executed=False,
+            )
 
         if current is not None:
             current_position = min(

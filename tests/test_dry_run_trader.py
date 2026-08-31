@@ -125,3 +125,171 @@ def test_dry_run_weak_signal_does_not_trade():
     assert result.action.value == "hold"
     assert result.quantity == 0.0
     assert "BTC-USD" not in trader.portfolio.positions
+
+
+def test_dry_run_passes_actual_buy_amount_to_risk_engine():
+    class RecordingRiskEngine:
+        def __init__(self):
+            self.calls = []
+
+        def evaluate(
+            self,
+            *,
+            decision,
+            total_equity_nok,
+            cash_nok,
+            requested_amount_nok,
+            position_exists,
+        ):
+            self.calls.append(
+                {
+                    "symbol": decision.symbol,
+                    "action": decision.action,
+                    "total_equity_nok": total_equity_nok,
+                    "cash_nok": cash_nok,
+                    "requested_amount_nok": requested_amount_nok,
+                    "position_exists": position_exists,
+                }
+            )
+
+            class Result:
+                approved = True
+                reason = "approved"
+
+            return Result()
+
+    risk_engine = RecordingRiskEngine()
+
+    trader = DryRunTrader(
+        portfolio=PaperPortfolio(
+            initial_cash=100_000.0,
+            fee_rate=0.0,
+        ),
+        journal=TradeJournal(),
+        risk_engine=risk_engine,
+        max_position_value=10_000.0,
+    )
+
+    result = trader.process_signal(
+        "BTC-USD",
+        Action.BUY,
+        price=100.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert result.quantity > 0.0
+    assert len(risk_engine.calls) == 1
+
+    call = risk_engine.calls[0]
+
+    assert call["symbol"] == "BTC-USD"
+    assert call["action"] is Action.BUY
+    assert call["cash_nok"] == 100_000.0
+    assert call["total_equity_nok"] == 100_000.0
+
+    # The risk gate must see the actual configured order value,
+    # not an arbitrary value unrelated to the trade.
+    assert call["requested_amount_nok"] == 10_000.0
+    assert call["position_exists"] is False
+
+
+def test_dry_run_risk_block_prevents_buy():
+    class BlockingRiskEngine:
+        def evaluate(self, **kwargs):
+            class Result:
+                approved = False
+                reason = "Maximum position risk exceeded"
+
+            return Result()
+
+    trader = DryRunTrader(
+        portfolio=PaperPortfolio(
+            initial_cash=100_000.0,
+            fee_rate=0.0,
+        ),
+        journal=TradeJournal(),
+        risk_engine=BlockingRiskEngine(),
+        max_position_value=10_000.0,
+    )
+
+    result = trader.process_signal(
+        "BTC-USD",
+        Action.BUY,
+        price=100.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert result.executed is False
+    assert result.quantity == 0.0
+    assert result.action.value == "hold"
+    assert "Risk blocked" in result.reason
+    assert "BTC-USD" not in trader.portfolio.positions
+    assert trader.journal.trade_count == 0
+
+
+def test_dry_run_risk_block_prevents_sell():
+    class BlockingRiskEngine:
+        def evaluate(self, **kwargs):
+            class Result:
+                approved = False
+                reason = "Exit blocked by risk policy"
+
+            return Result()
+
+    trader = DryRunTrader(
+        portfolio=PaperPortfolio(
+            initial_cash=100_000.0,
+            fee_rate=0.0,
+        ),
+        journal=TradeJournal(),
+        risk_engine=BlockingRiskEngine(),
+        max_position_value=10_000.0,
+    )
+
+    # First create a position using the normal risk engine.
+    trader.risk_engine = type(
+        "AllowingRiskEngine",
+        (),
+        {
+            "evaluate": lambda self, **kwargs: type(
+                "Result",
+                (),
+                {
+                    "approved": True,
+                    "reason": "approved",
+                },
+            )(),
+        },
+    )()
+
+    trader.process_signal(
+        "BTC-USD",
+        Action.BUY,
+        price=100.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert "BTC-USD" in trader.portfolio.positions
+
+    # Replace the gate with a blocking engine before SELL.
+    trader.risk_engine = BlockingRiskEngine()
+
+    result = trader.process_signal(
+        "BTC-USD",
+        Action.SELL,
+        price=105.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert result.executed is False
+    assert result.quantity == 0.0
+    assert result.action.value == "hold"
+    assert "Risk blocked" in result.reason
+
+    # The position must still exist because the SELL was blocked.
+    assert "BTC-USD" in trader.portfolio.positions
+    assert trader.journal.trade_count == 1
