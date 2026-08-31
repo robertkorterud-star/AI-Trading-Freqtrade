@@ -56,6 +56,9 @@ class DecisionCore:
         sell_threshold: float = -0.55,
         minimum_confidence: float = 0.55,
         maximum_risk: float = 0.70,
+        fusion_weight: float = 1.50,
+        horizon_weight: float = 1.25,
+        agent_weight: float = 0.75,
     ):
         if not 0.0 <= buy_threshold <= 1.0:
             raise ValueError("buy_threshold must be between 0 and 1")
@@ -69,10 +72,22 @@ class DecisionCore:
         if not 0.0 <= maximum_risk <= 1.0:
             raise ValueError("maximum_risk must be between 0 and 1")
 
+        if fusion_weight <= 0.0:
+            raise ValueError("fusion_weight must be greater than 0")
+
+        if horizon_weight <= 0.0:
+            raise ValueError("horizon_weight must be greater than 0")
+
+        if agent_weight <= 0.0:
+            raise ValueError("agent_weight must be greater than 0")
+
         self.buy_threshold = buy_threshold
         self.sell_threshold = sell_threshold
         self.minimum_confidence = minimum_confidence
         self.maximum_risk = maximum_risk
+        self.fusion_weight = fusion_weight
+        self.horizon_weight = horizon_weight
+        self.agent_weight = agent_weight
 
     def decide(
         self,
@@ -88,6 +103,8 @@ class DecisionCore:
 
         BUY contributes positively, SELL negatively and HOLD neutrally.
         Confidence weights the contribution of each directional signal.
+        Signal source weights can further tune the influence of fusion,
+        multi-horizon and agent signals.
         """
 
         signal_list = list(signals)
@@ -102,7 +119,8 @@ class DecisionCore:
             )
 
         weighted_scores = []
-        confidence_values = []
+        weighted_confidences = []
+        total_weight = 0.0
 
         for signal in signal_list:
             confidence = self._clamp(
@@ -142,11 +160,13 @@ class DecisionCore:
             else:
                 weighted_score = direction * confidence
 
-            weighted_scores.append(weighted_score)
-            confidence_values.append(confidence)
+            weight = self._signal_weight(signal)
+            weighted_scores.append(weighted_score * weight)
+            weighted_confidences.append(confidence * weight)
+            total_weight += weight
 
-        score = sum(weighted_scores) / len(signal_list)
-        confidence = sum(confidence_values) / len(confidence_values)
+        score = sum(weighted_scores) / total_weight
+        confidence = sum(weighted_confidences) / total_weight
 
         risk_score = self._calculate_risk(risk)
 
@@ -193,6 +213,22 @@ class DecisionCore:
             score=score,
             reason="no directional consensus",
         )
+
+    def _signal_weight(self, signal) -> float:
+        """Return the configured influence weight for a signal source."""
+
+        algorithm = str(getattr(signal, "algorithm", "")).strip().lower()
+
+        if algorithm == "signal_fusion":
+            return self.fusion_weight
+
+        if algorithm == "multi_horizon":
+            return self.horizon_weight
+
+        if algorithm.startswith("agent:"):
+            return self.agent_weight
+
+        return 1.0
 
     @staticmethod
     def _calculate_risk(risk: RiskContext | None) -> float:
