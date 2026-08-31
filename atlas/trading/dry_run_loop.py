@@ -22,6 +22,7 @@ from atlas.agents.base import AgentObservation
 from atlas.agents.intelligence import MarketIntelligence
 from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
 from atlas.trading.market_data import MarketSnapshot
+from atlas.adapters.binance_market_data import BinanceMarketData
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +144,22 @@ class DryRunLoop:
             decision=decision,
             execution=execution,
         )
+
+    def process_binance(
+        self,
+        adapter,
+        symbol: str,
+        interval: str = "1m",
+        limit: int = 100,
+    ) -> DryRunCycleResult:
+        """Fetch a Binance snapshot and process it through dry-run."""
+        market_data = BinanceMarketData(adapter)
+        snapshot = market_data.snapshot(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+        )
+        return self.process(snapshot)
 
     @staticmethod
     def _observe_agent(agent, snapshot: MarketSnapshot) -> AgentObservation:

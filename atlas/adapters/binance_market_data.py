@@ -1,142 +1,109 @@
-"""
-ATLAS Binance Market Data Adapter.
+"""ATLAS Binance market-data bridge.
 
-Read-only adapter for Binance public market data.
-No API keys.
-No order execution.
-
-Converts Binance klines into ATLAS Candle / MarketSnapshot
-contracts.
+Converts read-only Binance klines into the exchange-neutral
+MarketSnapshot contract used by the ATLAS intelligence pipeline.
 """
 
 from __future__ import annotations
 
-import json
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-
 from atlas.trading.market_data import Candle, MarketSnapshot
 
 
-class BinanceMarketDataAdapter:
-    """Fetches read-only OHLCV market data from Binance."""
+class BinanceMarketData:
+    """Build MarketSnapshot instances from Binance public klines."""
 
-    DEFAULT_BASE_URL = "https://api.binance.com"
+    def __init__(self, adapter):
+        self.adapter = adapter
 
-    def __init__(
-        self,
-        base_url: str | None = None,
-        opener=None,
-        timeout: float = 5.0,
-    ) -> None:
-        self.base_url = (
-            base_url.rstrip("/")
-            if base_url
-            else self.DEFAULT_BASE_URL
-        )
-        self._opener = opener or urlopen
-        self.timeout = timeout
-
-    def get_candles(
+    def snapshot(
         self,
         symbol: str,
         interval: str = "1m",
-        limit: int = 3,
-    ) -> list[Candle]:
-        """Fetch Binance klines and normalize them into ATLAS Candles."""
-
-        if not symbol:
-            raise ValueError("symbol must not be empty")
-
-        if limit < 1 or limit > 1000:
-            raise ValueError("limit must be between 1 and 1000")
-
-        params = urlencode(
-            {
-                "symbol": symbol.upper(),
-                "interval": interval,
-                "limit": limit,
-            }
-        )
-
-        url = (
-            f"{self.base_url}/api/v3/klines?{params}"
-        )
-
-        request = Request(
-            url,
-            headers={
-                "User-Agent": "ATLAS-Trading-System/1.0",
-                "Accept": "application/json",
-            },
-        )
-
-        with self._opener(
-            request,
-            timeout=self.timeout,
-        ) as response:
-            payload = json.loads(
-                response.read().decode("utf-8")
-            )
-
-        if not isinstance(payload, list):
-            raise ValueError(
-                "Binance klines response must be a list"
-            )
-
-        candles: list[Candle] = []
-
-        for row in payload:
-            if len(row) < 6:
-                raise ValueError(
-                    "invalid Binance kline row"
-                )
-
-            candles.append(
-                Candle(
-                    timestamp=float(row[0]) / 1000.0,
-                    open=float(row[1]),
-                    high=float(row[2]),
-                    low=float(row[3]),
-                    close=float(row[4]),
-                    volume=float(row[5]),
-                )
-            )
-
-        if not candles:
-            raise ValueError(
-                f"Binance returned no candles for {symbol}"
-            )
-
-        return candles
-
-    def get_snapshot(
-        self,
-        symbol: str,
-        interval: str = "1m",
-        limit: int = 3,
+        limit: int = 100,
     ) -> MarketSnapshot:
-        """Fetch Binance data and return an ATLAS MarketSnapshot."""
-
-        candles = self.get_candles(
+        """Fetch klines and convert them to an ATLAS MarketSnapshot."""
+        raw_klines = self.adapter.get_klines(
             symbol=symbol,
             interval=interval,
             limit=limit,
         )
 
+        candles = tuple(
+            self._candle_from_kline(kline)
+            for kline in raw_klines
+        )
+
         return MarketSnapshot.from_candles(
-            symbol=symbol.upper(),
+            symbol=symbol,
             candles=candles,
+        )
+
+    @staticmethod
+    def _candle_from_kline(kline: list) -> Candle:
+        if len(kline) < 6:
+            raise ValueError("Binance kline must contain at least 6 fields")
+
+        return Candle(
+            timestamp=float(kline[0]) / 1000.0,
+            open=float(kline[1]),
+            high=float(kline[2]),
+            low=float(kline[3]),
+            close=float(kline[4]),
+            volume=float(kline[5]),
+        )
+
+class BinanceMarketDataAdapter(BinanceMarketData):
+    """Backward-compatible Binance market-data adapter.
+
+    Provides the legacy ATLAS interface while using the new
+    BinanceAdapter HTTP implementation underneath.
+    """
+
+    def __init__(self, adapter=None):
+        if adapter is None:
+            from atlas.adapters.binance import BinanceAdapter
+            adapter = BinanceAdapter()
+
+        super().__init__(adapter)
+
+    def get_candles(
+        self,
+        symbol: str,
+        interval: str = "1m",
+        limit: int = 100,
+    ) -> list[Candle]:
+        """Return normalized ATLAS candles."""
+        raw_klines = self.adapter.get_klines(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+        )
+
+        return [
+            self._candle_from_kline(kline)
+            for kline in raw_klines
+        ]
+
+    def get_snapshot(
+        self,
+        symbol: str,
+        interval: str = "1m",
+        limit: int = 100,
+    ) -> MarketSnapshot:
+        """Return a normalized ATLAS market snapshot."""
+        return self.snapshot(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
         )
 
     def get(
         self,
         symbol: str,
         interval: str = "1m",
-        limit: int = 3,
+        limit: int = 100,
     ) -> MarketSnapshot:
-        """Compatibility alias for market-data adapters."""
-
+        """Compatibility alias for market-data consumers."""
         return self.get_snapshot(
             symbol=symbol,
             interval=interval,

@@ -30,8 +30,6 @@ class MarketData:
 
     currency: str = "USD"
 
-    currency: str = "USD"
-
 
 class MarketDataAdapter:
     """Fetches market data."""

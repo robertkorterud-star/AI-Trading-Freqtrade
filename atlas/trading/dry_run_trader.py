@@ -84,6 +84,15 @@ class DryRunTrader:
         if price <= 0.0:
             raise ValueError("price must be greater than zero")
 
+        # DecisionCore uses its own DecisionAction enum while the
+        # execution/risk layer uses atlas.models.action.Action.
+        # Normalize the upstream decision at this boundary.
+        action_value = getattr(action, "value", action)
+
+        if isinstance(action_value, str):
+            normalized_action = action_value.strip().upper()
+            action = Action(normalized_action)
+
         current = self.portfolio.positions.get(symbol)
 
         current_position = 0.0
