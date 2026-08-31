@@ -258,15 +258,77 @@ class AgentWeightEngine:
         return rounded
 
 
-    def explain(self):
-        """Explain why each analyst currently has its weight."""
+    def explain(
+        self,
+        action: str | None = None,
+    ):
+        """Explain why each analyst currently has its weight.
+
+        When an action is supplied, explain the action-specific
+        learned weights using the same history used by calculate().
+        Without an action, preserve the existing overall explanation.
+        """
 
         history = self.performance.history()
+
+        if action is not None:
+            normalized_action = str(action).upper()
+
+            filtered_history = []
+
+            for item in history:
+                action_predictions = item.get(
+                    "action_predictions",
+                    {},
+                )
+
+                action_correct = item.get(
+                    "action_correct",
+                    {},
+                )
+
+                predictions = int(
+                    action_predictions.get(
+                        normalized_action,
+                        0,
+                    )
+                )
+
+                correct = int(
+                    action_correct.get(
+                        normalized_action,
+                        0,
+                    )
+                )
+
+                filtered_history.append(
+                    {
+                        **item,
+                        "predictions": predictions,
+                        "correct": correct,
+                        "wrong": max(
+                            predictions - correct,
+                            0,
+                        ),
+                        "accuracy": (
+                            round(
+                                correct
+                                / predictions
+                                * 100,
+                                2,
+                            )
+                            if predictions
+                            else 0.0
+                        ),
+                    }
+                )
+
+            history = filtered_history
 
         if not history:
             return {}
 
-        weights = self.calculate()
+        weights = self.calculate(action=action)
 
         if any(
             item["predictions"] < self.MIN_PREDICTIONS
@@ -375,6 +437,11 @@ class AgentWeightEngine:
                     "performance close to the analyst average."
                 )
                 comparison = "average"
+
+            if action is not None:
+                reason += (
+                    f" Action context: {str(action).upper()}."
+                )
 
             if weight <= self.MIN_WEIGHT:
                 reason += (

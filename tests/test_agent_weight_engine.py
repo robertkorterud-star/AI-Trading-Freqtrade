@@ -655,3 +655,144 @@ def test_weight_explanation_reports_safety_limit():
         None,
         "maximum",
     )
+
+
+def test_weight_explanations_support_action_specific_history():
+
+    tracker = AgentPerformanceTracker()
+
+    for _ in range(19):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=True,
+            action="BUY",
+        )
+
+    tracker.record(
+        analyst="Technical Analyst",
+        correct=False,
+        action="BUY",
+    )
+
+    for _ in range(19):
+        tracker.record(
+            analyst="News Analyst",
+            correct=False,
+            action="BUY",
+        )
+
+    tracker.record(
+        analyst="News Analyst",
+        correct=True,
+        action="BUY",
+    )
+
+    engine = AgentWeightEngine(tracker)
+
+    explanations = engine.explain(
+        action="BUY",
+    )
+
+    technical = explanations["Technical Analyst"]
+    news = explanations["News Analyst"]
+
+    assert technical["predictions"] == 20
+    assert technical["accuracy"] == 95.0
+
+    assert news["predictions"] == 20
+    assert news["accuracy"] == 5.0
+
+    assert (
+        technical["weight"]
+        > news["weight"]
+    )
+
+    assert technical["status"] == "adaptive"
+    assert news["status"] == "adaptive"
+
+    assert (
+        technical["stabilized_accuracy"]
+        > news["stabilized_accuracy"]
+    )
+
+
+def test_weight_explanations_action_history_can_be_building():
+
+    tracker = AgentPerformanceTracker()
+
+    for _ in range(10):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=True,
+            action="BUY",
+        )
+
+    for _ in range(20):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=True,
+            action="SELL",
+        )
+
+    engine = AgentWeightEngine(tracker)
+
+    explanations = engine.explain(
+        action="BUY",
+    )
+
+    technical = explanations["Technical Analyst"]
+
+    assert technical["predictions"] == 10
+    assert technical["accuracy"] == 100.0
+    assert technical["status"] == "building_history"
+    assert technical["stabilized_accuracy"] is None
+    assert technical["comparison"] is None
+    assert technical["limit"] is None
+
+
+def test_action_specific_weight_explanation_mentions_action_context():
+
+    tracker = AgentPerformanceTracker()
+
+    for _ in range(19):
+        tracker.record(
+            analyst="Technical Analyst",
+            correct=True,
+            action="BUY",
+        )
+
+    tracker.record(
+        analyst="Technical Analyst",
+        correct=False,
+        action="BUY",
+    )
+
+    for _ in range(19):
+        tracker.record(
+            analyst="News Analyst",
+            correct=False,
+            action="BUY",
+        )
+
+    tracker.record(
+        analyst="News Analyst",
+        correct=True,
+        action="BUY",
+    )
+
+    engine = AgentWeightEngine(tracker)
+
+    explanations = engine.explain(
+        action="BUY",
+    )
+
+    technical = explanations["Technical Analyst"]
+
+    assert technical["predictions"] == 20
+    assert technical["accuracy"] == 95.0
+    assert technical["weight"] > 0.0
+
+    assert (
+        "BUY" in technical["reason"]
+        or "buy" in technical["reason"].lower()
+    )
