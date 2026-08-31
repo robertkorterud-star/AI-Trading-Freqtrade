@@ -82,7 +82,10 @@ class DecisionCore:
         if agent_weight <= 0.0:
             raise ValueError("agent_weight must be greater than 0")
 
-        configured_weights = dict(signal_weights or {})
+        configured_weights = {
+            str(source).strip().lower(): float(weight)
+            for source, weight in (signal_weights or {}).items()
+        }
         for source, weight in configured_weights.items():
             if weight <= 0.0:
                 raise ValueError(
