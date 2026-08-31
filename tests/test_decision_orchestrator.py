@@ -181,3 +181,405 @@ def test_orchestrator_fusion_confidence_is_normalized():
 
     assert result.fusion_result is not None
     assert 0.0 <= result.decision.confidence <= 1.0
+
+# ============================================================
+# ATLAS agent -> DecisionCore integration tests
+# ============================================================
+
+from types import SimpleNamespace
+
+from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+
+class CapturingDecisionCore:
+    """Test double that captures the signals received by DecisionCore."""
+
+    def __init__(self):
+        self.received_signals = None
+        self.received_risk = None
+
+    def decide(self, signals, risk):
+        self.received_signals = list(signals)
+        self.received_risk = risk
+        return SimpleNamespace(
+            action=SimpleNamespace(value="HOLD"),
+            score=0.0,
+            confidence=0.0,
+            risk_score=0.0,
+        )
+
+
+def test_orchestrator_passes_bullish_agent_to_decision_core():
+    core = CapturingDecisionCore()
+    orchestrator = DecisionOrchestrator(
+        decision_core=core,
+    )
+
+    observation = SimpleNamespace(
+        agent="bullish_test_agent",
+        symbol="BTC-USD",
+        score=0.90,
+        confidence=0.85,
+        direction="bullish",
+        reason="strong bullish signal",
+    )
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    agent_signals = [
+        signal
+        for signal in core.received_signals
+        if signal.algorithm == "agent:bullish_test_agent"
+    ]
+
+    assert len(agent_signals) == 1
+
+    signal = agent_signals[0]
+
+    assert signal.symbol == "BTC-USD"
+    assert signal.action == "BUY"
+    assert signal.score == 0.90
+    assert signal.confidence == 0.85
+    assert signal.timeframe == "agent"
+    assert signal.reasoning == ["strong bullish signal"]
+
+    assert result.observations == (observation,)
+
+
+def test_orchestrator_passes_bearish_agent_to_decision_core():
+    core = CapturingDecisionCore()
+    orchestrator = DecisionOrchestrator(
+        decision_core=core,
+    )
+
+    observation = SimpleNamespace(
+        agent="bearish_test_agent",
+        symbol="BTC-USD",
+        score=-0.80,
+        confidence=0.75,
+        direction="bearish",
+        reason="strong bearish signal",
+    )
+
+    orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    agent_signals = [
+        signal
+        for signal in core.received_signals
+        if signal.algorithm == "agent:bearish_test_agent"
+    ]
+
+    assert len(agent_signals) == 1
+
+    signal = agent_signals[0]
+
+    assert signal.symbol == "BTC-USD"
+    assert signal.action == "SELL"
+    assert signal.score == -0.80
+    assert signal.confidence == 0.75
+    assert signal.reasoning == ["strong bearish signal"]
+
+
+def test_orchestrator_rejects_agent_observation_for_wrong_symbol():
+    core = CapturingDecisionCore()
+    orchestrator = DecisionOrchestrator(
+        decision_core=core,
+    )
+
+    observation = SimpleNamespace(
+        agent="wrong_symbol_agent",
+        symbol="ETH-USD",
+        score=0.90,
+        confidence=0.90,
+        direction="bullish",
+        reason="wrong symbol",
+    )
+
+    try:
+        orchestrator.decide(
+            symbol="BTC-USD",
+            signals=[],
+            observations=[observation],
+        )
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert str(exc) == "all agent observations must match symbol"
+
+# ============================================================
+# ATLAS agent -> final DecisionCore influence tests
+# ============================================================
+
+def test_bullish_agent_can_influence_final_decision():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="bullish_influence_agent",
+        symbol="BTC-USD",
+        score=1.0,
+        confidence=1.0,
+        direction="bullish",
+        reason="maximum bullish conviction",
+    )
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    assert result.decision.action.value == "buy"
+    assert result.decision.score > 0
+    assert result.decision.confidence > 0
+
+
+def test_bearish_agent_can_influence_final_decision():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="bearish_influence_agent",
+        symbol="BTC-USD",
+        score=-1.0,
+        confidence=1.0,
+        direction="bearish",
+        reason="maximum bearish conviction",
+    )
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    assert result.decision.action.value == "sell"
+    assert result.decision.score < 0
+    assert result.decision.confidence > 0
+
+
+def test_conflicting_agent_observations_reduce_signal_strength():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    bullish = SimpleNamespace(
+        agent="bullish_agent",
+        symbol="BTC-USD",
+        score=1.0,
+        confidence=1.0,
+        direction="bullish",
+        reason="bullish",
+    )
+
+    bearish = SimpleNamespace(
+        agent="bearish_agent",
+        symbol="BTC-USD",
+        score=-1.0,
+        confidence=1.0,
+        direction="bearish",
+        reason="bearish",
+    )
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[bullish, bearish],
+    )
+
+    assert abs(result.decision.score) < 0.01
+
+
+def test_neutral_agent_does_not_create_directional_bias():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="neutral_agent",
+        symbol="BTC-USD",
+        score=0.0,
+        confidence=1.0,
+        direction="neutral",
+        reason="no directional conviction",
+    )
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    assert abs(result.decision.score) < 0.01
+
+
+def test_multiple_bullish_agents_strengthen_bullish_signal():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observations = [
+        SimpleNamespace(
+            agent="bullish_agent_1",
+            symbol="BTC-USD",
+            score=0.8,
+            confidence=0.9,
+            direction="bullish",
+            reason="bullish signal 1",
+        ),
+        SimpleNamespace(
+            agent="bullish_agent_2",
+            symbol="BTC-USD",
+            score=0.9,
+            confidence=0.9,
+            direction="bullish",
+            reason="bullish signal 2",
+        ),
+    ]
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=observations,
+    )
+
+    assert result.decision.action.value == "buy"
+    assert result.decision.score > 0.5
+    assert result.decision.confidence > 0
+
+
+def test_agent_reasoning_is_preserved_in_orchestration_result():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="reasoning_agent",
+        symbol="BTC-USD",
+        score=0.75,
+        confidence=0.80,
+        direction="bullish",
+        reason="momentum and breakout confirmation",
+    )
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    assert result.observations == (observation,)
+    assert any(
+        "Agent observations: 1." in item
+        for item in result.reasoning
+    )
+
+
+def test_agent_signal_is_combined_with_existing_algorithm_signal():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.base import AlgorithmSignal
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    algorithm_signal = AlgorithmSignal(
+        algorithm="test_algorithm",
+        symbol="BTC-USD",
+        timeframe="test",
+        action="BUY",
+        score=0.8,
+        confidence=0.8,
+    )
+
+    observation = SimpleNamespace(
+        agent="confirmation_agent",
+        symbol="BTC-USD",
+        score=0.9,
+        confidence=0.9,
+        direction="bullish",
+        reason="agent confirms algorithm",
+    )
+
+    orchestrator = DecisionOrchestrator()
+
+    result = orchestrator.decide(
+        symbol="BTC-USD",
+        signals=[algorithm_signal],
+        observations=[observation],
+    )
+
+    assert result.decision.action.value == "buy"
+    assert result.decision.score > 0
+
+
+
+# ============================================================
+# DecisionCore action normalization regression tests
+# ============================================================
+
+def test_agent_bullish_signal_reaches_buy_decision():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="regression_bullish",
+        symbol="BTC-USD",
+        score=1.0,
+        confidence=1.0,
+        direction="bullish",
+        reason="maximum bullish conviction",
+    )
+
+    result = DecisionOrchestrator().decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    assert result.decision.action.value == "buy"
+    assert result.decision.score >= 0.55
+
+
+def test_agent_bearish_signal_reaches_sell_decision():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="regression_bearish",
+        symbol="BTC-USD",
+        score=-1.0,
+        confidence=1.0,
+        direction="bearish",
+        reason="maximum bearish conviction",
+    )
+
+    result = DecisionOrchestrator().decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    assert result.decision.action.value == "sell"
+    assert result.decision.score <= -0.55

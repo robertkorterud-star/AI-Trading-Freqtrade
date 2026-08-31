@@ -115,6 +115,67 @@ class DecisionOrchestrator:
                 )
             )
 
+        # Agent observations are converted into auditable algorithm
+        # signals so agent intelligence participates in DecisionCore.
+        for observation in observations or []:
+            observation_symbol = getattr(
+                observation,
+                "symbol",
+                symbol,
+            )
+
+            if observation_symbol != symbol:
+                raise ValueError(
+                    "all agent observations must match symbol"
+                )
+
+            direction = str(
+                getattr(
+                    observation,
+                    "direction",
+                    "neutral",
+                )
+            ).lower()
+
+            if direction == "bullish":
+                action = "BUY"
+            elif direction == "bearish":
+                action = "SELL"
+            else:
+                action = "HOLD"
+
+            decision_inputs.append(
+                AlgorithmSignal(
+                    algorithm=f"agent:{getattr(observation, 'agent', 'unknown')}",
+                    symbol=symbol,
+                    timeframe="agent",
+                    action=action,
+                    score=float(
+                        getattr(
+                            observation,
+                            "score",
+                            0.0,
+                        )
+                    ),
+                    confidence=float(
+                        getattr(
+                            observation,
+                            "confidence",
+                            0.0,
+                        )
+                    ),
+                    reasoning=[
+                        str(
+                            getattr(
+                                observation,
+                                "reason",
+                                "",
+                            )
+                        )
+                    ],
+                )
+            )
+
         decision = self.decision_core.decide(
             decision_inputs,
             risk,

@@ -110,14 +110,39 @@ class DecisionCore:
             )
             action = getattr(signal, "action", Action.HOLD)
 
-            if action is Action.BUY or getattr(action, "value", None) == "buy":
+            # Normalize action values from strings, enums and
+            # AlgorithmSignal instances before determining direction.
+            action_value = getattr(action, "value", action)
+
+            if action is Action.BUY:
                 direction = 1.0
-            elif action is Action.SELL or getattr(action, "value", None) == "sell":
+            elif action is Action.SELL:
+                direction = -1.0
+            elif str(action_value).strip().lower() == "buy":
+                direction = 1.0
+            elif str(action_value).strip().lower() == "sell":
                 direction = -1.0
             else:
                 direction = 0.0
 
-            weighted_scores.append(direction * confidence)
+            # AlgorithmSignal provides an explicit score, while
+            # legacy/simple signals may only provide confidence.
+            #
+            # Preserve the original DecisionCore behaviour for signals
+            # without a score, while allowing ATLAS agent observations
+            # and modern AlgorithmSignals to use score as directional
+            # strength.
+            if hasattr(signal, "score"):
+                signal_score = self._clamp(
+                    abs(float(getattr(signal, "score")))
+                )
+                weighted_score = (
+                    direction * signal_score * confidence
+                )
+            else:
+                weighted_score = direction * confidence
+
+            weighted_scores.append(weighted_score)
             confidence_values.append(confidence)
 
         score = sum(weighted_scores) / len(signal_list)
