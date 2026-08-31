@@ -517,6 +517,33 @@
             </div>
 
 
+            <div class="decision-path">
+
+                <h3>Decision Path</h3>
+
+                <div class="decision-path-list">
+
+                    {% for step in dashboard.decision_explanation.decision_path %}
+
+                        <div class="decision-path-step">
+
+                            <span class="decision-path-number">
+                                {{ loop.index }}
+                            </span>
+
+                            <span>
+                                {{ step }}
+                            </span>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+
             <div class="decision-reasoning">
 
                 <h3>Why ATLAS decided this</h3>

@@ -49,6 +49,10 @@ class DecisionExplanation:
 
     adaptive_override: bool = False
 
+    decision_path: list[str] = field(
+        default_factory=list
+    )
+
     key_reasons: list[str] = field(
         default_factory=list
     )

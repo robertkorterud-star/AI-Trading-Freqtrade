@@ -26,6 +26,7 @@ def test_decision_explanation_defaults():
     assert explanation.robustness_level == "WEAK"
     assert explanation.opposing_analysts == []
     assert explanation.adaptive_override is False
+    assert explanation.decision_path == []
     assert explanation.key_reasons == []
 
 
@@ -213,4 +214,65 @@ def test_explanation_reports_strongest_learned_action_support():
         "Technical Analyst" in reason
         and "BUY" in reason
         for reason in explanation.key_reasons
+    )
+
+
+def test_explain_decision_builds_explicit_hold_conflict_path():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.HOLD,
+        confidence=77.7,
+        evidence=78.3,
+        analysts=[
+            "Technical Analyst",
+            "Company Analyst",
+        ],
+        dominant_action=Action.BUY,
+        dominant_weight=66.7,
+        opposing_analysts=[
+            "Company Analyst",
+        ],
+        adaptive_override=False,
+        decision_margin=33.3,
+        robustness=46.8,
+        robustness_level="WEAK",
+    )
+
+    explanation = explain_decision(
+        decision,
+        agreement=66.7,
+    )
+
+    assert explanation.action == Action.HOLD
+    assert explanation.decision_path
+
+    assert any(
+        "conflict" in step.lower()
+        for step in explanation.decision_path
+    )
+
+    assert any(
+        "BUY" in step
+        and "66.7%" in step
+        for step in explanation.decision_path
+    )
+
+    assert any(
+        "kept HOLD" in step
+        and "conflict-resolution gate" in step
+        for step in explanation.decision_path
+    )
+
+    assert any(
+        "33.3%" in step
+        for step in explanation.decision_path
+    )
+
+    assert any(
+        "46.8%" in step
+        and "WEAK" in step
+        for step in explanation.decision_path
     )

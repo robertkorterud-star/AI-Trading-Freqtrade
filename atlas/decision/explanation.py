@@ -4,6 +4,7 @@ Decision Explanation Builder
 Converts a structured DecisionResult into a human-readable
 DecisionExplanation.
 """
+from atlas.models.action import Action
 
 from atlas.models.decision_explanation import DecisionExplanation
 from atlas.models.decision_result import DecisionResult
@@ -26,6 +27,62 @@ def explain_decision(
         f"ATLAS decided {action.value} with "
         f"{decision.confidence:.1f}% confidence and "
         f"{decision.evidence:.1f}% evidence."
+    )
+
+    decision_path = []
+
+    if (
+        decision.opposing_analysts
+        and decision.dominant_action in {
+            Action.BUY,
+            Action.SELL,
+        }
+    ):
+        decision_path.append(
+            "Directional analyst signals are in conflict."
+        )
+
+    if decision.dominant_action is not None:
+        decision_path.append(
+            f"Dominant signal: "
+            f"{decision.dominant_action.value} "
+            f"with {decision.dominant_weight:.1f}% "
+            f"weighted influence."
+        )
+
+    if decision.action == decision.dominant_action:
+        decision_path.append(
+            "Final decision follows the dominant signal."
+        )
+    elif decision.adaptive_override:
+        decision_path.append(
+            f"Adaptive weighting resolved the conflict "
+            f"in favor of {decision.action.value}."
+        )
+    elif (
+        decision.action == Action.HOLD
+        and decision.dominant_action in {
+            Action.BUY,
+            Action.SELL,
+        }
+    ):
+        decision_path.append(
+            "ATLAS kept HOLD because the dominant "
+            "directional signal did not clear the "
+            "conflict-resolution gate."
+        )
+    else:
+        decision_path.append(
+            f"Final policy decision: {decision.action.value}."
+        )
+
+    decision_path.append(
+        f"Decision margin: {decision.decision_margin:.1f}%."
+    )
+
+    decision_path.append(
+        f"Robustness: {decision.robustness:.1f}% "
+        f"({decision.robustness_level})."
     )
 
     key_reasons = []
@@ -90,5 +147,6 @@ def explain_decision(
             decision.opposing_analysts
         ),
         adaptive_override=decision.adaptive_override,
+        decision_path=decision_path,
         key_reasons=key_reasons,
     )
