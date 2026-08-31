@@ -111,3 +111,59 @@ def test_invalid_signal_weights_are_rejected():
 
     with pytest.raises(ValueError):
         DecisionCore(agent_weight=0.0)
+
+
+def test_custom_algorithm_weight_overrides_default_weight():
+    core = DecisionCore(
+        signal_weights={"momentum": 2.0},
+    )
+
+    result = core.decide(
+        [
+            weighted_signal("momentum", "BUY", 0.8, 1.0),
+            weighted_signal("mean_reversion", "SELL", 0.8, 1.0),
+        ]
+    )
+
+    expected = ((0.8 * 2.0) + (-0.8 * 1.0)) / 3.0
+
+    assert result.score == pytest.approx(expected)
+    assert result.action is DecisionAction.HOLD
+
+
+def test_custom_agent_weight_overrides_agent_default():
+    core = DecisionCore(
+        signal_weights={"agent:momentum": 2.0},
+    )
+
+    result = core.decide(
+        [
+            weighted_signal("agent:momentum", "BUY", 0.8, 1.0),
+            weighted_signal("agent:weak", "SELL", 0.8, 1.0),
+        ]
+    )
+
+    expected = ((0.8 * 2.0) + (-0.8 * 0.75)) / 2.75
+
+    assert result.score == pytest.approx(expected)
+    assert result.score > 0.0
+
+
+def test_custom_weight_keys_are_case_insensitive():
+    core = DecisionCore(
+        signal_weights={"Momentum": 2.0},
+    )
+
+    result = core.decide(
+        [weighted_signal("momentum", "BUY", 0.8, 1.0)]
+    )
+
+    assert result.score == pytest.approx(0.8)
+
+
+def test_invalid_custom_signal_weight_is_rejected():
+    with pytest.raises(ValueError):
+        DecisionCore(signal_weights={"momentum": 0.0})
+
+    with pytest.raises(ValueError):
+        DecisionCore(signal_weights={"agent:bad": -0.5})
