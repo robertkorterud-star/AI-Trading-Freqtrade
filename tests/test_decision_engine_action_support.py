@@ -107,3 +107,21 @@ def test_decision_engine_handles_missing_weight_engine():
     assert decision.action_support_analyst is None
     assert decision.action_support_action is None
     assert decision.action_support_weight == 0.0
+
+
+def test_decision_engine_explains_learned_action_support():
+    engine = DecisionEngine()
+    engine.agent_weight_engine = ActionAwareWeightEngine()
+
+    decision = engine.evaluate(make_results())
+
+    assert any(
+        "Learned support:" in reason
+        for reason in decision.reasoning
+    )
+
+    assert any(
+        "Technical Analyst supports BUY with 60.0% learned weight."
+        in reason
+        for reason in decision.reasoning
+    )

@@ -244,6 +244,14 @@ class DecisionEngine:
                 f"{dominant_weight:.1f}% weighted influence."
             )
 
+        if action_support:
+            reasoning.append(
+                f"Learned support: "
+                f"{action_support['analyst']} supports "
+                f"{action_support['action']} with "
+                f"{action_support['weight'] * 100:.1f}% learned weight."
+            )
+
         if adaptive_override:
             reasoning.append(
                 "Adaptive weighting allowed the dominant "
