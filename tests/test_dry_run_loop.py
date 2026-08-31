@@ -122,6 +122,7 @@ def test_dry_run_loop_uses_algorithm_pipeline():
         "intraday_vwap",
     }
 
+
 def test_dry_run_loop_connects_algorithm_pipeline_to_orchestrator():
     from atlas.algorithms.orchestrator import DecisionOrchestrator
     from atlas.algorithms.pipeline import AlgorithmPipeline
@@ -137,3 +138,26 @@ def test_dry_run_loop_connects_algorithm_pipeline_to_orchestrator():
     result = loop.process(snapshot())
 
     assert result.algorithm_signals
+
+
+def test_process_binance_feeds_snapshot_into_dry_run():
+    class FakeBinance:
+        def get_klines(self, **kwargs):
+            return [
+                [1710000000000, "100", "101", "99", "100.5", "10"],
+                [1710000060000, "100.5", "103", "100", "102", "20"],
+            ]
+
+    loop = DryRunLoop(agents=[BullishAgent()])
+
+    result = loop.process_binance(
+        FakeBinance(),
+        symbol="BTCUSDT",
+        interval="1m",
+        limit=2,
+    )
+
+    assert result.symbol == "BTCUSDT"
+    assert result.price == 102.0
+    assert result.execution.symbol == "BTCUSDT"
+    assert len(result.observations) == 1
