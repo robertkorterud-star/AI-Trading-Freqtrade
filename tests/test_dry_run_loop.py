@@ -121,3 +121,19 @@ def test_dry_run_loop_uses_algorithm_pipeline():
         "intraday_mean_reversion",
         "intraday_vwap",
     }
+
+def test_dry_run_loop_connects_algorithm_pipeline_to_orchestrator():
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+    from atlas.algorithms.pipeline import AlgorithmPipeline
+
+    loop = DryRunLoop(
+        agents=[BullishAgent()],
+    )
+
+    assert isinstance(loop.algorithm_pipeline, AlgorithmPipeline)
+    assert isinstance(loop.orchestrator, DecisionOrchestrator)
+    assert loop.orchestrator.algorithm_pipeline is loop.algorithm_pipeline
+
+    result = loop.process(snapshot())
+
+    assert result.algorithm_signals

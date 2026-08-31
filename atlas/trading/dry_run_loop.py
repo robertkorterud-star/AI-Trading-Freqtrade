@@ -53,9 +53,16 @@ class DryRunLoop:
     ):
         self.agents = tuple(agents)
         self.intelligence = intelligence or MarketIntelligence()
-        self.orchestrator = orchestrator or DecisionOrchestrator()
         self.trader = trader or DryRunTrader()
-        self.algorithm_pipeline = algorithm_pipeline or self._default_algorithm_pipeline()
+        self.algorithm_pipeline = (
+            algorithm_pipeline or self._default_algorithm_pipeline()
+        )
+        self.orchestrator = (
+            orchestrator
+            or DecisionOrchestrator(
+                algorithm_pipeline=self.algorithm_pipeline,
+            )
+        )
 
     @staticmethod
     def _default_algorithm_pipeline() -> AlgorithmPipeline:
@@ -108,12 +115,11 @@ class DryRunLoop:
             intelligence,
         )
 
-        signals = list(algorithm_signals) + intelligence_signal
-
         orchestration = self.orchestrator.decide(
             snapshot.symbol,
-            signals,
+            intelligence_signal,
             observations=list(observations),
+            market_data=market_data,
         )
 
         decision = orchestration.decision
