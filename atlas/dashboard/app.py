@@ -22,6 +22,7 @@ from atlas.adapters.intelligence_sources import (
 from atlas.adapters.web_research import (
     WebResearchAdapter,
 )
+from atlas.adapters.binance_market_data import BinanceMarketDataAdapter
 from atlas.adapters.historical_market_data import (
     HistoricalMarketDataAdapter,
 )
@@ -51,6 +52,7 @@ service = DashboardService()
 settings_service = service.data.settings
 market_search = MarketSearchService()
 historical_market_data = HistoricalMarketDataAdapter()
+binance_market_data = BinanceMarketDataAdapter()
 
 web_research = WebResearchAdapter()
 
@@ -499,6 +501,96 @@ async def fx_rate_api(
     except Exception as exc:
         return JSONResponse(
             content={
+                "error": str(exc),
+            },
+            status_code=502,
+        )
+
+
+
+@app.get("/api/binance-candles")
+async def binance_candles_api(
+    request: Request,
+):
+    """Read-only Binance market data for the ATLAS dashboard."""
+
+    symbol = request.query_params.get(
+        "symbol",
+        "BTCUSDT",
+    ).strip().upper()
+
+    interval = request.query_params.get(
+        "interval",
+        "1m",
+    ).strip().lower()
+
+    try:
+        limit = int(
+            request.query_params.get(
+                "limit",
+                "3",
+            )
+        )
+    except ValueError:
+        return JSONResponse(
+            content={
+                "error": "Limit must be an integer.",
+                "candles": [],
+            },
+            status_code=400,
+        )
+
+    if not symbol:
+        return JSONResponse(
+            content={
+                "error": "Symbol is required.",
+                "candles": [],
+            },
+            status_code=400,
+        )
+
+    if limit < 1 or limit > 1000:
+        return JSONResponse(
+            content={
+                "error": "Limit must be between 1 and 1000.",
+                "candles": [],
+            },
+            status_code=400,
+        )
+
+    try:
+        candles = binance_market_data.get_candles(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+        )
+
+        return JSONResponse(
+            content={
+                "source": "binance",
+                "symbol": symbol,
+                "interval": interval,
+                "candles": [
+                    {
+                        "timestamp": candle.timestamp,
+                        "open": candle.open,
+                        "high": candle.high,
+                        "low": candle.low,
+                        "close": candle.close,
+                        "volume": candle.volume,
+                    }
+                    for candle in candles
+                ],
+            }
+        )
+
+    except Exception as exc:
+        return JSONResponse(
+            content={
+                "source": "binance",
+                "symbol": symbol,
+                "interval": interval,
+                "candles": [],
                 "error": str(exc),
             },
             status_code=502,

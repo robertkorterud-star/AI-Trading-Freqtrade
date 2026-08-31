@@ -2239,15 +2239,47 @@ ATLAS - {{ asset.symbol }}
 
         try {
 
-            const response =
-                await fetch(
+            const isCrypto =
+                "{{ asset.type }}" === "crypto";
+
+            let url;
+
+            if (isCrypto) {
+
+                // Binance uses candle counts rather than
+                // Yahoo-style historical periods.
+                const binanceLimits = {
+                    "5m": 288,
+                    "15m": 288,
+                    "1h": 200,
+                    "4h": 200,
+                    "1d": 200,
+                };
+
+                const limit =
+                    binanceLimits[interval] || 200;
+
+                url =
+                    "/api/binance-candles?" +
+                    new URLSearchParams({
+                        symbol,
+                        interval,
+                        limit,
+                    });
+
+            } else {
+
+                url =
                     "/api/market-candles?" +
                     new URLSearchParams({
                         symbol,
                         period,
                         interval,
-                    })
-                );
+                    });
+            }
+
+            const response =
+                await fetch(url);
 
             const data =
                 await response.json();
@@ -2295,12 +2327,20 @@ ATLAS - {{ asset.symbol }}
             updateVisibleCandles();
 
             status.textContent =
-                data.period.toUpperCase() +
-                " · " +
+                (
+                    data.period
+                    ? data.period.toUpperCase() + " · "
+                    : ""
+                ) +
                 data.interval +
                 " · " +
                 allCandles.length +
-                " candles";
+                " candles" +
+                (
+                    isCrypto
+                    ? " · BINANCE"
+                    : ""
+                );
 
             drawChart();
 
