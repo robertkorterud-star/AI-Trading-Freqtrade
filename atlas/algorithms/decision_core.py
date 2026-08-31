@@ -10,7 +10,7 @@ intraday, swing, or longer-term decisions.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from atlas.algorithms.base import Action
 
@@ -59,6 +59,7 @@ class DecisionCore:
         fusion_weight: float = 1.50,
         horizon_weight: float = 1.25,
         agent_weight: float = 0.75,
+        signal_weights: Mapping[str, float] | None = None,
     ):
         if not 0.0 <= buy_threshold <= 1.0:
             raise ValueError("buy_threshold must be between 0 and 1")
@@ -81,6 +82,13 @@ class DecisionCore:
         if agent_weight <= 0.0:
             raise ValueError("agent_weight must be greater than 0")
 
+        configured_weights = dict(signal_weights or {})
+        for source, weight in configured_weights.items():
+            if weight <= 0.0:
+                raise ValueError(
+                    f"signal weight for {source!r} must be greater than 0"
+                )
+
         self.buy_threshold = buy_threshold
         self.sell_threshold = sell_threshold
         self.minimum_confidence = minimum_confidence
@@ -88,6 +96,7 @@ class DecisionCore:
         self.fusion_weight = fusion_weight
         self.horizon_weight = horizon_weight
         self.agent_weight = agent_weight
+        self.signal_weights = configured_weights
 
     def decide(
         self,
@@ -128,8 +137,6 @@ class DecisionCore:
             )
             action = getattr(signal, "action", Action.HOLD)
 
-            # Normalize action values from strings, enums and
-            # AlgorithmSignal instances before determining direction.
             action_value = getattr(action, "value", action)
 
             if action is Action.BUY:
@@ -143,20 +150,11 @@ class DecisionCore:
             else:
                 direction = 0.0
 
-            # AlgorithmSignal provides an explicit score, while
-            # legacy/simple signals may only provide confidence.
-            #
-            # Preserve the original DecisionCore behaviour for signals
-            # without a score, while allowing ATLAS agent observations
-            # and modern AlgorithmSignals to use score as directional
-            # strength.
             if hasattr(signal, "score"):
                 signal_score = self._clamp(
                     abs(float(getattr(signal, "score")))
                 )
-                weighted_score = (
-                    direction * signal_score * confidence
-                )
+                weighted_score = direction * signal_score * confidence
             else:
                 weighted_score = direction * confidence
 
@@ -218,6 +216,10 @@ class DecisionCore:
         """Return the configured influence weight for a signal source."""
 
         algorithm = str(getattr(signal, "algorithm", "")).strip().lower()
+        configured_weight = self.signal_weights.get(algorithm)
+
+        if configured_weight is not None:
+            return configured_weight
 
         if algorithm == "signal_fusion":
             return self.fusion_weight
