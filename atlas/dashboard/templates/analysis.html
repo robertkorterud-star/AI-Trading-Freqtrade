@@ -208,6 +208,16 @@
                         </strong>
                     </div>
 
+                    {% if dashboard.decision_influence.action_support_analyst %}
+                        <div>
+                            <span>Learned Action Support</span>
+                            <strong>
+                                {{ dashboard.decision_influence.action_support_action }}
+                                {{ dashboard.decision_influence.action_support_weight | round(1) }}%
+                            </strong>
+                        </div>
+                    {% endif %}
+
                 </div>
 
                 {% if dashboard.decision_influence.adaptive_override %}

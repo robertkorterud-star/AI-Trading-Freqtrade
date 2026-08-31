@@ -151,12 +151,28 @@ def test_dashboard_decision_contains_agent_weights(
     )
 
     decision = data["decision"]
+    influence = data["decision_influence"]
 
     assert decision.agent_weights
 
     assert (
         "Technical Analyst"
         in decision.agent_weights
+    )
+
+    assert influence["action_support_analyst"] == (
+        decision.action_support_analyst
+    )
+
+    assert influence["action_support_action"] == (
+        decision.action_support_action.value
+        if decision.action_support_action
+        else None
+    )
+
+    assert influence["action_support_weight"] == round(
+        decision.action_support_weight * 100,
+        1,
     )
 
     assert (
@@ -262,6 +278,70 @@ def test_dashboard_decision_contains_structured_explanation(
     assert explanation.key_reasons
 
 
+def test_dashboard_decision_influence_contains_learned_action_support(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.core.config import AtlasConfig
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(
+            tmp_path / "agent_performance.json"
+        )
+    )
+
+    service = DashboardDataService(config=config)
+
+    def fake_analyze(symbol, exclude=None):
+        return [
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Technical Analyst",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Strong technical evidence."],
+            ),
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Company Analyst",
+                action=Action.BUY,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Positive company evidence."],
+            ),
+        ]
+
+    def fake_analyze_with_news(symbol, news):
+        return fake_analyze(symbol)
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze",
+        fake_analyze,
+    )
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze_with_news",
+        fake_analyze_with_news,
+    )
+
+    data = service.get_dashboard_data(
+        selected_symbol="BTC-USD"
+    )
+
+    influence = data["decision_influence"]
+
+    assert "action_support_analyst" in influence
+    assert "action_support_action" in influence
+    assert "action_support_weight" in influence
+
+    assert influence["action_support_weight"] >= 0.0
+
+
 def test_dashboard_reports_market_scan_candidates(monkeypatch):
     from atlas.models.action import Action
     from atlas.models.decision_result import DecisionResult
@@ -300,3 +380,73 @@ def test_dashboard_reports_market_scan_candidates(monkeypatch):
     assert data["market_scan"][0]["selected"] is True
     assert data["market_scan"][0]["discovery_score"] == 92.5
     assert data["market_scan"][0]["decision"] == "BUY"
+
+
+def test_dashboard_decision_influence_contains_learned_action_support(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.core.config import AtlasConfig
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(
+            tmp_path / "agent_performance.json"
+        )
+    )
+
+    service = DashboardDataService(config=config)
+
+    def fake_analyze(symbol, exclude=None):
+        return [
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Technical Analyst",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Strong technical evidence."],
+            ),
+            AnalysisResult(
+                symbol=symbol,
+                analyst="Company Analyst",
+                action=Action.BUY,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Positive company evidence."],
+            ),
+        ]
+
+    def fake_analyze_with_news(symbol, news):
+        return fake_analyze(symbol)
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze",
+        fake_analyze,
+    )
+
+    monkeypatch.setattr(
+        service.analysis,
+        "analyze_with_news",
+        fake_analyze_with_news,
+    )
+
+    data = service.get_dashboard_data(
+        selected_symbol="BTC-USD"
+    )
+
+    influence = data["decision_influence"]
+
+    assert "action_support_analyst" in influence
+    assert "action_support_action" in influence
+    assert "action_support_weight" in influence
+
+    if influence["action_support_analyst"]:
+        assert influence["action_support_action"] in {
+            "BUY",
+            "HOLD",
+            "SELL",
+        }
+        assert influence["action_support_weight"] >= 0.0

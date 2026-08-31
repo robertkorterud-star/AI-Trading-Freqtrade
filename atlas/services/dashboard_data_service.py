@@ -649,6 +649,18 @@ class DashboardDataService:
                 latest_decision.dominant_weight,
                 1,
             ),
+            "action_support_analyst": (
+                latest_decision.action_support_analyst
+            ),
+            "action_support_action": (
+                latest_decision.action_support_action.value
+                if latest_decision.action_support_action
+                else None
+            ),
+            "action_support_weight": round(
+                latest_decision.action_support_weight * 100,
+                1,
+            ),
             "opposing_analysts": (
                 latest_decision.opposing_analysts
             ),
