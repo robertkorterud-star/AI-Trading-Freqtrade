@@ -61,3 +61,60 @@ def test_pipeline_fuses_registered_algorithm_signals():
 
     assert len(signals) == 2
     assert fused is not None
+
+def test_pipeline_analyze_returns_fused_action_and_signals():
+    registry = AlgorithmRegistry()
+
+    registry.register(StubAlgorithm("momentum", action="BUY"))
+    registry.register(StubAlgorithm("trend", action="BUY"))
+    registry.register(StubAlgorithm("breakout", action="HOLD"))
+
+    pipeline = AlgorithmPipeline(registry)
+
+    fused, signals = pipeline.analyze(
+        "BTC-USD",
+        {"price": 100.0, "candles": []},
+    )
+
+    assert fused is not None
+    assert fused.symbol == "BTC-USD"
+    assert fused.action.value == "BUY"
+    assert fused.signals == tuple(signals)
+    assert fused.agreement == 0.6667
+
+
+def test_pipeline_analyze_returns_none_for_empty_registry():
+    registry = AlgorithmRegistry()
+    pipeline = AlgorithmPipeline(registry)
+
+    fused, signals = pipeline.analyze(
+        "BTC-USD",
+        {"price": 100.0, "candles": []},
+    )
+
+    assert fused is None
+    assert signals == []
+
+
+def test_pipeline_fusion_preserves_all_algorithm_signals():
+    registry = AlgorithmRegistry()
+
+    registry.register(StubAlgorithm("momentum", action="BUY"))
+    registry.register(StubAlgorithm("trend", action="SELL"))
+    registry.register(StubAlgorithm("breakout", action="HOLD"))
+
+    pipeline = AlgorithmPipeline(registry)
+
+    fused, signals = pipeline.analyze(
+        "BTC-USD",
+        {"price": 100.0, "candles": []},
+    )
+
+    assert fused is not None
+    assert len(fused.signals) == 3
+    assert [signal.algorithm for signal in fused.signals] == [
+        "momentum",
+        "trend",
+        "breakout",
+    ]
+    assert fused.action.value == "HOLD"

@@ -11,6 +11,7 @@ It does not execute orders.
 from dataclasses import dataclass
 
 from atlas.algorithms.base import AlgorithmSignal
+from atlas.algorithms.pipeline import AlgorithmPipeline
 from atlas.algorithms.decision_core import (
     DecisionCore,
     DecisionResult,
@@ -31,6 +32,7 @@ class OrchestrationResult:
     horizon_result: object | None
     observations: tuple[object, ...]
     reasoning: tuple[str, ...]
+    fusion_result: object | None = None
 
 
 class DecisionOrchestrator:
@@ -40,11 +42,13 @@ class DecisionOrchestrator:
         self,
         decision_core: DecisionCore | None = None,
         horizon_engine: MultiHorizonDecisionEngine | None = None,
+        algorithm_pipeline: AlgorithmPipeline | None = None,
     ):
         self.decision_core = decision_core or DecisionCore()
         self.horizon_engine = (
             horizon_engine or MultiHorizonDecisionEngine()
         )
+        self.algorithm_pipeline = algorithm_pipeline
 
     def decide(
         self,
@@ -53,13 +57,46 @@ class DecisionOrchestrator:
         horizons: list[HorizonSignal] | None = None,
         risk: RiskContext | None = None,
         observations: list[object] | None = None,
+        market_data: dict | None = None,
     ) -> OrchestrationResult:
         """Run the complete decision chain without executing a trade."""
 
         self._validate_symbols(symbol, signals)
 
         horizon_result = None
+        fusion_result = None
         decision_inputs = list(signals)
+
+        if self.algorithm_pipeline is not None and market_data is not None:
+            fusion_result, pipeline_signals = (
+                self.algorithm_pipeline.analyze(
+                    symbol,
+                    market_data,
+                )
+            )
+
+            if pipeline_signals:
+                self._validate_symbols(
+                    symbol,
+                    pipeline_signals,
+                )
+
+            if fusion_result is not None:
+                decision_inputs.append(
+                    AlgorithmSignal(
+                        algorithm="signal_fusion",
+                        symbol=symbol,
+                        timeframe=fusion_result.timeframe,
+                        action=fusion_result.action,
+                        score=fusion_result.score,
+                        confidence=(
+                            fusion_result.confidence / 100.0
+                        ),
+                        reasoning=list(
+                            fusion_result.reasoning
+                        ),
+                    )
+                )
 
         if horizons:
             horizon_result = self.horizon_engine.decide(
@@ -85,7 +122,7 @@ class DecisionOrchestrator:
 
         reasoning = (
             "ATLAS orchestration completed.",
-            f"Algorithm signals: {len(signals)}.",
+            f"Algorithm signals: {len(decision_inputs)}.",
             f"Horizon signals: {len(horizons or [])}.",
             f"Agent observations: {len(observations or [])}.",
             f"Final action: {decision.action.value}.",
@@ -100,6 +137,7 @@ class DecisionOrchestrator:
             horizon_result=horizon_result,
             observations=tuple(observations or []),
             reasoning=reasoning,
+            fusion_result=fusion_result,
         )
 
     @staticmethod

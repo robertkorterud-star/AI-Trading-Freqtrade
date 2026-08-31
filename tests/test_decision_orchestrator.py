@@ -89,3 +89,95 @@ def test_orchestrator_rejects_wrong_symbol():
         assert "match symbol" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_orchestrator_can_use_algorithm_pipeline_fusion():
+    from atlas.algorithms.pipeline import AlgorithmPipeline
+    from atlas.algorithms.registry import AlgorithmRegistry
+
+    class BuyAlgorithm:
+        name = "test_buy"
+        timeframe = "multi"
+
+        def generate_signal(self, symbol, candles):
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe="multi",
+                action=Action.BUY,
+                score=90.0,
+                confidence=0.90,
+            )
+
+    class HoldAlgorithm:
+        name = "test_hold"
+        timeframe = "multi"
+
+        def generate_signal(self, symbol, candles):
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe="multi",
+                action=Action.HOLD,
+                score=50.0,
+                confidence=0.50,
+            )
+
+    registry = AlgorithmRegistry()
+    registry.register(BuyAlgorithm())
+    registry.register(HoldAlgorithm())
+
+    pipeline = AlgorithmPipeline(registry)
+
+    result = DecisionOrchestrator(
+        algorithm_pipeline=pipeline,
+    ).decide(
+        "BTC-USD",
+        [],
+        market_data={
+            "price": 100.0,
+            "candles": [],
+        },
+    )
+
+    assert result.fusion_result is not None
+    assert result.fusion_result.action is Action.HOLD
+    assert result.fusion_result.agreement == 0.5
+    assert result.decision.action is DecisionAction.HOLD
+    assert result.fusion_result.symbol == "BTC-USD"
+
+
+def test_orchestrator_fusion_confidence_is_normalized():
+    from atlas.algorithms.pipeline import AlgorithmPipeline
+    from atlas.algorithms.registry import AlgorithmRegistry
+
+    class BuyAlgorithm:
+        name = "test_buy"
+        timeframe = "multi"
+
+        def generate_signal(self, symbol, candles):
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe="multi",
+                action=Action.BUY,
+                score=90.0,
+                confidence=0.90,
+            )
+
+    registry = AlgorithmRegistry()
+    registry.register(BuyAlgorithm())
+
+    result = DecisionOrchestrator(
+        algorithm_pipeline=AlgorithmPipeline(registry),
+    ).decide(
+        "BTC-USD",
+        [],
+        market_data={
+            "price": 100.0,
+            "candles": [],
+        },
+    )
+
+    assert result.fusion_result is not None
+    assert 0.0 <= result.decision.confidence <= 1.0
