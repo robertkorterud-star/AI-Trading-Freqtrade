@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ATLAS AI Trader</title>
+<script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;background:#0b1020;color:#e8edf7}*{box-sizing:border-box}body{margin:0;background:#0b1020}header{padding:18px 24px;border-bottom:1px solid #202942;display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:22px}small,.muted{color:#8994ad}.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;padding:14px}.card{background:#11182b;border:1px solid #202942;border-radius:12px;padding:14px}.chart{height:560px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#0d1425;border-radius:9px;padding:12px}.label{font-size:11px;color:#8994ad;text-transform:uppercase}.value{font-size:21px;margin-top:5px}.section{margin-top:14px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #202942;font-size:13px}.buy{color:#3ddc97}.sell{color:#ff6678}.hold{color:#aeb7c8}.pill{padding:4px 8px;border-radius:999px;background:#1b253d}.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.reason{font-size:12px;color:#aeb7c8;line-height:1.45}.legend{font-size:12px;color:#aeb7c8;margin-top:8px}@media(max-width:1000px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.chart{height:480px}}
+</style>
+</head>
+<body>
+<header><div><h1>ATLAS AI TRADER</h1><small>REAL MARKET DATA · VIRTUAL EXECUTION</small></div><div id="status" class="pill">CONNECTING</div></header>
+<div class="grid">
+<main>
+<div class="card"><div class="stats"><div class="stat"><div class="label">Symbol</div><div id="symbol" class="value">—</div></div><div class="stat"><div class="label">Price</div><div id="price" class="value">—</div></div><div class="stat"><div class="label">Decision</div><div id="decision" class="value">—</div></div><div class="stat"><div class="label">Confidence</div><div id="confidence" class="value">—</div></div></div></div>
+<div class="card section"><div id="chart" class="chart"></div><div class="legend">Markers are actual virtual executions: ▲ BUY / ▼ SELL. The chart uses Binance candles.</div></div>
+<div class="cols section"><div class="card"><h3>Agents</h3><div id="agents"></div></div><div class="card"><h3>Algorithms</h3><div id="algorithms"></div></div></div>
+</main>
+<aside>
+<div class="card"><h3>FINAL ATLAS DECISION</h3><div class="row"><span>Action</span><strong id="daction">—</strong></div><div class="row"><span>Score</span><span id="dscore">—</span></div><div class="row"><span>Confidence</span><span id="dconf">—</span></div><div class="row"><span>Risk</span><span id="drisk">—</span></div><p id="dreason" class="reason">—</p></div>
+<div class="card section"><h3>Virtual Execution</h3><div class="row"><span>Action</span><span id="eaction">—</span></div><div class="row"><span>Quantity</span><span id="eqty">—</span></div><div class="row"><span>Equity</span><span id="equity">—</span></div><div class="row"><span>Realized P/L</span><span id="pnl">—</span></div><div class="row"><span>Executed</span><span id="executed">—</span></div><p id="ereason" class="reason">—</p></div>
+<div class="card section"><h3>Intelligence</h3><div class="row"><span>Score</span><span id="iscore">—</span></div><div class="row"><span>Confidence</span><span id="iconf">—</span></div></div>
+<div class="card section"><h3>Trade History</h3><div id="trades" class="reason">No virtual executions yet.</div></div>
+</aside>
+</div>
+<script>
+const chart=LightweightCharts.createChart(document.getElementById('chart'),{layout:{background:{type:'solid',color:'#11182b'},textColor:'#aeb7c8'},grid:{vertLines:{color:'#202942'},horzLines:{color:'#202942'}},rightPriceScale:{borderColor:'#202942'},timeScale:{borderColor:'#202942',timeVisible:true,secondsVisible:false}});
+const series=chart.addSeries(LightweightCharts.CandlestickSeries,{upColor:'#3ddc97',downColor:'#ff6678',borderVisible:false,wickUpColor:'#3ddc97',wickDownColor:'#ff6678'});
+const markers=LightweightCharts.createSeriesMarkers(series,[]);
+new ResizeObserver(()=>chart.applyOptions({width:document.getElementById('chart').clientWidth})).observe(document.getElementById('chart'));
+function fmt(n){return Number(n).toLocaleString(undefined,{maximumFractionDigits:4})}
+function pct(n){return (Number(n)*100).toFixed(1)+'%'}
+function cls(a){a=String(a).toUpperCase();return a.includes('BUY')||a.includes('ENTER')?'buy':a.includes('SELL')||a.includes('EXIT')||a.includes('REDUCE')?'sell':'hold'}
+function renderList(el,items){el.innerHTML=items.map(x=>`<div class="row"><span>${x.name}</span><span class="${cls(x.action||x.direction)}">${x.action||x.direction} · ${fmt(x.score)} · ${pct(x.confidence)}</span></div>`).join('')}
+function render(d){if(!d.candles)return;document.getElementById('status').textContent='LIVE';document.getElementById('symbol').textContent=d.symbol;document.getElementById('price').textContent=fmt(d.price);document.getElementById('decision').textContent=String(d.decision.action).toUpperCase();document.getElementById('confidence').textContent=pct(d.decision.confidence);series.setData(d.candles);markers.setMarkers((d.markers||[]).map((m,i)=>({id:String(i),time:m.time,price:m.price,position:m.action==='BUY'?'atPriceBottom':'atPriceTop',shape:m.action==='BUY'?'arrowUp':'arrowDown',color:m.action==='BUY'?'#3ddc97':'#ff6678',text:m.action+' @ '+fmt(m.price)})));document.getElementById('daction').textContent=String(d.decision.action).toUpperCase();document.getElementById('daction').className=cls(d.decision.action);document.getElementById('dscore').textContent=fmt(d.decision.score);document.getElementById('dconf').textContent=pct(d.decision.confidence);document.getElementById('drisk').textContent=fmt(d.decision.risk_score);document.getElementById('dreason').textContent=d.decision.reason;document.getElementById('eaction').textContent=d.execution.action;document.getElementById('eqty').textContent=fmt(d.execution.quantity);document.getElementById('equity').textContent=fmt(d.execution.equity);document.getElementById('pnl').textContent=fmt(d.execution.realized_pnl);document.getElementById('executed').textContent=d.execution.executed?'YES':'NO';document.getElementById('ereason').textContent=d.execution.reason;document.getElementById('iscore').textContent=fmt(d.intelligence.score);document.getElementById('iconf').textContent=pct(d.intelligence.confidence);renderList(document.getElementById('agents'),d.agents);renderList(document.getElementById('algorithms'),d.algorithms);if(d.markers.length)document.getElementById('trades').innerHTML=d.markers.slice().reverse().map(m=>`<div class="row"><span class="${cls(m.action)}">${m.action}</span><span>$${fmt(m.price)} · ${fmt(m.quantity)} · P/L ${fmt(m.pnl)}</span></div>`).join('');chart.timeScale().fitContent()}
+async function poll(){try{const r=await fetch('/api/state',{cache:'no-store'});const d=await r.json();if(d.status==='error'){document.getElementById('status').textContent='ERROR';return}render(d)}catch(e){document.getElementById('status').textContent='OFFLINE'}}poll();setInterval(poll,5000);
+</script>
+</body></html>
