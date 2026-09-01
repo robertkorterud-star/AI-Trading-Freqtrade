@@ -29,10 +29,28 @@ class AlgorithmPipeline:
         """Generate signals from every registered algorithm."""
         candles = market_data.get("candles", [])
 
-        return self.registry.generate_signals(
-            symbol,
-            candles,
-        )
+        signals: list[AlgorithmSignal] = []
+
+        for algorithm in self.registry.all():
+            try:
+                signal = algorithm.generate_signal(
+                    symbol,
+                    candles,
+                )
+            except ValueError as exc:
+                message = str(exc)
+
+                if (
+                    message.startswith("at least ")
+                    and message.endswith(" candles are required")
+                ):
+                    continue
+
+                raise
+
+            signals.append(signal)
+
+        return signals
 
     def analyze(
         self,

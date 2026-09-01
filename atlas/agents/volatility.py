@@ -75,7 +75,10 @@ class VolatilityAgent:
             timestamp=candle_value(candles[-1], "timestamp"),
             category=self.category,
             score=0.0,
-            confidence=normalized,
+            confidence=min(
+                1.0,
+                0.40 + normalized * 0.60,
+            ),
             direction=direction,
             source="market_candles",
             features={

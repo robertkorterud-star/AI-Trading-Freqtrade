@@ -94,7 +94,10 @@ class VolumeAgent:
             ),
             category=self.category,
             score=score,
-            confidence=volume_strength,
+            confidence=min(
+                1.0,
+                0.40 + volume_strength * 0.60,
+            ),
             direction=direction,
             source="market_candles",
             features={

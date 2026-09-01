@@ -162,13 +162,23 @@ class MarketIntelligence:
 
         if confidence_weight <= 0.0:
             score = 0.0
-            confidence = 0.0
         else:
             score = weighted_score / confidence_weight
-            confidence = min(
-                1.0,
-                confidence_weight / len(observations),
-            )
+
+        # Confidence describes the reliability of the observation,
+        # not the magnitude of its directional score.
+        #
+        # A neutral market can therefore have high analytical
+        # confidence even when score is close to zero.
+        confidence = min(
+            1.0,
+            sum(
+                MarketIntelligence._clamp(
+                    observation.confidence
+                )
+                for observation in observations
+            ) / len(observations),
+        )
 
         if score > 0.20:
             direction = "bullish"

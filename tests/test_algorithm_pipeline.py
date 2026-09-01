@@ -118,3 +118,70 @@ def test_pipeline_fusion_preserves_all_algorithm_signals():
         "breakout",
     ]
     assert fused.action.value == "HOLD"
+
+
+def test_pipeline_skips_algorithm_with_insufficient_history():
+    class ShortHistoryAlgorithm:
+        name = "short_history"
+        timeframe = "5m"
+
+        def generate_signal(self, symbol, candles):
+            raise ValueError("at least 24 candles are required")
+
+    class WorkingAlgorithm:
+        name = "working"
+        timeframe = "5m"
+
+        def generate_signal(self, symbol, candles):
+            from atlas.algorithms.base import AlgorithmSignal
+            from atlas.models.action import Action
+
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe=self.timeframe,
+                action=Action.HOLD,
+                score=50.0,
+                confidence=50.0,
+            )
+
+    registry = AlgorithmRegistry()
+    registry.register(ShortHistoryAlgorithm())
+    registry.register(WorkingAlgorithm())
+
+    pipeline = AlgorithmPipeline(registry)
+
+    signals = pipeline.generate_signals(
+        "BTC-USD",
+        {"candles": [{"close": 100.0}]},
+    )
+
+    assert len(signals) == 1
+    assert signals[0].algorithm == "working"
+
+
+def test_pipeline_does_not_hide_unrelated_value_errors():
+    class BrokenAlgorithm:
+        name = "broken"
+        timeframe = "5m"
+
+        def generate_signal(self, symbol, candles):
+            raise ValueError(
+                "candles must contain finite positive close prices"
+            )
+
+    registry = AlgorithmRegistry()
+    registry.register(BrokenAlgorithm())
+
+    pipeline = AlgorithmPipeline(registry)
+
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match="candles must contain finite positive close prices",
+    ):
+        pipeline.generate_signals(
+            "BTC-USD",
+            {"candles": [{"close": -1.0}]},
+        )

@@ -6,6 +6,7 @@ from atlas.algorithms.trend import IntradayTrendAlgorithm
 from atlas.algorithms.mean_reversion import IntradayMeanReversionAlgorithm
 from atlas.algorithms.breakout import IntradayBreakoutAlgorithm
 from atlas.algorithms.vwap import IntradayVWAPAlgorithm
+from atlas.algorithms.value_zone import IntradayValueZoneAlgorithm
 from atlas.algorithms.registry import AlgorithmRegistry
 from atlas.algorithms.fusion import FusionResult, SignalFusion
 from atlas.algorithms.decision_core import DecisionAction, DecisionCore, DecisionResult, RiskContext
@@ -25,6 +26,7 @@ __all__ = [
     "IntradayMeanReversionAlgorithm",
     "IntradayBreakoutAlgorithm",
     "IntradayVWAPAlgorithm",
+    "IntradayValueZoneAlgorithm",
     "FusionResult",
     "SignalFusion",
     "DecisionAction",

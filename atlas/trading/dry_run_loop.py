@@ -17,6 +17,7 @@ from atlas.algorithms import (
     IntradayBreakoutAlgorithm,
     IntradayMeanReversionAlgorithm,
     IntradayVWAPAlgorithm,
+    IntradayValueZoneAlgorithm,
 )
 from atlas.agents.base import AgentObservation
 from atlas.agents.intelligence import MarketIntelligence
@@ -75,6 +76,7 @@ class DryRunLoop:
             IntradayBreakoutAlgorithm(),
             IntradayMeanReversionAlgorithm(),
             IntradayVWAPAlgorithm(),
+            IntradayValueZoneAlgorithm(),
         ):
             registry.register(algorithm)
 

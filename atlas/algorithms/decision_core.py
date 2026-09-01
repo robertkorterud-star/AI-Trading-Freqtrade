@@ -140,7 +140,7 @@ class DecisionCore:
         total_weight = 0.0
 
         for signal in signal_list:
-            confidence = self._clamp(
+            confidence = self._normalize_confidence(
                 float(getattr(signal, "confidence", 0.0))
             )
             action = getattr(signal, "action", Action.HOLD)
@@ -222,6 +222,20 @@ class DecisionCore:
             score=score,
             reason="no directional consensus",
         )
+
+    @staticmethod
+    def _normalize_confidence(value: float) -> float:
+        """Normalize confidence to the DecisionCore 0.0-1.0 contract."""
+        if value < 0.0:
+            return 0.0
+
+        if value <= 1.0:
+            return value
+
+        if value <= 100.0:
+            return value / 100.0
+
+        return 1.0
 
     def _signal_weight(
         self,

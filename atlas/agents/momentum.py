@@ -66,7 +66,10 @@ class MomentumAgent:
             ),
             category=self.category,
             score=score,
-            confidence=min(1.0, abs(score)),
+            confidence=min(
+                1.0,
+                0.50 + abs(score) * 0.50,
+            ),
             direction=direction,
             source="market_candles",
             features={
