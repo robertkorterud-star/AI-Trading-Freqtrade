@@ -11,6 +11,7 @@ from atlas.models.action import Action
 from atlas.models.decision_result import DecisionResult
 from atlas.risk.risk_engine import RiskEngine
 from atlas.services.portfolio_service import PortfolioService
+from atlas.trading.trading_cost_model import TradingCostModel
 from atlas.trading.trading_service import TradingService
 
 
@@ -21,6 +22,8 @@ class PaperTradingEngine:
     Flow:
 
         Decision
+            ↓
+        Expected Return / Cost Gate
             ↓
         RiskEngine
             ↓
@@ -34,10 +37,12 @@ class PaperTradingEngine:
         portfolio: PortfolioService,
         risk: RiskEngine,
         trading: TradingService | None = None,
+        cost_model: TradingCostModel | None = None,
     ):
         self.portfolio = portfolio
         self.risk = risk
         self.trading = trading or TradingService()
+        self.cost_model = cost_model
 
     def execute(
         self,
@@ -51,6 +56,8 @@ class PaperTradingEngine:
 
         BUY:
             amount_nok determines how much cash to invest.
+            When a cost model is configured, expected return must
+            exceed estimated round-trip direct trading costs.
 
         SELL:
             The complete existing position is sold.
@@ -58,6 +65,30 @@ class PaperTradingEngine:
         HOLD:
             Nothing happens.
         """
+
+        if (
+            decision.action == Action.BUY
+            and self.cost_model is not None
+        ):
+            net_return = self.cost_model.net_return(
+                decision.expected_return
+            )
+
+            if net_return <= 0.0:
+                return {
+                    "executed": False,
+                    "action": decision.action.value,
+                    "symbol": decision.symbol,
+                    "reason": (
+                        "BUY blocked: expected return does not "
+                        "cover estimated round-trip trading costs."
+                    ),
+                    "expected_return": decision.expected_return,
+                    "estimated_round_trip_cost": (
+                        self.cost_model.round_trip_cost_rate
+                    ),
+                    "net_expected_return": net_return,
+                }
 
         portfolio = self.portfolio.as_dict(usd_nok)
 
@@ -134,7 +165,9 @@ class PaperTradingEngine:
 
             trade_record = self.trading.record_sell(
                 symbol=decision.symbol,
-                quantity=trade["quantity"],
+                quantity=trade[
+                    "quantity"
+                ],
                 price_usd=price_usd,
                 amount_nok=trade["sale_value_nok"],
                 realized_pnl_nok=trade[
