@@ -22,6 +22,7 @@ from atlas.algorithms import (
 from atlas.agents.base import AgentObservation
 from atlas.agents.intelligence import MarketIntelligence
 from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
+from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.trading.market_data import MarketSnapshot
 from atlas.adapters.binance_market_data import BinanceMarketData
 
@@ -35,6 +36,7 @@ class DryRunCycleResult:
     intelligence_confidence: float
     algorithm_signals: tuple[AlgorithmSignal, ...]
     decision: object
+    expected_return: float | None
     execution: DryRunResult
 
 
@@ -42,7 +44,8 @@ class DryRunLoop:
     """
     One-cycle ATLAS dry-run pipeline.
 
-    Market data -> agents -> intelligence -> orchestrator -> trader.
+    Market data -> agents -> intelligence -> orchestrator -> expected
+    return -> trading cost gate -> paper execution.
     """
 
     def __init__(
@@ -52,10 +55,12 @@ class DryRunLoop:
         orchestrator: DecisionOrchestrator | None = None,
         trader: DryRunTrader | None = None,
         algorithm_pipeline: AlgorithmPipeline | None = None,
+        expected_return_service: ExpectedReturnService | None = None,
     ):
         self.agents = tuple(agents)
         self.intelligence = intelligence or MarketIntelligence()
         self.trader = trader or DryRunTrader()
+        self.expected_return_service = expected_return_service
         self.algorithm_pipeline = (
             algorithm_pipeline or self._default_algorithm_pipeline()
         )
@@ -126,6 +131,10 @@ class DryRunLoop:
         )
 
         decision = orchestration.decision
+        expected_return = self._estimate_expected_return(
+            snapshot.symbol,
+            decision,
+        )
 
         execution = self.trader.process_signal(
             symbol=snapshot.symbol,
@@ -134,6 +143,7 @@ class DryRunLoop:
             confidence=decision.confidence,
             risk_score=decision.risk_score,
             reason=decision.reason,
+            expected_return=expected_return,
         )
 
         return DryRunCycleResult(
@@ -144,6 +154,7 @@ class DryRunLoop:
             intelligence_confidence=intelligence.confidence,
             algorithm_signals=tuple(algorithm_signals),
             decision=decision,
+            expected_return=expected_return,
             execution=execution,
         )
 
@@ -162,6 +173,17 @@ class DryRunLoop:
             limit=limit,
         )
         return self.process(snapshot)
+
+    def _estimate_expected_return(self, symbol: str, decision) -> float | None:
+        """Estimate expected return when the historical service is configured."""
+        if self.expected_return_service is None:
+            return None
+
+        action = Action(str(decision.action.value).upper())
+        return self.expected_return_service.estimate(
+            symbol=symbol,
+            action=action,
+        )
 
     @staticmethod
     def _observe_agent(agent, snapshot: MarketSnapshot) -> AgentObservation:
