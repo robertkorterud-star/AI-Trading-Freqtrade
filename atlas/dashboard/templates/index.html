@@ -4,305 +4,210 @@
 
 <div class="dashboard-layout">
 
-    <!-- =================================================
-         LEFT: WATCHLIST
-         ================================================= -->
-
     <aside class="dashboard-sidebar">
-
         {% include "components/watchlist.html" %}
-
     </aside>
-
-
-    <!-- =================================================
-         CENTER: SELECTED ASSET + AI
-         ================================================= -->
 
     <section class="dashboard-main">
 
-    <!-- =================================================
-         PAPER TRADING SUMMARY
-         ================================================= -->
-
     <div class="card paper-summary">
-
         <div class="paper-summary-header">
-
             <div>
                 <h2>💰 {{ t("paper_trading") }}</h2>
                 <small>{{ t("virtual_portfolio") }}</small>
             </div>
-
-            <span class="paper-badge">
-                PAPER
-            </span>
-
+            <span class="paper-badge">PAPER</span>
         </div>
 
         <div class="paper-summary-grid">
-
-            <div>
-                <small>{{ t("total_equity") }}</small>
-                <strong>
-                    {{ dashboard.portfolio.total_equity_nok }} NOK
-                </strong>
-            </div>
-
-            <div>
-                <small>{{ t("cash") }}</small>
-                <strong>
-                    {{ dashboard.portfolio.cash_nok }} NOK
-                </strong>
-            </div>
-
-            <div>
-                <small>{{ t("invested") }}</small>
-                <strong>
-                    {{ dashboard.portfolio.invested_nok }} NOK
-                </strong>
-            </div>
-
-            <div>
-                <small>{{ t("positions") }}</small>
-                <strong>
-                    {{ dashboard.portfolio.position_count }}
-                </strong>
-            </div>
-
-            <div>
-                <small>{{ t("unrealized_pl") }}</small>
-                <strong class="{% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
-                    {% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}+{% endif %}
-                    {{ dashboard.portfolio.unrealized_pnl_nok }} NOK
-                </strong>
-            </div>
-
-            <div>
-                <small>{{ t("total_pl") }}</small>
-                <strong class="{% if dashboard.portfolio.total_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
-                    {% if dashboard.portfolio.total_pnl_nok >= 0 %}+{% endif %}
-                    {{ dashboard.portfolio.total_pnl_nok }} NOK
-                </strong>
-            </div>
-
-            <div>
-                <small>{{ t("return") }}</small>
-                <strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">
-                    {% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}
-                    {{ dashboard.portfolio.return_percent }}%
-                </strong>
-            </div>
-
+            <div><small>{{ t("total_equity") }}</small><strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong></div>
+            <div><small>{{ t("cash") }}</small><strong>{{ dashboard.portfolio.cash_nok }} NOK</strong></div>
+            <div><small>{{ t("invested") }}</small><strong>{{ dashboard.portfolio.invested_nok }} NOK</strong></div>
+            <div><small>{{ t("positions") }}</small><strong>{{ dashboard.portfolio.position_count }}</strong></div>
+            <div><small>{{ t("unrealized_pl") }}</small><strong class="{% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.unrealized_pnl_nok >= 0 %}+{% endif %}{{ dashboard.portfolio.unrealized_pnl_nok }} NOK</strong></div>
+            <div><small>{{ t("total_pl") }}</small><strong class="{% if dashboard.portfolio.total_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.total_pnl_nok >= 0 %}+{% endif %}{{ dashboard.portfolio.total_pnl_nok }} NOK</strong></div>
+            <div><small>{{ t("return") }}</small><strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent }}%</strong></div>
         </div>
-
     </div>
 
-
-    <!-- =================================================
-         SELECTED ASSET
-         ================================================= -->
-
-
-        <!-- SELECTED ASSET -->
-
-        <div class="card">
-
-            <h2>📊 {{ t("selected_asset") }}</h2>
-
-            <h3>
-                {{ dashboard.technical.symbol }}
-            </h3>
-
-            <div class="asset-price">
-
-                <strong>
-                    ${{ "{:,.2f}".format(
-                        dashboard.technical.price_usd
-                    ) }}
-                </strong>
-
-                <span
-                    class="{% if dashboard.technical.change >= 0 %}
-                        positive
-                    {% else %}
-                        negative
-                    {% endif %}"
-                >
-
-                    {% if dashboard.technical.change >= 0 %}
-                        +
-                    {% endif %}
-
-                    {{ dashboard.technical.change }}%
-
-                </span>
-
+    <div class="card">
+        <h2>📈 ATLAS Live Market</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <div>
+                <strong id="atlas-chart-symbol">BTCUSDT</strong>
+                <small style="margin-left:8px;opacity:.7;">Binance · 1m · read-only</small>
             </div>
-
-            <hr>
-
-            <div class="technical-grid">
-
-                <div>
-                    <small>MA20</small>
-
-                    <strong>
-                        {{ dashboard.technical.ma20 }}
-                    </strong>
-                </div>
-
-                <div>
-                    <small>MA50</small>
-
-                    <strong>
-                        {{ dashboard.technical.ma50 }}
-                    </strong>
-                </div>
-
-                <div>
-                    <small>{{ t("trend") }}</small>
-
-                    <strong>
-                        {{ dashboard.technical.trend }}
-                    </strong>
-                </div>
-
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span id="atlas-chart-signal" class="signal-badge hold">HOLD</span>
+                <small id="atlas-chart-status">Updating…</small>
             </div>
-
         </div>
+        <div id="atlas-candles" style="height:420px;width:100%;border-radius:10px;overflow:hidden;background:#0d1117;"></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:.85rem;opacity:.75;">
+            <span>🟢 BUY / 🟠 HOLD / 🔴 SELL</span>
+            <span id="atlas-chart-price">—</span>
+        </div>
+    </div>
 
+    <div class="card">
+        <h2>📊 {{ t("selected_asset") }}</h2>
+        <h3>{{ dashboard.technical.symbol }}</h3>
+        <div class="asset-price">
+            <strong>${{ "{:,.2f}".format(dashboard.technical.price_usd) }}</strong>
+            <span class="{% if dashboard.technical.change >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.technical.change >= 0 %}+{% endif %}{{ dashboard.technical.change }}%</span>
+        </div>
+        <hr>
+        <div class="technical-grid">
+            <div><small>MA20</small><strong>{{ dashboard.technical.ma20 }}</strong></div>
+            <div><small>MA50</small><strong>{{ dashboard.technical.ma50 }}</strong></div>
+            <div><small>{{ t("trend") }}</small><strong>{{ dashboard.technical.trend }}</strong></div>
+        </div>
+    </div>
 
-        <!-- AI CONSENSUS -->
-
-        <div class="card">
-
-            <h2>🤖 {{ t("ai_consensus") }}</h2>
-
-            <div class="consensus">
-
-                {% if dashboard.decision.action.value == "BUY" %}
-
-                    <span class="signal-badge buy">
-                        BUY
-                    </span>
-
-                {% elif dashboard.decision.action.value == "SELL" %}
-
-                    <span class="signal-badge sell">
-                        SELL
-                    </span>
-
-                {% else %}
-
-                    <span class="signal-badge hold">
-                        HOLD
-                    </span>
-
-                {% endif %}
-
-            </div>
-
-            <p>
-                {{ t("confidence") }}:
-                <strong>
-                    {{ dashboard.decision.confidence }}%
-                </strong>
-            </p>
-
-            <p>
-                {{ t("evidence") }}:
-                <strong>
-                    {{ dashboard.decision.evidence }}%
-                </strong>
-            </p>
-
+    <div class="card">
+        <h2>🤖 {{ t("ai_consensus") }}</h2>
+        <div class="consensus">
+            {% if dashboard.decision.action.value == "BUY" %}
+                <span class="signal-badge buy">BUY</span>
+            {% elif dashboard.decision.action.value == "SELL" %}
+                <span class="signal-badge sell">SELL</span>
+            {% else %}
+                <span class="signal-badge hold">HOLD</span>
+            {% endif %}
+        </div>
+        <p>{{ t("confidence") }}: <strong>{{ dashboard.decision.confidence }}%</strong></p>
+        <p>{{ t("evidence") }}: <strong>{{ dashboard.decision.evidence }}%</strong></p>
         {% if dashboard.decision.reasoning %}
             <div class="decision-reasoning">
                 <h3>{{ t("why_atlas") }}</h3>
-
                 {% for reason in dashboard.decision.reasoning %}
-                    <div class="decision-reason">
-                        {{ reason }}
-                    </div>
+                    <div class="decision-reason">{{ reason }}</div>
                 {% endfor %}
-
             </div>
         {% endif %}
-
-        </div>
+    </div>
 
     </section>
 
-
-    <!-- =================================================
-         RIGHT: PORTFOLIO + NEWS
-         ================================================= -->
-
     <aside class="dashboard-right">
-
-        <!-- PORTFOLIO -->
-
         <div class="card">
-
             <h2>💼 {{ t("portfolio") }}</h2>
-
-            <p>
-                <small>{{ t("capital") }}</small>
-            </p>
-
-            <h3>
-                {{ dashboard.capital }} NOK
-            </h3>
-
-            <p>
-                {{ t("positions") }}:
-                <strong>0</strong>
-            </p>
-
+            <p><small>{{ t("capital") }}</small></p>
+            <h3>{{ dashboard.capital }} NOK</h3>
+            <p>{{ t("positions") }}: <strong>{{ dashboard.portfolio.position_count }}</strong></p>
         </div>
-
-
-        <!-- NEWS -->
 
         <div class="card">
-
             <h2>📰 {{ t("latest_news") }}</h2>
-
             {% if dashboard.news %}
-
                 {% for article in dashboard.news[:4] %}
-
                     <div class="news-item">
-
-                    <a
-                    href="{{ article.url }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                        {{ article.title }}
-                    </a>
-
-                    <small>
-                        {{ article.source }}
-                    </small>
-
-                </div>
-
+                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a>
+                        <small>{{ article.source }}</small>
+                    </div>
                 {% endfor %}
-
             {% else %}
-
-                <p>
-                    {{ t("no_news_found") }}
-                </p>
-
+                <p>{{ t("no_news_found") }}</p>
             {% endif %}
-
         </div>
-
     </aside>
 
 </div>
+
+<script src="https://unpkg.com/lightweight-charts@5.0.4/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function () {
+    const container = document.getElementById('atlas-candles');
+    if (!container || !window.LightweightCharts) return;
+
+    const chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 420,
+        layout: { background: { type: 'solid', color: '#0d1117' }, textColor: '#9aa4b2' },
+        grid: { vertLines: { color: '#18202a' }, horzLines: { color: '#18202a' } },
+        rightPriceScale: { borderColor: '#263241' },
+        timeScale: { borderColor: '#263241', timeVisible: true, secondsVisible: false },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+    });
+
+    const series = chart.addSeries(LightweightCharts.CandlestickSeries, {
+        upColor: '#16c784',
+        downColor: '#ea3943',
+        borderVisible: false,
+        wickUpColor: '#16c784',
+        wickDownColor: '#ea3943'
+    });
+
+    let markers = null;
+
+    function signalClass(action) {
+        return action === 'BUY' ? 'buy' : action === 'SELL' ? 'sell' : 'hold';
+    }
+
+    function updateSignal(action) {
+        const el = document.getElementById('atlas-chart-signal');
+        if (!el) return;
+        el.textContent = action || 'HOLD';
+        el.className = 'signal-badge ' + signalClass(action || 'HOLD');
+    }
+
+    async function refreshChart() {
+        try {
+            const response = await fetch('/api/binance-candles?symbol=BTCUSDT&interval=1m&limit=120', { cache: 'no-store' });
+            const data = await response.json();
+            if (!response.ok || !data.candles || !data.candles.length) throw new Error(data.error || 'No candle data');
+
+            const candles = data.candles.map(c => ({
+                time: Math.floor(Number(c.timestamp) / 1000),
+                open: Number(c.open),
+                high: Number(c.high),
+                low: Number(c.low),
+                close: Number(c.close)
+            }));
+            series.setData(candles);
+
+            const last = candles[candles.length - 1];
+            document.getElementById('atlas-chart-price').textContent = '$' + last.close.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            document.getElementById('atlas-chart-status').textContent = 'Live · ' + new Date().toLocaleTimeString();
+
+            // The dashboard decision is the current ATLAS signal. It is deliberately
+            // shown on the latest candle only; historical trade markers require a
+            // persisted virtual-trade event stream and are not fabricated here.
+            try {
+                const dash = await fetch('/api/dashboard?symbol=BTCUSDT', { cache: 'no-store' });
+                const snapshot = await dash.json();
+                const action = snapshot && snapshot.decision ? snapshot.decision.action : 'HOLD';
+                updateSignal(action);
+
+                if (markers && markers.detach) markers.detach();
+                if (typeof LightweightCharts.createSeriesMarkers === 'function') {
+                    markers = LightweightCharts.createSeriesMarkers(series, [{
+                        time: last.time,
+                        position: action === 'SELL' ? 'aboveBar' : 'belowBar',
+                        color: action === 'BUY' ? '#16c784' : action === 'SELL' ? '#ea3943' : '#f5a623',
+                        shape: action === 'BUY' ? 'arrowUp' : action === 'SELL' ? 'arrowDown' : 'circle',
+                        text: 'ATLAS ' + action
+                    }]);
+                }
+            } catch (e) {
+                updateSignal('HOLD');
+            }
+
+            chart.timeScale().fitContent();
+        } catch (error) {
+            document.getElementById('atlas-chart-status').textContent = 'Market data unavailable';
+            console.error('ATLAS chart refresh failed:', error);
+        }
+    }
+
+    refreshChart();
+    setInterval(refreshChart, 15000);
+
+    const resizeObserver = new ResizeObserver(() => {
+        chart.applyOptions({ width: container.clientWidth });
+    });
+    resizeObserver.observe(container);
+})();
+</script>
 
 {% endblock %}
