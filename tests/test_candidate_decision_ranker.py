@@ -12,6 +12,7 @@ def make_decision(
     evidence,
     robustness,
     decision_margin,
+    expected_return=0.0,
 ):
     return DecisionResult(
         symbol=symbol,
@@ -20,6 +21,7 @@ def make_decision(
         evidence=evidence,
         robustness=robustness,
         decision_margin=decision_margin,
+        expected_return=expected_return,
     )
 
 
@@ -210,4 +212,58 @@ def test_regime_memory_can_change_ranking_without_changing_actions():
     assert (
         regime_decisions["ETH-USD"].action
         == Action.HOLD
+    )
+
+
+def test_ranker_prefers_higher_risk_adjusted_net_return():
+    decisions = [
+        make_decision(
+            "LOW-RETURN",
+            Action.BUY,
+            95.0,
+            95.0,
+            95.0,
+            40.0,
+            expected_return=0.0030,
+        ),
+        make_decision(
+            "HIGH-RETURN",
+            Action.BUY,
+            80.0,
+            80.0,
+            80.0,
+            20.0,
+            expected_return=0.0200,
+        ),
+    ]
+
+    ranked = CandidateDecisionRanker().rank(decisions)
+
+    assert [decision.symbol for decision in ranked] == [
+        "HIGH-RETURN",
+        "LOW-RETURN",
+    ]
+
+
+def test_ranker_evidence_exposes_cost_adjusted_return():
+    decision = make_decision(
+        "BTC-USD",
+        Action.BUY,
+        90.0,
+        90.0,
+        80.0,
+        25.0,
+        expected_return=0.0100,
+    )
+
+    evidence = CandidateDecisionRanker().rank_with_evidence(
+        [decision]
+    )[0]
+
+    assert evidence.expected_return == 0.0100
+    assert evidence.net_expected_return == 0.0076
+    assert evidence.risk_adjusted_net_return == 0.00608
+    assert any(
+        "Expected net return after trading costs" in line
+        for line in evidence.reasoning
     )
