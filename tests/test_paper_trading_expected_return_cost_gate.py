@@ -3,7 +3,6 @@ from atlas.models.decision_result import DecisionResult
 from atlas.risk.risk_engine import RiskEngine
 from atlas.services.portfolio_service import PortfolioService
 from atlas.trading.paper_trading_engine import PaperTradingEngine
-from atlas.trading.trading_cost_model import TradingCostModel
 from atlas.trading.trading_service import TradingService
 
 
@@ -14,7 +13,6 @@ def _trader():
         portfolio=portfolio,
         risk=RiskEngine(),
         trading=trading,
-        cost_model=TradingCostModel(),
     )
     return trader, trading
 
