@@ -19,6 +19,9 @@ class CandidateRankingEvidence:
     base_score: float
     regime_fit: float
     final_score: float
+    expected_return: float = 0.0
+    net_expected_return: float = 0.0
+    risk_adjusted_net_return: float = 0.0
     regime: str | None = None
     strategy: str | None = None
     regime_confidence: float = 0.0
@@ -31,6 +34,9 @@ class CandidateRankingEvidence:
 
         result = [
             f"Base ranking score: {self.base_score:.4f}.",
+            f"Expected gross return: {self.expected_return * 100:.2f}%.",
+            f"Expected net return after trading costs: {self.net_expected_return * 100:.2f}%.",
+            f"Risk-adjusted net return: {self.risk_adjusted_net_return * 100:.2f}%.",
             f"Regime fit score: {self.regime_fit:.4f}.",
             f"Final ranking score: {self.final_score:.4f}.",
         ]
