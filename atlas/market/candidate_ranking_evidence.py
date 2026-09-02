@@ -34,12 +34,27 @@ class CandidateRankingEvidence:
 
         result = [
             f"Base ranking score: {self.base_score:.4f}.",
-            f"Expected gross return: {self.expected_return * 100:.2f}%.",
-            f"Expected net return after trading costs: {self.net_expected_return * 100:.2f}%.",
-            f"Risk-adjusted net return: {self.risk_adjusted_net_return * 100:.2f}%.",
             f"Regime fit score: {self.regime_fit:.4f}.",
             f"Final ranking score: {self.final_score:.4f}.",
         ]
+
+        # Preserve the original explanation output for callers that do not
+        # have expected-return data, while exposing cost-adjusted return
+        # details whenever the ranking actually contains that signal.
+        if (
+            self.expected_return != 0.0
+            or self.net_expected_return != 0.0
+            or self.risk_adjusted_net_return != 0.0
+        ):
+            result.extend(
+                [
+                    f"Expected gross return: {self.expected_return * 100:.2f}%.",
+                    f"Expected net return after trading costs: "
+                    f"{self.net_expected_return * 100:.2f}%.",
+                    f"Risk-adjusted net return: "
+                    f"{self.risk_adjusted_net_return * 100:.2f}%.",
+                ]
+            )
 
         if self.regime:
             result.append(
