@@ -1,7 +1,15 @@
+from datetime import datetime
+
 from atlas.models.action import Action
 from atlas.trading.dry_run_loop import DryRunLoop
-from atlas.trading.dry_run_trader import DryRunResult
+from atlas.trading.dry_run_trader import DryRunTrader
+from atlas.trading.expected_return_model import ExpectedReturnModel
+from atlas.trading.expected_return_service import ExpectedReturnService
+from atlas.trading.historical_return_provider import HistoricalReturnProvider
 from atlas.trading.market_data import Candle, MarketSnapshot
+from atlas.trading.paper_portfolio import PaperPortfolio
+from atlas.trading.prediction_record import PredictionRecord
+from atlas.trading.trade_journal import TradeJournal
 
 
 class BullishAgent:
@@ -20,33 +28,41 @@ class BullishAgent:
         )
 
 
-class RecordingExpectedReturnService:
-    def __init__(self, expected_return=0.008):
-        self.expected_return = expected_return
-        self.calls = []
+class FakePredictionRepository:
+    def __init__(self, returns):
+        self.predictions = [
+            PredictionRecord(
+                symbol="BTC-USD",
+                action="BUY",
+                confidence=0.90,
+                evidence=0.90,
+                price_usd=100.0,
+                timestamp=datetime(2026, 1, index + 1),
+                evaluated=True,
+                correct=True,
+                evaluated_price_usd=100.0 * (1.0 + value),
+                price_change_percent=value * 100.0,
+            )
+            for index, value in enumerate(returns)
+        ]
 
-    def estimate(self, *, symbol, action):
-        self.calls.append((symbol, action))
-        return self.expected_return
+    def get_evaluated(self):
+        return self.predictions
 
 
-class RecordingTrader:
-    def __init__(self):
-        self.expected_returns = []
-
-    def process_signal(self, **kwargs):
-        self.expected_returns.append(kwargs["expected_return"])
-        return DryRunResult(
-            symbol=kwargs["symbol"],
-            action=Action.HOLD,
-            quantity=0.0,
-            price=kwargs["price"],
-            target_position=0.0,
-            realized_pnl=0.0,
-            equity=100_000.0,
-            reason="test",
-            executed=False,
-        )
+def expected_return_service(historical_return):
+    repository = FakePredictionRepository(
+        [historical_return] * 10
+    )
+    provider = HistoricalReturnProvider(repository)
+    model = ExpectedReturnModel(
+        min_samples=10,
+        haircut=0.5,
+    )
+    return ExpectedReturnService(
+        provider=provider,
+        model=model,
+    )
 
 
 def snapshot():
@@ -74,25 +90,57 @@ def snapshot():
     return MarketSnapshot.from_candles("BTC-USD", candles)
 
 
-def test_dry_run_loop_passes_expected_return_to_trader():
-    service = RecordingExpectedReturnService(expected_return=0.008)
-    trader = RecordingTrader()
+def paper_trader():
+    return DryRunTrader(
+        portfolio=PaperPortfolio(
+            initial_cash=100_000.0,
+            fee_rate=0.001,
+        ),
+        journal=TradeJournal(),
+        max_position_value=10_000.0,
+    )
 
+
+def test_expected_return_flows_from_history_to_paper_execution():
     loop = DryRunLoop(
         agents=[BullishAgent()],
-        expected_return_service=service,
-        trader=trader,
+        expected_return_service=expected_return_service(0.01),
+        trader=paper_trader(),
     )
 
     result = loop.process(snapshot())
 
-    assert result.expected_return == 0.008
-    assert trader.expected_returns == [0.008]
-    assert service.calls == [("BTC-USD", Action.BUY)]
+    # 1.0% historical mean * 50% haircut = 0.5% expected gross return.
+    assert result.decision.action.value == "buy"
+    assert result.expected_return == 0.005
+    assert result.execution.executed is True
+    assert result.execution.action.value == "enter"
+    assert result.execution.quantity > 0.0
+    assert "BTC-USD" in loop.trader.portfolio.positions
 
 
-def test_dry_run_loop_keeps_expected_return_optional():
-    trader = RecordingTrader()
+def test_expected_return_below_trading_cost_blocks_paper_entry():
+    loop = DryRunLoop(
+        agents=[BullishAgent()],
+        expected_return_service=expected_return_service(0.004),
+        trader=paper_trader(),
+    )
+
+    result = loop.process(snapshot())
+
+    # 0.4% historical mean * 50% haircut = 0.2%,
+    # below the default 0.24% round-trip direct trading cost.
+    assert result.decision.action.value == "buy"
+    assert result.expected_return == 0.002
+    assert result.execution.executed is False
+    assert result.execution.action.value == "hold"
+    assert result.execution.quantity == 0.0
+    assert "Trading cost blocked" in result.execution.reason
+    assert "BTC-USD" not in loop.trader.portfolio.positions
+
+
+def test_expected_return_remains_optional_without_service():
+    trader = paper_trader()
 
     loop = DryRunLoop(
         agents=[BullishAgent()],
@@ -102,4 +150,5 @@ def test_dry_run_loop_keeps_expected_return_optional():
     result = loop.process(snapshot())
 
     assert result.expected_return is None
-    assert trader.expected_returns == [None]
+    assert result.execution.executed is True
+    assert "BTC-USD" in trader.portfolio.positions
