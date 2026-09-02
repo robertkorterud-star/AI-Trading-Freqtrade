@@ -246,6 +246,8 @@ def test_ranker_prefers_higher_risk_adjusted_net_return():
 
 
 def test_ranker_evidence_exposes_cost_adjusted_return():
+    import pytest
+
     decision = make_decision(
         "BTC-USD",
         Action.BUY,
@@ -261,8 +263,8 @@ def test_ranker_evidence_exposes_cost_adjusted_return():
     )[0]
 
     assert evidence.expected_return == 0.0100
-    assert evidence.net_expected_return == 0.0076
-    assert evidence.risk_adjusted_net_return == 0.00608
+    assert evidence.net_expected_return == pytest.approx(0.0076)
+    assert evidence.risk_adjusted_net_return == pytest.approx(0.00608)
     assert any(
         "Expected net return after trading costs" in line
         for line in evidence.reasoning
