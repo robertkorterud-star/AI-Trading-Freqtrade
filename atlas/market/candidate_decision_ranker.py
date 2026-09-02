@@ -39,7 +39,7 @@ class CandidateDecisionRanker:
     @staticmethod
     def _net_return_score(risk_adjusted_net_return: float) -> float:
         """Map risk-adjusted net return to a stable 0-100 ranking score."""
-        score = 50.0 + risk_adjusted_net_return * 1000.0
+        score = 50.0 + risk_adjusted_net_return * 5000.0
         return max(0.0, min(100.0, score))
 
     @classmethod
