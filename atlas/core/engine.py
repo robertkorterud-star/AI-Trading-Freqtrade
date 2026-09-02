@@ -31,6 +31,8 @@ import json
 from atlas.trading.prediction_evaluator import PredictionEvaluator
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
 from atlas.trading.agent_weight_engine import AgentWeightEngine
+from atlas.trading.expected_return_service import ExpectedReturnService
+from atlas.trading.historical_return_provider import HistoricalReturnProvider
 from atlas.trading.strategy_memory_regime_decision_integration import (
     StrategyMemoryRegimeDecisionIntegration,
 )
@@ -47,6 +49,7 @@ from atlas.trading.strategy_memory_regime_decision_adapter import (
 from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
 from atlas.database.outcome_repository import OutcomeRepository
+from atlas.database.prediction_repository import PredictionRepository
 from atlas.database.strategy_memory_repository import (
     StrategyMemoryRepository,
 )
@@ -155,6 +158,22 @@ class AtlasEngine:
 
         initialize_database(
             self.database
+        )
+
+        self.prediction_repository = PredictionRepository(
+            self.database
+        )
+
+        self.historical_return_provider = HistoricalReturnProvider(
+            repository=self.prediction_repository
+        )
+
+        self.expected_return_service = ExpectedReturnService(
+            provider=self.historical_return_provider
+        )
+
+        self.decision_engine.expected_return_service = (
+            self.expected_return_service
         )
 
         self.strategy_memory_repository = (
