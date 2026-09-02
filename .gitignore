@@ -91,3 +91,6 @@ htmlcov/
 atlas/data/*.json
 
 atlas/data/*.db
+
+# ATLAS virtual trade history (runtime data)
+atlas/dashboard/static/virtual_trades.json

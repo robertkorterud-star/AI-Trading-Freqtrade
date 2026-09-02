@@ -171,24 +171,68 @@
             document.getElementById('atlas-chart-price').textContent = '$' + last.close.toLocaleString(undefined, { maximumFractionDigits: 2 });
             document.getElementById('atlas-chart-status').textContent = 'Live · ' + new Date().toLocaleTimeString();
 
-            // The dashboard decision is the current ATLAS signal. It is deliberately
-            // shown on the latest candle only; historical trade markers require a
-            // persisted virtual-trade event stream and are not fabricated here.
+            // Render only persisted virtual executions as historical markers.
+            // No historical BUY/SELL signals are inferred from candles.
+            async function loadVirtualTradeMarkers() {
+                try {
+                    const response = await fetch('/static/virtual_trades.json?ts=' + Date.now(), { cache: 'no-store' });
+                    if (!response.ok) return [];
+                    const events = await response.json();
+                    if (!Array.isArray(events)) return [];
+
+                    const candleTimes = candles.map(candle => candle.time);
+                    const firstTime = candleTimes[0];
+                    const lastTime = candleTimes[candleTimes.length - 1];
+
+                    return events
+                        .filter(event => event && event.symbol === 'BTCUSDT')
+                        .map(event => {
+                            const eventTime = Math.floor(Number(event.timestamp));
+                            if (!Number.isFinite(eventTime)) return null;
+
+                            const nearest = candleTimes.reduce((best, time) =>
+                                Math.abs(time - eventTime) < Math.abs(best - eventTime) ? time : best,
+                                candleTimes[0]
+                            );
+
+                            if (nearest < firstTime || nearest > lastTime) return null;
+
+                            const action = event.action === 'SELL' ? 'SELL' : 'BUY';
+                            return {
+                                time: nearest,
+                                position: action === 'SELL' ? 'aboveBar' : 'belowBar',
+                                color: action === 'SELL' ? '#ea3943' : '#16c784',
+                                shape: action === 'SELL' ? 'arrowDown' : 'arrowUp',
+                                text: 'VIRTUAL ' + action
+                            };
+                        })
+                        .filter(Boolean);
+                } catch (e) {
+                    return [];
+                }
+            }
+
             try {
                 const dash = await fetch('/api/dashboard?symbol=BTCUSDT', { cache: 'no-store' });
                 const snapshot = await dash.json();
                 const action = snapshot && snapshot.decision ? snapshot.decision.action : 'HOLD';
                 updateSignal(action);
 
+                const historicalMarkers = await loadVirtualTradeMarkers();
+                const currentMarker = {
+                    time: last.time,
+                    position: action === 'SELL' ? 'aboveBar' : 'belowBar',
+                    color: action === 'BUY' ? '#16c784' : action === 'SELL' ? '#ea3943' : '#f5a623',
+                    shape: action === 'BUY' ? 'arrowUp' : action === 'SELL' ? 'arrowDown' : 'circle',
+                    text: 'ATLAS ' + action
+                };
+
                 if (markers && markers.detach) markers.detach();
                 if (typeof LightweightCharts.createSeriesMarkers === 'function') {
-                    markers = LightweightCharts.createSeriesMarkers(series, [{
-                        time: last.time,
-                        position: action === 'SELL' ? 'aboveBar' : 'belowBar',
-                        color: action === 'BUY' ? '#16c784' : action === 'SELL' ? '#ea3943' : '#f5a623',
-                        shape: action === 'BUY' ? 'arrowUp' : action === 'SELL' ? 'arrowDown' : 'circle',
-                        text: 'ATLAS ' + action
-                    }]);
+                    markers = LightweightCharts.createSeriesMarkers(
+                        series,
+                        [...historicalMarkers, currentMarker]
+                    );
                 }
             } catch (e) {
                 updateSignal('HOLD');

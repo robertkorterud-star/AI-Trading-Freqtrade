@@ -31,6 +31,10 @@ echo "Real orders:  DISABLED"
 echo
 
 python - <<'PY'
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
 from atlas.adapters.binance import BinanceAdapter
 from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.agents import (
@@ -64,6 +68,49 @@ result = loop.process_binance(
     interval=INTERVAL,
     limit=LIMIT,
 )
+
+# Persist only actual virtual position changes.
+# This file is runtime data and is deliberately not committed.
+action_value = getattr(result.execution.action, "value", result.execution.action)
+if result.execution.executed and result.execution.quantity > 0.0:
+    action_map = {
+        "ENTER": "BUY",
+        "REDUCE": "SELL",
+        "EXIT": "SELL",
+    }
+    marker_action = action_map.get(str(action_value))
+    if marker_action:
+        history_path = Path("atlas/dashboard/static/virtual_trades.json")
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            history = json.loads(history_path.read_text())
+            if not isinstance(history, list):
+                history = []
+        except (FileNotFoundError, json.JSONDecodeError):
+            history = []
+
+        now = datetime.now(timezone.utc)
+        event = {
+            "id": now.isoformat() + f"::{result.symbol}::{marker_action}",
+            "timestamp": int(now.replace(second=0, microsecond=0).timestamp()),
+            "timestamp_iso": now.isoformat(),
+            "symbol": result.symbol,
+            "action": marker_action,
+            "position_action": str(action_value),
+            "quantity": result.execution.quantity,
+            "price": result.execution.price,
+            "confidence": result.decision.confidence,
+            "risk_score": result.decision.risk_score,
+            "realized_pnl": result.execution.realized_pnl,
+            "equity": result.execution.equity,
+            "reason": result.execution.reason,
+        }
+
+        if not any(item.get("id") == event["id"] for item in history):
+            history.append(event)
+            history = history[-500:]
+            history_path.write_text(json.dumps(history, indent=2) + "\n")
+            print(f"Virtual trade persisted: {marker_action} {result.symbol}")
 
 print("========================================")
 print(" ATLAS DRY-RUN RESULT")
