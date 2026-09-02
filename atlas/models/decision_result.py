@@ -23,8 +23,6 @@ class DecisionResult:
 
     evidence: float
 
-    expected_return: float = 0.0
-
     analysts: list[str] = field(default_factory=list)
 
     agent_weights: dict[str, float] = field(
@@ -54,3 +52,5 @@ class DecisionResult:
     robustness_level: str = "WEAK"
 
     reasoning: list[str] = field(default_factory=list)
+
+    expected_return: float = 0.0
