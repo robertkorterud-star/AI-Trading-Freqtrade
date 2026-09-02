@@ -9,43 +9,33 @@ from atlas.models.analysis_result import AnalysisResult
 from atlas.models.action import Action
 from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.models.decision_result import DecisionResult
+from atlas.trading.expected_return_service import ExpectedReturnService
 
 
 class DecisionEngine:
     """Creates the final investment decision."""
 
-    def __init__(self):
-
+    def __init__(self, expected_return_service=None):
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
         self.agent_weight_engine = None
+        self.expected_return_service = expected_return_service
         self.last_intelligence = None
 
-    def _strongest_action_support(
-        self,
-        action: Action,
-    ):
+    def _strongest_action_support(self, action: Action):
         """Return strongest learned support for an action."""
-
         if self.agent_weight_engine is None:
             return None
 
         try:
-            weights = self.agent_weight_engine.calculate(
-                action=action.value,
-            )
+            weights = self.agent_weight_engine.calculate(action=action.value)
         except TypeError:
-            # Preserve compatibility with simpler weight-engine
-            # implementations that only expose calculate().
             weights = self.agent_weight_engine.calculate()
 
         if not weights:
             return None
 
-        analyst, weight = max(
-            weights.items(),
-            key=lambda item: item[1],
-        )
+        analyst, weight = max(weights.items(), key=lambda item: item[1])
 
         return {
             "analyst": analyst,
@@ -55,54 +45,31 @@ class DecisionEngine:
 
     def _strongest_learned_action_support(self):
         """Return the strongest learned directional support."""
-
         if self.agent_weight_engine is None:
             return None
 
         supports = []
 
-        for action in (
-            Action.BUY,
-            Action.SELL,
-        ):
-            support = self._strongest_action_support(
-                action,
-            )
-
+        for action in (Action.BUY, Action.SELL):
+            support = self._strongest_action_support(action)
             if support is not None:
                 supports.append(support)
 
         if not supports:
             return None
 
-        return max(
-            supports,
-            key=lambda item: item["weight"],
-        )
+        return max(supports, key=lambda item: item["weight"])
 
-    def evaluate(
-        self,
-        results: list[AnalysisResult],
-    ) -> DecisionResult:
-
+    def evaluate(self, results: list[AnalysisResult]) -> DecisionResult:
         if not results:
             raise ValueError("No analysis results provided.")
 
         weights = None
-
         if self.agent_weight_engine is not None:
             weights = self.agent_weight_engine.calculate()
 
-        summary = self.aggregator.summarize(
-            results,
-            weights=weights,
-        )
-
-        intelligence = self.intelligence.summarize(
-            results,
-            weights=weights,
-        )
-
+        summary = self.aggregator.summarize(results, weights=weights)
+        intelligence = self.intelligence.summarize(results, weights=weights)
         self.last_intelligence = intelligence
 
         weighted_signals = {
@@ -119,22 +86,12 @@ class DecisionEngine:
 
         dominant_action = ranked_signals[0][0]
         dominant_weight = ranked_signals[0][1]
-
         initial_dominant_action = dominant_action
 
-        action_support = (
-            self._strongest_learned_action_support()
-        )
+        action_support = self._strongest_learned_action_support()
 
-        second_weight = (
-            ranked_signals[1][1]
-            if len(ranked_signals) > 1
-            else 0.0
-        )
-
-        decision_margin = (
-            dominant_weight - second_weight
-        )
+        second_weight = ranked_signals[1][1] if len(ranked_signals) > 1 else 0.0
+        decision_margin = dominant_weight - second_weight
 
         opposing_analysts = [
             result.analyst
@@ -160,25 +117,12 @@ class DecisionEngine:
         action = policy_action
         adaptive_override = False
 
-        # A unanimous analyst decision must never be reversed
-        # by an unrelated policy threshold.
         if unanimous:
             action = dominant_action
-
-        # Adaptive learning may resolve a genuine BUY/SELL
-        # conflict when the learned dominant signal is strong
-        # enough in both weight and underlying evidence.
-        #
-        # MAX_WEIGHT is intentionally capped at 60%, so the
-        # override threshold must never require an impossible
-        # weight above that safety limit.
         elif (
             weights
             and intelligence.weighted_conflict
-            and dominant_action in {
-                Action.BUY,
-                Action.SELL,
-            }
+            and dominant_action in {Action.BUY, Action.SELL}
             and dominant_weight >= 60.0
             and decision_margin >= 20.0
             and summary["evidence"] >= 80.0
@@ -186,36 +130,26 @@ class DecisionEngine:
             action = dominant_action
             adaptive_override = True
 
-        raw_robustness = (
-            decision_margin * 0.7
-            + summary["evidence"] * 0.3
-        )
+        raw_robustness = decision_margin * 0.7 + summary["evidence"] * 0.3
+        robustness = min(100.0, raw_robustness, summary["evidence"])
 
-        # Evidence is the ceiling for robustness when the
-        # underlying evidence is weak. Strong agreement alone
-        # must not manufacture a strong decision.
-        robustness = min(
-            100.0,
-            raw_robustness,
-            summary["evidence"],
-        )
-
-        # Evidence limits the robustness classification.
-        # Agreement alone must never create a STRONG decision.
         if summary["evidence"] < 60.0:
             robustness_level = "WEAK"
         elif summary["evidence"] < 80.0:
-            robustness_level = (
-                "MODERATE"
-                if robustness >= 60.0
-                else "WEAK"
-            )
+            robustness_level = "MODERATE" if robustness >= 60.0 else "WEAK"
         elif robustness >= 80.0:
             robustness_level = "STRONG"
         elif robustness >= 60.0:
             robustness_level = "MODERATE"
         else:
             robustness_level = "WEAK"
+
+        expected_return = 0.0
+        if self.expected_return_service is not None:
+            expected_return = self.expected_return_service.estimate(
+                symbol=results[0].symbol,
+                action=action,
+            )
 
         reasoning = [
             "Decision based on combined analyst evidence.",
@@ -225,43 +159,34 @@ class DecisionEngine:
         ]
 
         reasoning.append(
-            f"Dominant signal: "
-            f"{dominant_action.value} with "
+            f"Dominant signal: {dominant_action.value} with "
             f"{dominant_weight:.1f}% weighted influence."
         )
 
         if opposing_analysts:
-            reasoning.append(
-                "Opposing analysts: "
-                + ", ".join(opposing_analysts)
-                + "."
-            )
+            reasoning.append("Opposing analysts: " + ", ".join(opposing_analysts) + ".")
 
         if weights:
             reasoning.append(
-                f"Adaptive weighting: "
-                f"{dominant_action.value} has "
+                f"Adaptive weighting: {dominant_action.value} has "
                 f"{dominant_weight:.1f}% weighted influence."
             )
 
         if action_support:
             reasoning.append(
-                f"Learned support: "
-                f"{action_support['analyst']} supports "
+                f"Learned support: {action_support['analyst']} supports "
                 f"{action_support['action']} with "
                 f"{action_support['weight'] * 100:.1f}% learned weight."
             )
 
         if adaptive_override:
             reasoning.append(
-                "Adaptive weighting allowed the dominant "
-                "signal to overcome the opposing analyst signals."
+                "Adaptive weighting allowed the dominant signal to overcome "
+                "the opposing analyst signals."
             )
 
         if intelligence.conflict and not adaptive_override:
-            reasoning.append(
-                "Decision held because analyst signals conflict."
-            )
+            reasoning.append("Decision held because analyst signals conflict.")
 
         for analyst in summary.get("analyst_breakdown", []):
             reasoning.append(
@@ -269,16 +194,17 @@ class DecisionEngine:
                 f"(evidence {analyst['evidence']:.1f}, "
                 f"confidence {analyst['confidence']:.1f})."
             )
-
             for detail in analyst.get("reasoning", []):
-                reasoning.append(
-                    f"  {detail}"
-                )
+                reasoning.append(f"  {detail}")
 
         reasoning.append(
-            f"Decision robustness: "
-            f"{robustness:.1f}% ({robustness_level})."
+            f"Decision robustness: {robustness:.1f}% ({robustness_level})."
         )
+
+        if self.expected_return_service is not None:
+            reasoning.append(
+                f"Expected gross return: {expected_return * 100:.2f}%."
+            )
 
         return DecisionResult(
             symbol=results[0].symbol,
@@ -289,26 +215,14 @@ class DecisionEngine:
             agent_weights=weights or {},
             dominant_action=dominant_action,
             dominant_weight=dominant_weight,
-            action_support_analyst=(
-                action_support["analyst"]
-                if action_support
-                else None
-            ),
-            action_support_action=(
-                Action(action_support["action"])
-                if action_support
-                else None
-            ),
-            action_support_weight=(
-                action_support["weight"]
-                if action_support
-                else 0.0
-            ),
+            action_support_analyst=action_support["analyst"] if action_support else None,
+            action_support_action=Action(action_support["action"]) if action_support else None,
+            action_support_weight=action_support["weight"] if action_support else 0.0,
             opposing_analysts=opposing_analysts,
             adaptive_override=adaptive_override,
             decision_margin=decision_margin,
             robustness=robustness,
             robustness_level=robustness_level,
             reasoning=reasoning,
+            expected_return=expected_return,
         )
-
