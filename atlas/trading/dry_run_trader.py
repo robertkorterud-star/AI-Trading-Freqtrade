@@ -18,6 +18,7 @@ from atlas.risk.risk_engine import RiskEngine
 
 from atlas.trading.paper_portfolio import PaperPortfolio
 from atlas.trading.trade_journal import TradeJournal
+from atlas.trading.trading_cost_model import TradingCostModel
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class DryRunTrader:
         journal: TradeJournal | None = None,
         position_engine: PositionExitEngine | None = None,
         risk_engine: RiskEngine | None = None,
+        cost_model: TradingCostModel | None = None,
         max_position_value: float = 10_000.0,
     ):
         if max_position_value <= 0.0:
@@ -63,6 +65,9 @@ class DryRunTrader:
             position_engine or PositionExitEngine()
         )
         self.risk_engine = risk_engine or RiskEngine()
+        self.cost_model = cost_model or TradingCostModel(
+            fee_rate=self.portfolio.fee_rate
+        )
         self.max_position_value = max_position_value
 
     def process_signal(
@@ -73,9 +78,16 @@ class DryRunTrader:
         confidence: float,
         risk_score: float = 0.0,
         reason: str = "",
+        expected_return: float | None = None,
     ) -> DryRunResult:
         """
         Process one ATLAS decision.
+
+        ``expected_return`` is an optional gross decimal return estimate,
+        e.g. 0.01 for +1%. When supplied for a BUY, the trade is blocked
+        if estimated direct round-trip costs would consume the expected
+        return. The cost model is a decision gate only; actual paper
+        trading fees remain applied by PaperPortfolio exactly once.
 
         Quantity is derived from the target portfolio fraction and
         current market price.
@@ -83,6 +95,11 @@ class DryRunTrader:
 
         if price <= 0.0:
             raise ValueError("price must be greater than zero")
+
+        if expected_return is not None and not isinstance(
+            expected_return, (int, float)
+        ):
+            raise TypeError("expected_return must be a number or None")
 
         # DecisionCore uses its own DecisionAction enum while the
         # execution/risk layer uses atlas.models.action.Action.
@@ -107,6 +124,56 @@ class DryRunTrader:
         portfolio_equity = self.portfolio.equity(
             {symbol: price}
         )
+
+        # Expected-return gate applies to new BUY decisions only.
+        # Exits must remain available even when the expected future
+        # return is no longer attractive.
+        if action is Action.BUY and expected_return is not None:
+            net_return = self.cost_model.net_return(
+                float(expected_return)
+            )
+
+            if net_return <= 0.0:
+                blocked = self.position_engine.decide(
+                    Action.HOLD,
+                    PositionContext(
+                        current_position=current_position,
+                        entry_price=(
+                            current.average_price
+                            if current is not None
+                            else None
+                        ),
+                        current_price=price,
+                        peak_price=(
+                            current.average_price
+                            if current is not None
+                            else None
+                        ),
+                        confidence=confidence,
+                        risk_score=risk_score,
+                    ),
+                )
+
+                equity = self.portfolio.equity(
+                    {symbol: price}
+                )
+
+                return DryRunResult(
+                    symbol=symbol,
+                    action=blocked.action,
+                    quantity=0.0,
+                    price=price,
+                    target_position=blocked.target_position,
+                    realized_pnl=0.0,
+                    equity=equity,
+                    reason=(
+                        "Trading cost blocked: expected gross return "
+                        f"{float(expected_return):.2%} is below estimated "
+                        f"round-trip costs "
+                        f"{self.cost_model.round_trip_cost_rate:.2%}"
+                    ),
+                    executed=False,
+                )
 
         # RiskEngine must evaluate the actual order value,
         # not the configured maximum position size.
