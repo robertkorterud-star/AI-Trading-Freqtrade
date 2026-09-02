@@ -23,6 +23,8 @@ class DecisionResult:
 
     evidence: float
 
+    expected_return: float = 0.0
+
     analysts: list[str] = field(default_factory=list)
 
     agent_weights: dict[str, float] = field(
