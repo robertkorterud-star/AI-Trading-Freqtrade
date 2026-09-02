@@ -42,7 +42,7 @@ class PaperTradingEngine:
         self.portfolio = portfolio
         self.risk = risk
         self.trading = trading or TradingService()
-        self.cost_model = cost_model
+        self.cost_model = cost_model or TradingCostModel()
 
     def execute(
         self,
@@ -56,8 +56,8 @@ class PaperTradingEngine:
 
         BUY:
             amount_nok determines how much cash to invest.
-            When a cost model is configured, expected return must
-            exceed estimated round-trip direct trading costs.
+            A non-zero expected return must cover estimated
+            round-trip direct trading costs.
 
         SELL:
             The complete existing position is sold.
@@ -68,7 +68,7 @@ class PaperTradingEngine:
 
         if (
             decision.action == Action.BUY
-            and self.cost_model is not None
+            and decision.expected_return != 0.0
         ):
             net_return = self.cost_model.net_return(
                 decision.expected_return
@@ -165,9 +165,7 @@ class PaperTradingEngine:
 
             trade_record = self.trading.record_sell(
                 symbol=decision.symbol,
-                quantity=trade[
-                    "quantity"
-                ],
+                quantity=trade["quantity"],
                 price_usd=price_usd,
                 amount_nok=trade["sale_value_nok"],
                 realized_pnl_nok=trade[
