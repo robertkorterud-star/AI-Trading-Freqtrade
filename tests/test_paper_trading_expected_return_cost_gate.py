@@ -1,3 +1,5 @@
+import pytest
+
 from atlas.models.action import Action
 from atlas.models.decision_result import DecisionResult
 from atlas.risk.risk_engine import RiskEngine
@@ -38,8 +40,8 @@ def test_paper_buy_is_blocked_when_expected_return_does_not_cover_costs():
     assert result["executed"] is False
     assert result["action"] == "BUY"
     assert result["expected_return"] == 0.0020
-    assert result["estimated_round_trip_cost"] == 0.0024
-    assert result["net_expected_return"] == -0.0004
+    assert result["estimated_round_trip_cost"] == pytest.approx(0.0024)
+    assert result["net_expected_return"] == pytest.approx(-0.0004)
     assert len(trading.history()) == 0
 
 
