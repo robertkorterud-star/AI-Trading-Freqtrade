@@ -158,7 +158,8 @@
             if (!response.ok || !data.candles || !data.candles.length) throw new Error(data.error || 'No candle data');
 
             const candles = data.candles.map(c => ({
-                time: Math.floor(Number(c.timestamp) / 1000),
+                // BinanceMarketDataAdapter already normalizes timestamps to Unix seconds.
+                time: Math.floor(Number(c.timestamp)),
                 open: Number(c.open),
                 high: Number(c.high),
                 low: Number(c.low),
