@@ -12,8 +12,8 @@ def make_candidate(
         action=Action.BUY,
         symbol=symbol,
         confidence=80.0,
-        evidence_score=80.0,
-        robustness_score=robustness,
+        evidence=80.0,
+        robustness=robustness,
         decision_margin=20.0,
         expected_return=expected_return,
     )
