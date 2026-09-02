@@ -22,7 +22,7 @@ def test_net_return_score_is_bounded_to_zero_to_hundred():
 
     assert ranker._net_return_score(-1.0) == 0.0
     assert ranker._net_return_score(0.0) == 50.0
-    assert ranker._net_return_score(1.0) == 100.0
+    assert ranker._net_return_score(0.025) == 100.0
 
 
 def test_net_return_score_is_monotonic_before_saturation():
