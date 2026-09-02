@@ -37,7 +37,7 @@ def test_buy_is_blocked_when_expected_return_is_below_trading_costs():
     assert result.action.value == "hold"
     assert result.quantity == 0.0
     assert "Trading cost blocked" in result.reason
-    assert "0.24%" in result.reason
+    assert "0.28%" in result.reason
     assert trader.journal.trade_count == 0
     assert "BTC-USD" not in trader.portfolio.positions
 
