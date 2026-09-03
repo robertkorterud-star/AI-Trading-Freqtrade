@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t('scanner_title')|replace('ATLAS-', '') }}{% endblock %}
+{% block title %}{{ t('scanner_title') }}{% endblock %}
 
 {% block content %}
 
@@ -48,7 +48,7 @@
 <div class="scanner-page">
     <div class="card scanner-hero">
         <div>
-            <h1>🔎 {{ t('scanner_title')|replace('ATLAS-', '') }}</h1>
+            <h1>🔎 {{ t('scanner_title') }}</h1>
             <p>{{ t('scanner_description') }}</p>
         </div>
         <div class="scanner-status"><span class="scanner-dot"></span>{{ t('scanner_connected') }}</div>
@@ -101,40 +101,22 @@
                     </select>
                 </div>
             </div>
-            <div class="scanner-results-meta" id="scanner-results-meta"></div>
-            <div class="scanner-feed" id="scanner-feed">
+            <div id="scanner-results-meta" class="scanner-results-meta"></div>
+            <div id="scanner-feed" class="scanner-feed">
                 {% for candidate in dashboard.scanner.candidates %}
-                    <a class="scanner-candidate-link" href="/market/{{ candidate.symbol|urlencode }}" aria-label="{{ t('open_chart') }} {{ candidate.symbol }} — ATLAS Market Terminal">
-                        <div class="scanner-candidate"
-                             data-symbol="{{ candidate.symbol }}"
-                             data-asset-type="{{ candidate.asset_type }}"
-                             data-score="{{ candidate.score }}"
-                             data-momentum="{{ candidate.momentum_score }}"
-                             data-volume="{{ candidate.volume_score }}"
-                             data-breakout="{{ candidate.breakout_score }}"
-                             data-catalyst="{{ candidate.catalyst_score }}"
-                             data-liquidity="{{ candidate.liquidity_score }}">
-                            <div class="scanner-candidate-head">
-                                <strong>{{ candidate.symbol }} · {{ candidate.asset_type }}</strong>
-                                <span class="scanner-candidate-open">{{ t('open_chart') }}</span>
-                            </div>
-                            <div class="scanner-summary">
-                                <span class="scanner-score">{{ t('score') }} {{ "%.2f"|format(candidate.score) }}</span>
-                                <span>{{ t('momentum') }} {{ "%.1f"|format(candidate.momentum_score) }}</span>
-                                <span>{{ t('volume') }} {{ "%.1f"|format(candidate.volume_score) }}</span>
-                                <span>{{ t('breakout') }} {{ "%.1f"|format(candidate.breakout_score) }}</span>
-                                <span>{{ t('catalyst') }} {{ "%.1f"|format(candidate.catalyst_score) }}</span>
-                                <span>{{ t('liquidity') }} {{ "%.1f"|format(candidate.liquidity_score) }}</span>
-                            </div>
-                            {% if candidate.reasons %}<ul class="scanner-reasons">{% for reason in candidate.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
-                        </div>
-                    </a>
+                <a class="scanner-candidate-link" href="/market/{{ candidate.symbol }}" data-symbol="{{ candidate.symbol|lower }}" data-market="{{ candidate.market|lower }}" data-catalyst="{{ 'yes' if candidate.catalyst else 'no' }}" data-score="{{ candidate.score }}" data-momentum="{{ candidate.momentum }}" data-volume="{{ candidate.volume }}" data-breakout="{{ candidate.breakout }}" data-liquidity="{{ candidate.liquidity }}" data-catalyst-score="{{ candidate.catalyst_score }}">
+                    <div class="scanner-candidate">
+                        <div class="scanner-candidate-head"><strong>{{ candidate.symbol }} · {{ candidate.market }}</strong><span class="scanner-candidate-open">{{ t('open_chart') }}</span></div>
+                        <div><span class="scanner-score">{{ t('score') }} {{ candidate.score }}</span> &nbsp; {{ t('momentum') }} {{ candidate.momentum }} &nbsp; {{ t('volume') }} {{ candidate.volume }} &nbsp; {{ t('breakout') }} {{ candidate.breakout }} &nbsp; {{ t('catalyst') }} {{ candidate.catalyst_score }} &nbsp; {{ t('liquidity') }} {{ candidate.liquidity }}</div>
+                        {% if candidate.reasons %}<ul class="scanner-reasons">{% for reason in candidate.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                </a>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="scanner-empty" style="padding:20px 0 8px;">
-                <div class="icon">📡</div>
-                <h3>{{ t('no_market_observations') }}</h3>
+            <div class="scanner-empty">
+                <div class="icon">🔎</div>
+                <strong>{{ t('no_market_observations') }}</strong>
                 <p>{{ t('scanner_empty_description') }}</p>
             </div>
         {% endif %}
@@ -142,96 +124,60 @@
 
     <div class="card">
         <h2>{{ t('decision_pipeline') }}</h2>
-        <p style="color:#94a3b8; margin:8px 0 16px;">Scanner → Horizon → Algorithms → AI Analyst → Risk + Cost → Candidate Ranker → Decision Engine</p>
         <div class="scanner-flow">
-            <div class="scanner-step"><strong>🔎 Scanner</strong><span>{{ t('find_candidates') }}</span></div>
-            <div class="scanner-step"><strong>🎯 Horizon</strong><span>{{ t('horizon_day_swing_position') }}</span></div>
-            <div class="scanner-step"><strong>⚙️ Algorithms</strong><span>{{ t('technical_signals') }}</span></div>
-            <div class="scanner-step"><strong>🧠 AI Analyst</strong><span>{{ t('deep_analysis') }}</span></div>
-            <div class="scanner-step"><strong>🛡️ Risk + Cost</strong><span>{{ t('before_paper_trade') }}</span></div>
+            <div class="scanner-step"><strong>{{ t('find_candidates') }}</strong><span>{{ t('stocks') }} + {{ t('crypto') }}</span></div>
+            <div class="scanner-step"><strong>{{ t('horizon_day_swing_position') }}</strong><span>{{ t('technical_signals') }}</span></div>
+            <div class="scanner-step"><strong>{{ t('deep_analysis') }}</strong><span>AI + {{ t('technical_analysis') }}</span></div>
+            <div class="scanner-step"><strong>{{ t('before_paper_trade') }}</strong><span>{{ t('confidence') }} + risk</span></div>
+            <div class="scanner-step"><strong>Paper / Dry Run</strong><span>{{ t('no_orders') }}</span></div>
         </div>
     </div>
 
     <div class="card">
         <h2>{{ t('current_scanner_rules') }}</h2>
         <div class="scanner-rules">
-            <div class="scanner-rule"><span>{{ t('stock_min_price') }}</span><strong>&gt; $1.00</strong></div>
-            <div class="scanner-rule"><span>{{ t('minimum_average_volume') }}</span><strong>100,000</strong></div>
-            <div class="scanner-rule"><span>{{ t('minimum_current_volume') }}</span><strong>100,000</strong></div>
-            <div class="scanner-rule"><span>{{ t('liquidity') }}</span><strong>{{ t('required') }}</strong></div>
+            <div class="scanner-rule"><span>{{ t('stock_min_price') }}</span><strong>{{ dashboard.scanner.rules.stock_min_price }}</strong></div>
+            <div class="scanner-rule"><span>{{ t('minimum_average_volume') }}</span><strong>{{ dashboard.scanner.rules.minimum_average_volume }}</strong></div>
+            <div class="scanner-rule"><span>{{ t('minimum_current_volume') }}</span><strong>{{ dashboard.scanner.rules.minimum_current_volume }}</strong></div>
+            <div class="scanner-rule"><span>{{ t('required') }}</span><strong>PASS</strong></div>
         </div>
     </div>
 </div>
 
 <script>
 (function () {
-    const feed = document.getElementById("scanner-feed");
-    if (!feed) return;
-
-    const search = document.getElementById("scanner-search");
-    const assetFilter = document.getElementById("scanner-asset-filter");
-    const catalystFilter = document.getElementById("scanner-catalyst-filter");
-    const sortSelect = document.getElementById("scanner-sort");
-    const meta = document.getElementById("scanner-results-meta");
-    const candidates = Array.from(feed.querySelectorAll(".scanner-candidate-link"));
+    const feed = document.getElementById('scanner-feed');
+    const search = document.getElementById('scanner-search');
+    const asset = document.getElementById('scanner-asset-filter');
+    const catalyst = document.getElementById('scanner-catalyst-filter');
+    const sort = document.getElementById('scanner-sort');
+    const meta = document.getElementById('scanner-results-meta');
+    if (!feed || !search || !asset || !catalyst || !sort || !meta) return;
+    const candidates = Array.from(feed.querySelectorAll('.scanner-candidate-link'));
     const resultsMeta = {{ t('showing_candidates')|tojson }};
-
-    function numberValue(element, key) {
-        const value = Number.parseFloat(element.querySelector(".scanner-candidate")?.dataset[key]);
-        return Number.isFinite(value) ? value : 0;
-    }
-
-    function candidateData(link) {
-        return link.querySelector(".scanner-candidate")?.dataset || {};
-    }
-
     function applyScannerView() {
-        const query = (search.value || "").trim().toUpperCase();
-        const asset = assetFilter.value;
-        const catalyst = catalystFilter.value;
-        const sortKey = sortSelect.value;
-
-        const visible = candidates.filter((candidate) => {
-            const data = candidateData(candidate);
-            const symbol = (data.symbol || "").toUpperCase();
-            const candidateAsset = (data.assetType || "").toLowerCase();
-            const catalystScore = numberValue(candidate, "catalyst");
-            return (
-                (!query || symbol.includes(query)) &&
-                (asset === "all" || candidateAsset === asset) &&
-                (catalyst === "all" ||
-                    (catalyst === "yes" && catalystScore > 0) ||
-                    (catalyst === "no" && catalystScore <= 0))
-            );
+        const query = search.value.trim().toLowerCase();
+        const market = asset.value;
+        const catalystValue = catalyst.value;
+        candidates.forEach((item) => {
+            const symbol = item.dataset.symbol || '';
+            const itemMarket = item.dataset.market || '';
+            const itemCatalyst = item.dataset.catalyst || 'no';
+            const visible = (!query || symbol.includes(query)) && (market === 'all' || itemMarket === market) && (catalystValue === 'all' || itemCatalyst === catalystValue);
+            item.classList.toggle('scanner-hidden', !visible);
         });
-
-        const ordered = [...candidates].sort((a, b) => {
-            if (sortKey === "symbol") {
-                return (candidateData(a).symbol || "").localeCompare(candidateData(b).symbol || "");
-            }
-            const difference = numberValue(b, sortKey) - numberValue(a, sortKey);
-            if (difference !== 0) return difference;
-            return (candidateData(a).symbol || "").localeCompare(candidateData(b).symbol || "");
-        });
-
-        const fragment = document.createDocumentFragment();
-        ordered.forEach((candidate) => fragment.appendChild(candidate));
-        feed.appendChild(fragment);
-
-        candidates.forEach((candidate) => {
-            const isVisible = visible.includes(candidate);
-            candidate.classList.toggle("scanner-hidden", !isVisible);
-            candidate.setAttribute("aria-hidden", isVisible ? "false" : "true");
-        });
-
-        meta.textContent = resultsMeta.replace("{visible}", visible.length).replace("{total}", candidates.length);
+        const visibleCandidates = candidates.filter((item) => !item.classList.contains('scanner-hidden'));
+        const metric = sort.value;
+        visibleCandidates.sort((a, b) => {
+            if (metric === 'symbol') return (a.dataset.symbol || '').localeCompare(b.dataset.symbol || '');
+            const key = metric === 'catalyst' ? 'catalystScore' : metric;
+            return Number(b.dataset[key] || 0) - Number(a.dataset[key] || 0);
+        }).forEach((item) => feed.appendChild(item));
+        meta.textContent = resultsMeta.replace('{visible}', visibleCandidates.length).replace('{total}', candidates.length);
     }
-
-    [search, assetFilter, catalystFilter, sortSelect].forEach((control) => {
-        control.addEventListener("input", applyScannerView);
-        control.addEventListener("change", applyScannerView);
+    [search, asset, catalyst, sort].forEach((element) => {
+        element.addEventListener(element === search ? 'input' : 'change', applyScannerView);
     });
-
     applyScannerView();
 })();
 </script>
