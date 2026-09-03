@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}
-ATLAS - Scanner
-{% endblock %}
+{% block title %}{{ t('scanner_title') }}{% endblock %}
 
 {% block content %}
 
@@ -50,63 +48,63 @@ ATLAS - Scanner
 <div class="scanner-page">
     <div class="card scanner-hero">
         <div>
-            <h1>🔎 ATLAS Scanner</h1>
-            <p>Market discovery layer for stocks and crypto. Kandidater går videre til horisont, algoritmer, AI-analyse, risiko og kostnad.</p>
+            <h1>🔎 {{ t('scanner_title') }}</h1>
+            <p>{{ t('scanner_description') }}</p>
         </div>
-        <div class="scanner-status"><span class="scanner-dot"></span>Scanner engine connected</div>
+        <div class="scanner-status"><span class="scanner-dot"></span>{{ t('scanner_connected') }}</div>
     </div>
 
     <div class="scanner-grid">
-        <div class="card scanner-card"><h2>📈 Stocks</h2><p>Forberedt for momentum, relativt volum, breakouts, catalysts, likviditet og float.</p></div>
-        <div class="card scanner-card"><h2>₿ Crypto</h2><p>Forberedt for 24/7 scanning med momentum, volum, breakout og likviditet.</p></div>
-        <div class="card scanner-card"><h2>🧠 Research only</h2><p>Scanner-resultater er kandidater, ikke ordre. Trading forblir paper/dry-run.</p></div>
+        <div class="card scanner-card"><h2>📈 {{ t('stocks') }}</h2><p>{{ t('stocks_description') }}</p></div>
+        <div class="card scanner-card"><h2>₿ {{ t('crypto') }}</h2><p>{{ t('crypto_description') }}</p></div>
+        <div class="card scanner-card"><h2>🧠 {{ t('research_only') }}</h2><p>{{ t('research_only_description') }}</p></div>
     </div>
 
     <div class="card">
-        <h2>Live scanner feed</h2>
+        <h2>{{ t('live_scanner_feed') }}</h2>
         <div class="scanner-summary" style="margin:10px 0 16px;">
-            <span>Observasjoner: <strong>{{ dashboard.scanner.scanned }}</strong></span>
-            <span>Eligible kandidater: <strong>{{ dashboard.scanner.eligible }}</strong></span>
+            <span>{{ t('observations') }}: <strong>{{ dashboard.scanner.scanned }}</strong></span>
+            <span>{{ t('eligible_candidates') }}: <strong>{{ dashboard.scanner.eligible }}</strong></span>
         </div>
         {% if dashboard.scanner.candidates %}
-            <div class="scanner-controls" aria-label="Scanner filters and sorting">
+            <div class="scanner-controls" aria-label="{{ t('scanner_filters') }}">
                 <div class="scanner-control">
-                    <label for="scanner-search">Søk symbol</label>
+                    <label for="scanner-search">{{ t('search_symbol') }}</label>
                     <input id="scanner-search" type="search" placeholder="BTC, ETH, SOL …" autocomplete="off">
                 </div>
                 <div class="scanner-control">
-                    <label for="scanner-asset-filter">Marked</label>
+                    <label for="scanner-asset-filter">{{ t('market') }}</label>
                     <select id="scanner-asset-filter">
-                        <option value="all">Alle</option>
-                        <option value="crypto">Crypto</option>
-                        <option value="stock">Stocks</option>
+                        <option value="all">{{ t('all') }}</option>
+                        <option value="crypto">{{ t('crypto') }}</option>
+                        <option value="stock">{{ t('stocks') }}</option>
                     </select>
                 </div>
                 <div class="scanner-control">
-                    <label for="scanner-catalyst-filter">Catalyst</label>
+                    <label for="scanner-catalyst-filter">{{ t('catalyst') }}</label>
                     <select id="scanner-catalyst-filter">
-                        <option value="all">Alle</option>
-                        <option value="yes">Med catalyst</option>
-                        <option value="no">Uten catalyst</option>
+                        <option value="all">{{ t('all') }}</option>
+                        <option value="yes">{{ t('with_catalyst') }}</option>
+                        <option value="no">{{ t('without_catalyst') }}</option>
                     </select>
                 </div>
                 <div class="scanner-control">
-                    <label for="scanner-sort">Sorter etter</label>
+                    <label for="scanner-sort">{{ t('sort_by') }}</label>
                     <select id="scanner-sort">
-                        <option value="score">Score</option>
-                        <option value="momentum">Momentum</option>
-                        <option value="volume">Volume</option>
-                        <option value="breakout">Breakout</option>
-                        <option value="catalyst">Catalyst</option>
-                        <option value="liquidity">Liquidity</option>
-                        <option value="symbol">Symbol</option>
+                        <option value="score">{{ t('score') }}</option>
+                        <option value="momentum">{{ t('momentum') }}</option>
+                        <option value="volume">{{ t('volume') }}</option>
+                        <option value="breakout">{{ t('breakout') }}</option>
+                        <option value="catalyst">{{ t('catalyst') }}</option>
+                        <option value="liquidity">{{ t('liquidity') }}</option>
+                        <option value="symbol">{{ t('symbol') }}</option>
                     </select>
                 </div>
             </div>
             <div class="scanner-results-meta" id="scanner-results-meta"></div>
             <div class="scanner-feed" id="scanner-feed">
                 {% for candidate in dashboard.scanner.candidates %}
-                    <a class="scanner-candidate-link" href="/market/{{ candidate.symbol|urlencode }}" aria-label="Åpne {{ candidate.symbol }} i ATLAS Market Terminal">
+                    <a class="scanner-candidate-link" href="/market/{{ candidate.symbol|urlencode }}" aria-label="{{ t('open_chart') }} {{ candidate.symbol }} i ATLAS Market Terminal">
                         <div class="scanner-candidate"
                              data-symbol="{{ candidate.symbol }}"
                              data-asset-type="{{ candidate.asset_type }}"
@@ -118,15 +116,15 @@ ATLAS - Scanner
                              data-liquidity="{{ candidate.liquidity_score }}">
                             <div class="scanner-candidate-head">
                                 <strong>{{ candidate.symbol }} · {{ candidate.asset_type }}</strong>
-                                <span class="scanner-candidate-open">Åpne diagram →</span>
+                                <span class="scanner-candidate-open">{{ t('open_chart') }}</span>
                             </div>
                             <div class="scanner-summary">
-                                <span class="scanner-score">Score {{ "%.2f"|format(candidate.score) }}</span>
-                                <span>Momentum {{ "%.1f"|format(candidate.momentum_score) }}</span>
-                                <span>Volume {{ "%.1f"|format(candidate.volume_score) }}</span>
-                                <span>Breakout {{ "%.1f"|format(candidate.breakout_score) }}</span>
-                                <span>Catalyst {{ "%.1f"|format(candidate.catalyst_score) }}</span>
-                                <span>Liquidity {{ "%.1f"|format(candidate.liquidity_score) }}</span>
+                                <span class="scanner-score">{{ t('score') }} {{ "%.2f"|format(candidate.score) }}</span>
+                                <span>{{ t('momentum') }} {{ "%.1f"|format(candidate.momentum_score) }}</span>
+                                <span>{{ t('volume') }} {{ "%.1f"|format(candidate.volume_score) }}</span>
+                                <span>{{ t('breakout') }} {{ "%.1f"|format(candidate.breakout_score) }}</span>
+                                <span>{{ t('catalyst') }} {{ "%.1f"|format(candidate.catalyst_score) }}</span>
+                                <span>{{ t('liquidity') }} {{ "%.1f"|format(candidate.liquidity_score) }}</span>
                             </div>
                             {% if candidate.reasons %}<ul class="scanner-reasons">{% for reason in candidate.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
                         </div>
@@ -136,31 +134,31 @@ ATLAS - Scanner
         {% else %}
             <div class="scanner-empty" style="padding:20px 0 8px;">
                 <div class="icon">📡</div>
-                <h3>Ingen markedsobservasjoner er koblet til ennå</h3>
-                <p>ScannerService er nå koblet til dashboard-kontrakten. Neste steg er å mate den med ekte, read-only markedsdata — uten å simulere kandidater.</p>
+                <h3>{{ t('no_market_observations') }}</h3>
+                <p>{{ t('scanner_empty_description') }}</p>
             </div>
         {% endif %}
     </div>
 
     <div class="card">
-        <h2>ATLAS decision pipeline</h2>
+        <h2>{{ t('decision_pipeline') }}</h2>
         <p style="color:#94a3b8; margin:8px 0 16px;">Scanner → Horizon → Algorithms → AI Analyst → Risk + Cost → Candidate Ranker → Decision Engine</p>
         <div class="scanner-flow">
-            <div class="scanner-step"><strong>🔎 Scanner</strong><span>Find candidates</span></div>
-            <div class="scanner-step"><strong>🎯 Horizon</strong><span>Day / Swing / Position</span></div>
-            <div class="scanner-step"><strong>⚙️ Algorithms</strong><span>Technical signals</span></div>
-            <div class="scanner-step"><strong>🧠 AI Analyst</strong><span>Deep analysis</span></div>
-            <div class="scanner-step"><strong>🛡️ Risk + Cost</strong><span>Before paper trade</span></div>
+            <div class="scanner-step"><strong>🔎 Scanner</strong><span>{{ t('find_candidates') }}</span></div>
+            <div class="scanner-step"><strong>🎯 Horizon</strong><span>{{ t('horizon_day_swing_position') }}</span></div>
+            <div class="scanner-step"><strong>⚙️ Algorithms</strong><span>{{ t('technical_signals') }}</span></div>
+            <div class="scanner-step"><strong>🧠 AI Analyst</strong><span>{{ t('deep_analysis') }}</span></div>
+            <div class="scanner-step"><strong>🛡️ Risk + Cost</strong><span>{{ t('before_paper_trade') }}</span></div>
         </div>
     </div>
 
     <div class="card">
-        <h2>Current scanner rules</h2>
+        <h2>{{ t('current_scanner_rules') }}</h2>
         <div class="scanner-rules">
-            <div class="scanner-rule"><span>Stock minimum price</span><strong>&gt; $1.00</strong></div>
-            <div class="scanner-rule"><span>Minimum average volume</span><strong>100,000</strong></div>
-            <div class="scanner-rule"><span>Minimum current volume</span><strong>100,000</strong></div>
-            <div class="scanner-rule"><span>Liquidity</span><strong>Required</strong></div>
+            <div class="scanner-rule"><span>{{ t('stock_min_price') }}</span><strong>&gt; $1.00</strong></div>
+            <div class="scanner-rule"><span>{{ t('minimum_average_volume') }}</span><strong>100,000</strong></div>
+            <div class="scanner-rule"><span>{{ t('minimum_current_volume') }}</span><strong>100,000</strong></div>
+            <div class="scanner-rule"><span>{{ t('liquidity') }}</span><strong>{{ t('required') }}</strong></div>
         </div>
     </div>
 </div>
@@ -176,6 +174,7 @@ ATLAS - Scanner
     const sortSelect = document.getElementById("scanner-sort");
     const meta = document.getElementById("scanner-results-meta");
     const candidates = Array.from(feed.querySelectorAll(".scanner-candidate-link"));
+    const resultsMeta = {{ t('showing_candidates')|tojson }};
 
     function numberValue(element, key) {
         const value = Number.parseFloat(element.querySelector(".scanner-candidate")?.dataset[key]);
@@ -220,11 +219,12 @@ ATLAS - Scanner
         feed.appendChild(fragment);
 
         candidates.forEach((candidate) => {
-            candidate.classList.toggle("scanner-hidden", !visible.includes(candidate));
-            candidate.setAttribute("aria-hidden", visible.includes(candidate) ? "false" : "true");
+            const isVisible = visible.includes(candidate);
+            candidate.classList.toggle("scanner-hidden", !isVisible);
+            candidate.setAttribute("aria-hidden", isVisible ? "false" : "true");
         });
 
-        meta.textContent = `Viser ${visible.length} av ${candidates.length} kandidater`;
+        meta.textContent = resultsMeta.replace("{visible}", visible.length).replace("{total}", candidates.length);
     }
 
     [search, assetFilter, catalystFilter, sortSelect].forEach((control) => {
