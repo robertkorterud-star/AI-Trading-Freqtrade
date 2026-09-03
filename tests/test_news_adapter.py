@@ -78,6 +78,38 @@ def test_crypto_news_does_not_fill_with_other_crypto():
     assert "Solana" in result[0].title
 
 
+def test_xrp_usd_is_routed_to_crypto_news():
+    adapter = make_adapter()
+
+    articles = [
+        {
+            "headline": "XRP rallies as Ripple sees stronger demand",
+            "summary": "XRP gains on renewed market interest.",
+            "source": "Test",
+            "url": "https://example.com/xrp",
+        },
+        {
+            "headline": "Bitcoin rises",
+            "summary": "BTC gains.",
+            "source": "Test",
+            "url": "https://example.com/btc",
+        },
+    ]
+
+    with patch(
+        "atlas.adapters.news.requests.get"
+    ) as mock_get:
+
+        mock_get.return_value.json.return_value = articles
+        mock_get.return_value.raise_for_status.return_value = None
+
+        result = adapter.latest("XRP-USD")
+
+    assert len(result) == 1
+    assert "XRP" in result[0].title
+    assert mock_get.call_args.kwargs["params"]["category"] == "crypto"
+
+
 def test_company_news_filters_irrelevant_companies():
     adapter = make_adapter()
 
