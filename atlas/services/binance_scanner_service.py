@@ -34,10 +34,10 @@ class BinanceScannerService:
         self.quote_assets = quote_assets or self.DEFAULT_QUOTE_ASSETS
         self.min_quote_volume = min_quote_volume
         self.volume_interval = volume_interval
-        self.volume_samples = volume_samples
+        self.volume_samples = max(1, volume_samples)
         self.volume_enrichment_limit = max(0, volume_enrichment_limit)
         self.volume_cache_ttl_seconds = max(0.0, volume_cache_ttl_seconds)
-        self._volume_cache: dict[str, tuple[float, float | None]] = {}
+        self._volume_cache: dict[str, tuple[float, float, float] | tuple[float, None, None]] = {}
 
     def scan(self, limit: int = 50) -> ScannerResult:
         """Fetch the public ticker universe and return ranked candidates."""
@@ -76,19 +76,22 @@ class BinanceScannerService:
         enriched_symbols = self._select_volume_enrichment_symbols(eligible)
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent in eligible:
+            volume = quote_volume
             average_volume = quote_volume
             if symbol in enriched_symbols:
-                historical_average = self._historical_average_volume(symbol)
-                if historical_average is not None and historical_average > 0.0:
-                    average_volume = historical_average
+                volume_data = self._current_and_average_volume(symbol)
+                if volume_data is not None:
+                    volume, average_volume = volume_data
 
             observations.append(
                 MarketObservation(
                     symbol=symbol,
                     asset_type=AssetType.CRYPTO,
                     price=price,
-                    volume=quote_volume,
-                    # Fall back to current volume when historical enrichment
+                    # For enriched symbols both sides are 1h quote-volume
+                    # values, making relative volume dimensionally comparable.
+                    volume=volume,
+                    # Fall back to current 24h volume when candle enrichment
                     # is unavailable, preserving the neutral v1 behaviour.
                     average_volume=average_volume,
                     change_percent=change_percent,
@@ -114,39 +117,81 @@ class BinanceScannerService:
             selected.add(item[0])
         return selected
 
-    def _historical_average_volume(self, symbol: str) -> float | None:
-        """Return a cached mean quote-volume baseline from recent hourly candles."""
+    def _current_and_average_volume(self, symbol: str) -> tuple[float, float] | None:
+        """Return current completed volume and the preceding completed average."""
         now = time.monotonic()
         cached = self._volume_cache.get(symbol)
         if cached is not None:
-            cached_at, value = cached
+            cached_at, current, average = cached
             if now - cached_at < self.volume_cache_ttl_seconds:
-                return value
+                if current is None or average is None:
+                    return None
+                return current, average
 
         try:
+            # Request one extra candle so an in-progress latest candle can be
+            # excluded while still retaining ``volume_samples`` prior candles.
             klines = self.market_data.adapter.get_klines(
                 symbol,
                 interval=self.volume_interval,
-                limit=self.volume_samples,
+                limit=self.volume_samples + 1,
             )
         except Exception:
-            self._volume_cache[symbol] = (now, None)
+            self._volume_cache[symbol] = (now, None, None)
             return None
 
+        completed = self._completed_volume_candles(klines)
+        if len(completed) < self.volume_samples + 1:
+            # If the feed does not expose usable close timestamps, accept the
+            # supplied candles as completed rather than dropping enrichment.
+            completed = self._parse_volume_candles(klines)
+
+        if len(completed) < self.volume_samples + 1:
+            self._volume_cache[symbol] = (now, None, None)
+            return None
+
+        current = completed[-1]
+        previous = completed[-(self.volume_samples + 1) : -1]
+        average = sum(previous) / len(previous)
+        if current <= 0.0 or average <= 0.0:
+            self._volume_cache[symbol] = (now, None, None)
+            return None
+
+        self._volume_cache[symbol] = (now, current, average)
+        return current, average
+
+    @staticmethod
+    def _parse_volume_candles(klines) -> list[float]:
+        """Extract Binance quote-volume values from kline rows."""
         volumes: list[float] = []
         for kline in klines:
             try:
                 # Binance kline index 7 is quote asset volume.
-                volumes.append(float(kline[7]))
+                volume = float(kline[7])
             except (IndexError, TypeError, ValueError):
                 continue
-        if not volumes:
-            self._volume_cache[symbol] = (now, None)
-            return None
+            if volume > 0.0:
+                volumes.append(volume)
+        return volumes
 
-        average = sum(volumes) / len(volumes)
-        self._volume_cache[symbol] = (now, average)
-        return average
+    @classmethod
+    def _completed_volume_candles(cls, klines) -> list[float]:
+        """Extract candles whose Binance close time has already passed."""
+        now_ms = time.time() * 1000.0
+        completed: list[float] = []
+        timestamp_seen = False
+        for kline in klines:
+            try:
+                close_time = float(kline[6])
+                volume = float(kline[7])
+            except (IndexError, TypeError, ValueError):
+                continue
+            timestamp_seen = True
+            if close_time <= now_ms and volume > 0.0:
+                completed.append(volume)
+        if not timestamp_seen:
+            return []
+        return completed
 
     @staticmethod
     def _quote_asset(symbol: str) -> str:
