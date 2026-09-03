@@ -38,7 +38,9 @@ class DashboardService:
             return self._scanner_cache
 
         try:
-            result = self.binance_scanner.scan(limit=50)
+            # Keep the full eligible universe so Scanner filters/search can
+            # find symbols that are outside the default top-50 ranking.
+            result = self.binance_scanner.scan(limit=1000)
         except Exception:
             # The dashboard remains available when Binance is temporarily
             # unreachable or returns an invalid public market response.
