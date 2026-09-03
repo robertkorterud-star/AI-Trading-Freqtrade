@@ -65,7 +65,8 @@
             .watchlist-search:focus {
                 border-color: #38bdf8;
             }
-            .watchlist-add {
+            .watchlist-add,
+            .market-watchlist-toggle {
                 border: 1px solid rgba(56, 189, 248, .45);
                 border-radius: 9px;
                 padding: 0 14px;
@@ -123,6 +124,11 @@
             .watchlist-remove:hover {
                 color: #f87171;
             }
+            .market-watchlist-toggle.is-active {
+                border-color: rgba(74, 222, 128, .5);
+                color: #86efac;
+                background: rgba(22, 101, 52, .2);
+            }
             @media (max-width: 600px) {
                 .watchlist-controls { flex-direction: column; }
                 .watchlist-add { min-height: 40px; }
@@ -131,10 +137,51 @@
         document.head.appendChild(style);
     }
 
+    function initMarketTerminal() {
+        if (!window.location.pathname.startsWith(MARKET_PATH)) return;
+        if (document.querySelector(".market-watchlist-toggle")) return;
+
+        const actions = document.querySelector(".market-terminal-actions");
+        if (!actions) return;
+
+        const match = window.location.pathname.slice(MARKET_PATH.length).split("/")[0];
+        const symbol = normalize(decodeURIComponent(match));
+        if (!symbol) return;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "market-watchlist-toggle";
+
+        function renderButton() {
+            const active = loadSymbols().includes(symbol);
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+            button.textContent = active ? "★ Watchlist" : "☆ Watchlist";
+        }
+
+        button.addEventListener("click", function () {
+            const symbols = loadSymbols();
+            const index = symbols.indexOf(symbol);
+            if (index >= 0) {
+                symbols.splice(index, 1);
+            } else {
+                symbols.push(symbol);
+            }
+            saveSymbols(symbols);
+            renderButton();
+        });
+
+        actions.insertBefore(button, actions.firstElementChild);
+        renderButton();
+    }
+
     function init() {
         const heading = Array.from(document.querySelectorAll("h2"))
             .find((node) => node.textContent.includes("Watchlist"));
-        if (!heading) return;
+        if (!heading) {
+            initMarketTerminal();
+            return;
+        }
 
         const section = heading.closest("section");
         const table = section && section.querySelector("table");
