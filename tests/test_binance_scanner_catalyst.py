@@ -39,6 +39,11 @@ class FakeNewsAdapter:
         return self.articles
 
 
+class FailingNewsAdapter:
+    def latest_crypto_market_news(self):
+        raise RuntimeError("news unavailable")
+
+
 def test_scanner_maps_related_crypto_news_to_binance_pairs():
     tickers = [
         {"symbol": "BTCUSDT", "lastPrice": "100000", "quoteVolume": "500000000", "priceChangePercent": "12"},
@@ -86,13 +91,13 @@ def test_scanner_catalyst_feed_is_cached_for_one_hour():
     assert news.calls == 1
 
 
-def test_scanner_without_news_api_key_keeps_catalyst_false():
+def test_scanner_news_failure_keeps_catalyst_false():
     tickers = [
         {"symbol": "BTCUSDT", "lastPrice": "100000", "quoteVolume": "500000000", "priceChangePercent": "12"},
     ]
     service = BinanceScannerService(
         MarketData(FakeAdapter(tickers)),
-        news_adapter=None,
+        news_adapter=FailingNewsAdapter(),
         volume_enrichment_limit=0,
     )
 
