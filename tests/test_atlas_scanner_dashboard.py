@@ -1,3 +1,6 @@
+import asyncio
+from types import SimpleNamespace
+
 from atlas.dashboard.app import app
 from atlas.services.scanner_service import ScannerResult
 
@@ -49,7 +52,6 @@ def test_atlas_scanner_snapshot_is_cached_for_one_hour(monkeypatch):
 
 
 def test_atlas_scanner_route_does_not_load_full_dashboard(monkeypatch):
-    import asyncio
     from atlas.dashboard import app as dashboard_app
 
     monkeypatch.setattr(
@@ -67,3 +69,59 @@ def test_atlas_scanner_route_does_not_load_full_dashboard(monkeypatch):
 
     assert response.template.name == "scanner.html"
     assert response.context["dashboard"]["scanner"]["scanned"] == 1
+
+
+def test_binance_candle_api_serializes_atlas_candles(monkeypatch):
+    from atlas.dashboard import app as dashboard_app
+
+    candle = SimpleNamespace(
+        timestamp=1_760_000_000.0,
+        open=100.0,
+        high=105.0,
+        low=99.0,
+        close=103.0,
+        volume=1234.0,
+    )
+    monkeypatch.setattr(
+        dashboard_app.binance_market_data,
+        "get_candles",
+        lambda symbol, interval, limit: [candle],
+    )
+
+    request = SimpleNamespace(
+        query_params={"symbol": "BTCUSDT", "interval": "1h", "limit": "200"}
+    )
+    response = asyncio.run(dashboard_app.binance_candles_api(request))
+    payload = response.body.decode()
+
+    assert '"timestamp":1760000000.0' in payload
+    assert '"open":100.0' in payload
+    assert '"close":103.0' in payload
+
+
+def test_market_candle_api_normalizes_iso_timestamps(monkeypatch):
+    from atlas.dashboard import app as dashboard_app
+
+    monkeypatch.setattr(
+        dashboard_app.historical_market_data,
+        "get",
+        lambda symbol, period, interval: [
+            {
+                "timestamp": "2026-09-03T12:00:00+00:00",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 99.0,
+                "close": 103.0,
+                "volume": 1234.0,
+            }
+        ],
+    )
+
+    request = SimpleNamespace(
+        query_params={"symbol": "NVDA", "period": "3m", "interval": "1h"}
+    )
+    response = asyncio.run(dashboard_app.market_candles_api(request))
+    payload = response.body.decode()
+
+    assert '"timestamp":1788436800.0' in payload
+    assert '"close":103.0' in payload
