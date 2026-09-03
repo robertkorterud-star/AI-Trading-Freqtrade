@@ -1,6 +1,6 @@
 <div class="status-bar">
 
-    {% if dashboard.trading.mode == "paper" and dashboard.trading.paper_trading %}
+    {% if dashboard.trading is defined and dashboard.trading.mode == "paper" and dashboard.trading.paper_trading %}
 
         <div class="status paper-status">
 
@@ -22,13 +22,13 @@
 
         </div>
 
-    {% elif dashboard.trading.mode == "advisor" %}
+    {% elif dashboard.trading is defined and dashboard.trading.mode == "advisor" %}
 
         <div class="status">
 
             <span class="status-dot"></span>
 
-            {{ dashboard.status }}
+            {{ dashboard.status | default("ATLAS Online") }}
 
             <span>
                 · ADVISOR MODE · NO ORDERS
