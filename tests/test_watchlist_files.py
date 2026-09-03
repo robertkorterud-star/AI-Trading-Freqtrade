@@ -20,3 +20,8 @@ def test_watchlist_ui_is_user_managed_and_persistent():
     assert "Legg til" in text
     assert "watchlist-remove" in text
     assert "/api/market-search?q=" in text
+
+
+def test_base_template_loads_watchlist_ui():
+    text = (ROOT / "atlas/dashboard/templates/base.html").read_text()
+    assert "/static/watchlist_ui.js" in text
