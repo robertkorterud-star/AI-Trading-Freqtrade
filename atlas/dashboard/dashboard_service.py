@@ -13,7 +13,10 @@ from atlas.services.scanner_service import ScannerResult, ScannerService
 class DashboardService:
     """Provides dashboard data."""
 
-    SCANNER_CACHE_TTL_SECONDS = 30.0
+    # Scanner market data is intentionally refreshed only once per hour.
+    # The scanner page reads the cached snapshot and never triggers a fresh
+    # Binance request simply because the page was opened/refreshed.
+    SCANNER_CACHE_TTL_SECONDS = 3600.0
 
     def __init__(self, binance_market_data=None):
         self.data = DashboardDataService()
@@ -26,7 +29,7 @@ class DashboardService:
         self._scanner_cache_at = 0.0
 
     def _get_scanner_result(self):
-        """Return a short-lived scanner snapshot to avoid duplicate API work."""
+        """Return the hourly scanner snapshot, refreshing it when stale."""
         now = time.monotonic()
         if (
             self._scanner_cache is not None
@@ -45,8 +48,11 @@ class DashboardService:
         self._scanner_cache_at = now
         return result
 
+    def get_scanner(self):
+        """Return the cached scanner snapshot without loading full dashboard data."""
+        return self.scanner.as_dict(self._get_scanner_result())
+
     def get_dashboard(self, selected_symbol=None):
         dashboard = self.data.get_dashboard_data(selected_symbol=selected_symbol)
-        scanner_result = self._get_scanner_result()
-        dashboard["scanner"] = self.scanner.as_dict(scanner_result)
+        dashboard["scanner"] = self.get_scanner()
         return dashboard
