@@ -30,7 +30,7 @@ def test_volume_enrichment_is_bounded_to_volume_and_momentum_shortlists():
     ]
     adapter = FakeAdapter(
         tickers,
-        {symbol: 100000 for symbol in "ABCDE" for _ in [0]},
+        {f"{symbol}USDT": 100000 for symbol in "ABCDE"},
     )
     service = BinanceScannerService(
         MarketData(adapter),
