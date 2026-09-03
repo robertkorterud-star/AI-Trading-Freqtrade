@@ -6,7 +6,7 @@
 <div class="markets-page">
     <div class="card markets-header">
         <h1>📈 {{ t('markets') }}</h1>
-        <p>{{ t('markets') }} — {% if get_language() == 'no' %}søk etter aksjer og kryptovaluta for analyse med ATLAS.{% else %}search for stocks and cryptocurrencies to analyze with ATLAS.{% endif %}</p>
+        <p>{% if get_language() == 'no' %}Søk etter aksjer og kryptovaluta for analyse med ATLAS.{% else %}Search for stocks and cryptocurrencies to analyze with ATLAS.{% endif %}</p>
         <button type="button" class="market-search-trigger" id="market-search-trigger">
             <span class="market-search-trigger-icon">⌕</span>
             <span class="market-search-trigger-text">{% if query %}{{ query }}{% else %}{% if get_language() == 'no' %}Søk etter aksje eller kryptovaluta...{% else %}Search for a stock or cryptocurrency...{% endif %}{% endif %}</span>
@@ -15,44 +15,201 @@
     </div>
 
     {% if query %}
-        <div class="markets-results-header"><h2>{% if get_language() == 'no' %}Søkeresultater for{% else %}Search results for{% endif %} "{{ query }}"</h2></div>
+        <div class="markets-results-header">
+            <h2>{% if get_language() == 'no' %}Søkeresultater for{% else %}Search results for{% endif %} "{{ query }}"</h2>
+        </div>
+
         {% if market_results and not strategy_research %}
             <div class="markets-columns">
-            {% for market in market_results %}
-                <section class="card market-card">
-                    <div class="market-card-type">{% if market.type == 'crypto' %}🪙 {% if get_language() == 'no' %}KRYPTO{% else %}CRYPTO{% endif %}{% else %}📈 {% if get_language() == 'no' %}AKSJE{% else %}STOCK{% endif %}{% endif %}</div>
-                    <h2>{{ market.name }}</h2><p class="market-symbol">{{ market.symbol }}</p>
-                    <div class="market-data">
-                        <div><small>{% if get_language() == 'no' %}Pris{% else %}Price{% endif %}</small><strong>{% if market.price_usd is not none %}${{"{:,.2f}".format(market.price_usd)}}{% else %}—{% endif %}</strong></div>
-                        <div><small>{% if get_language() == 'no' %}Endring{% else %}Change{% endif %}</small><strong class="{% if market.change is not none and market.change >= 0 %}positive{% elif market.change is not none %}negative{% endif %}">{% if market.change is not none %}{% if market.change >= 0 %}+{% endif %}{{ market.change }}%{% else %}—{% endif %}</strong></div>
-                        <div><small>MA20</small><strong>{% if market.ma20 is not none %}{{ market.ma20 }}{% else %}—{% endif %}</strong></div>
-                        <div><small>MA50</small><strong>{% if market.ma50 is not none %}{{ market.ma50 }}{% else %}—{% endif %}</strong></div>
-                    </div>
-                    <a href="/analysis?symbol={{ market.symbol|urlencode }}" class="market-analyze-button">🤖 {% if get_language() == 'no' %}Analyser med ATLAS →{% else %}Analyze with ATLAS →{% endif %}</a>
-                    <a href="/markets?q={{ market.symbol }}&research={{ market.symbol }}" class="market-research-button">{% if get_language() == 'no' %}Undersøk strategier{% else %}Research strategies{% endif %}</a>
-                </section>
-            {% endfor %}
+                {% for market in market_results %}
+                    <section class="card market-card">
+                        <div class="market-card-type">{% if market.type == 'crypto' %}🪙 {% if get_language() == 'no' %}KRYPTO{% else %}CRYPTO{% endif %}{% else %}📈 {% if get_language() == 'no' %}AKSJE{% else %}STOCK{% endif %}{% endif %}</div>
+                        <h2>{{ market.name }}</h2>
+                        <p class="market-symbol">{{ market.symbol }}</p>
+                        <div class="market-data">
+                            <div><small>{% if get_language() == 'no' %}Pris{% else %}Price{% endif %}</small><strong>{% if market.price_usd is not none %}${{"{:,.2f}".format(market.price_usd)}}{% else %}—{% endif %}</strong></div>
+                            <div><small>{% if get_language() == 'no' %}Endring{% else %}Change{% endif %}</small><strong class="{% if market.change is not none and market.change >= 0 %}positive{% elif market.change is not none %}negative{% endif %}">{% if market.change is not none %}{% if market.change >= 0 %}+{% endif %}{{ market.change }}%{% else %}—{% endif %}</strong></div>
+                            <div><small>MA20</small><strong>{% if market.ma20 is not none %}{{ market.ma20 }}{% else %}—{% endif %}</strong></div>
+                            <div><small>MA50</small><strong>{% if market.ma50 is not none %}{{ market.ma50 }}{% else %}—{% endif %}</strong></div>
+                        </div>
+                        <a href="/analysis?symbol={{ market.symbol|urlencode }}" class="market-analyze-button">🤖 {% if get_language() == 'no' %}Analyser med ATLAS →{% else %}Analyze with ATLAS →{% endif %}</a>
+                        <a href="/markets?q={{ market.symbol }}&research={{ market.symbol }}" class="market-research-button">{% if get_language() == 'no' %}Undersøk strategier{% else %}Research strategies{% endif %}</a>
+                    </section>
+                {% endfor %}
             </div>
+
         {% elif strategy_research %}
             <div class="card strategy-research-card">
                 <h2>🧠 ATLAS Market Intelligence — {{ strategy_research.symbol }}</h2>
-                {% if research_source_summary.channels %}<div class="research-source-summary"><div class="research-source-title">{% if get_language() == 'no' %}Researchkilder{% else %}Research sources{% endif %}</div><div class="research-source-channels">{% for source, count in research_source_summary.channels %}<span class="research-source-pill">{{ source }} <strong>{{ count }}</strong></span>{% endfor %}</div>{% if research_source_summary.publishers %}<div class="research-publishers"><small>{% if get_language() == 'no' %}Utgivere funnet:{% else %}Publishers found:{% endif %}</small>{% for publisher, count in research_source_summary.publishers[:8] %}<span>{{ publisher }}{% if count > 1 %} ×{{ count }}{% endif %}</span>{% endfor %}</div>{% endif %}</div>{% endif %}
-                {% if strategy_research.strategies %}<div class="research-overview"><div><small>{% if get_language() == 'no' %}Strategier testet{% else %}Strategies tested{% endif %}</small><strong>{{ strategy_research.strategies|length }}</strong></div><div><small>{% if get_language() == 'no' %}Bestått{% else %}Passed{% endif %}</small><strong class="overview-positive">{{ strategy_research.assessments|selectattr('status','equalto','PASS')|list|length }}</strong></div><div><small>{% if get_language() == 'no' %}Avvist{% else %}Rejected{% endif %}</small><strong class="overview-muted">{{ strategy_research.assessments|selectattr('status','equalto','REJECT')|list|length }}</strong></div><div><small>{% if get_language() == 'no' %}Timing-signaler{% else %}Timing signals{% endif %}</small><strong>{{ strategy_research.timing|map(attribute='signals')|sum }}</strong></div></div>{% endif %}
-                {% if strategy_research.strategies %}<p class="strategy-research-intro">ATLAS fant <strong>{{ strategy_research.strategies|length }}</strong> strategihypoteser basert på tilgjengelig research. Hypotesene er testet mot historiske markedsdata.</p>{% for strategy in strategy_research.strategies %}<section class="strategy-result"><div class="market-card-type">STRATEGY</div><h3>{{ strategy.name }}</h3><p><strong>{% if get_language() == 'no' %}Tidshorisont{% else %}Timeframe{% endif %}:</strong> {{ strategy.timeframe }}</p><p><strong>Entry:</strong> {{ strategy.entry_rule }}</p><p><strong>Exit:</strong> {{ strategy.exit_rule }}</p><p><strong>{% if get_language() == 'no' %}Stop loss{% else %}Stop loss{% endif %}:</strong> {{ strategy.stop_loss }}</p><p><strong>{% if get_language() == 'no' %}Take profit{% else %}Take profit{% endif %}:</strong> {{ strategy.take_profit }}</p><p><strong>{% if get_language() == 'no' %}Kilde{% else %}Source{% endif %}:</strong> {{ strategy.source }}</p>{% if strategy.reasoning %}<div class="strategy-reasoning"><strong>{% if get_language() == 'no' %}Hvorfor ATLAS fant dette:{% else %}Why ATLAS found this:{% endif %}</strong><ul>{% for reason in strategy.reasoning %}<li>{{ reason }}</li>{% endfor %}</ul></div>{% endif %}</section>{% endfor %}{% else %}<p>{% if get_language() == 'no' %}ATLAS fant ingen strategihypoteser i tilgjengelig research.{% else %}ATLAS found no strategy hypotheses in the available research.{% endif %}</p>{% endif %}
+
+                {% if research_source_summary.channels %}
+                    <div class="research-source-summary">
+                        <div class="research-source-title">{% if get_language() == 'no' %}Researchkilder{% else %}Research sources{% endif %}</div>
+                        <div class="research-source-channels">
+                            {% for source, count in research_source_summary.channels %}
+                                <span class="research-source-pill">{{ source }} <strong>{{ count }}</strong></span>
+                            {% endfor %}
+                        </div>
+                        {% if research_source_summary.publishers %}
+                            <div class="research-publishers">
+                                <small>{% if get_language() == 'no' %}Utgivere funnet:{% else %}Publishers found:{% endif %}</small>
+                                {% for publisher, count in research_source_summary.publishers[:8] %}
+                                    <span>{{ publisher }}{% if count > 1 %} ×{{ count }}{% endif %}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if strategy_research.strategies %}
+                    <div class="research-overview">
+                        <div><small>{% if get_language() == 'no' %}Strategier testet{% else %}Strategies tested{% endif %}</small><strong>{{ strategy_research.strategies|length }}</strong></div>
+                        <div><small>{% if get_language() == 'no' %}Bestått{% else %}Passed{% endif %}</small><strong class="overview-positive">{{ strategy_research.assessments|selectattr('status','equalto','PASS')|list|length }}</strong></div>
+                        <div><small>{% if get_language() == 'no' %}Avvist{% else %}Rejected{% endif %}</small><strong class="overview-muted">{{ strategy_research.assessments|selectattr('status','equalto','REJECT')|list|length }}</strong></div>
+                        <div><small>{% if get_language() == 'no' %}Timing-signaler{% else %}Timing signals{% endif %}</small><strong>{{ strategy_research.timing|map(attribute='signals')|sum }}</strong></div>
+                    </div>
+                {% endif %}
+
+                {% if strategy_research.history|length > 1 %}
+                    <details class="strategy-learning-history">
+                        <summary>🧠 {% if get_language() == 'no' %}ATLAS læringshistorikk{% else %}ATLAS Learning History{% endif %} <span>{% if get_language() == 'no' %}Runder{% else %}Rounds{% endif %} {{ strategy_research.history|length }}</span></summary>
+                        <div class="strategy-learning-history-body">
+                            {% for round in strategy_research.history %}
+                                <section class="strategy-round">
+                                    <h4>{% if get_language() == 'no' %}Runde{% else %}Round{% endif %} {{ loop.index }}</h4>
+                                    {% for strategy in round.strategies %}
+                                        {% set backtest = round.backtests[loop.index0] %}
+                                        {% set assessment = round.assessments[loop.index0] %}
+                                        <div class="strategy-round-item">
+                                            <div><strong>{{ strategy.name }}</strong><span> · {{ strategy.entry_rule }}</span></div>
+                                            {% if assessment.status == 'PASS' %}<span class="learning-status learning-status-pass">✅ PASS</span>{% elif assessment.status == 'REJECT' %}<span class="learning-status learning-status-reject">❌ REJECT</span>{% else %}<span class="learning-status learning-status-inconclusive">⚠️ INCONCLUSIVE</span>{% endif %}
+                                            <div class="strategy-round-stats">{% if get_language() == 'no' %}Avkastning{% else %}Return{% endif %}: {{ backtest.total_return }}% · PF: {{ backtest.profit_factor }} · DD: {{ backtest.max_drawdown }}%</div>
+                                        </div>
+                                    {% endfor %}
+                                </section>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% endif %}
+
+                {% if strategy_research.strategies %}
+                    <p class="strategy-research-intro">{% if get_language() == 'no' %}ATLAS fant{% else %}ATLAS found{% endif %} <strong>{{ strategy_research.strategies|length }}</strong> {% if get_language() == 'no' %}strategihypoteser basert på tilgjengelig research. Hypotesene er testet mot historiske markedsdata.{% else %}strategy hypotheses from available research. The hypotheses were tested against historical market data.{% endif %}</p>
+
+                    <div class="strategy-research-grid">
+                        {% for strategy in strategy_research.strategies %}
+                            <section class="strategy-result">
+                                <div class="market-card-type">STRATEGY</div>
+                                <h3>{{ strategy.name }}</h3>
+                                <p><strong>{% if get_language() == 'no' %}Tidshorisont{% else %}Timeframe{% endif %}:</strong> {{ strategy.timeframe }}</p>
+                                <p><strong>{% if get_language() == 'no' %}Inngang{% else %}Entry{% endif %}:</strong> {{ strategy.entry_rule }}</p>
+                                <p><strong>{% if get_language() == 'no' %}Utgang{% else %}Exit{% endif %}:</strong> {{ strategy.exit_rule }}</p>
+                                <p><strong>Stop loss:</strong> {{ strategy.stop_loss }}</p>
+                                <p><strong>Take profit:</strong> {{ strategy.take_profit }}</p>
+                                <p><strong>{% if get_language() == 'no' %}Kilde{% else %}Source{% endif %}:</strong> {{ strategy.source }}</p>
+
+                                {% if strategy.reasoning %}
+                                    <div class="strategy-reasoning">
+                                        <strong>{% if get_language() == 'no' %}Hvorfor ATLAS fant dette:{% else %}Why ATLAS found this:{% endif %}</strong>
+                                        <ul>{% for reason in strategy.reasoning %}<li>{{ reason }}</li>{% endfor %}</ul>
+                                    </div>
+                                {% endif %}
+
+                                {% for backtest in strategy_research.backtests %}
+                                    {% if backtest.strategy_name == strategy.name %}
+                                        <div class="strategy-backtest">
+                                            <h4>{% if get_language() == 'no' %}Backtest — 1 år / 1t{% else %}Backtest — 1 year / 1h{% endif %}</h4>
+                                            <div class="market-data">
+                                                <div><small>{% if get_language() == 'no' %}Handler{% else %}Trades{% endif %}</small><strong>{{ backtest.trades }}</strong></div>
+                                                <div><small>{% if get_language() == 'no' %}Gevinster{% else %}Wins{% endif %}</small><strong>{{ backtest.wins }}</strong></div>
+                                                <div><small>{% if get_language() == 'no' %}Tap{% else %}Losses{% endif %}</small><strong>{{ backtest.losses }}</strong></div>
+                                                <div><small>{% if get_language() == 'no' %}Treffprosent{% else %}Win rate{% endif %}</small><strong>{{ backtest.win_rate }}%</strong></div>
+                                                <div><small>{% if get_language() == 'no' %}Total avkastning{% else %}Total return{% endif %}</small><strong>{{ backtest.total_return }}%</strong></div>
+                                                <div><small>Profit factor</small><strong>{{ backtest.profit_factor }}</strong></div>
+                                                <div><small>{% if get_language() == 'no' %}Maks. drawdown{% else %}Max drawdown{% endif %}</small><strong>{{ backtest.max_drawdown }}%</strong></div>
+                                            </div>
+                                            {% set assessment = strategy_research.assessments[loop.index0] %}
+                                            <div class="strategy-assessment {% if assessment.status == 'PASS' %}strategy-assessment-pass{% elif assessment.status == 'REJECT' %}strategy-assessment-reject{% else %}strategy-assessment-inconclusive{% endif %}">
+                                                {% if assessment.status == 'PASS' %}✅ PASS{% elif assessment.status == 'REJECT' %}❌ REJECT{% else %}⚠️ INCONCLUSIVE{% endif %}
+                                                <span>{{ assessment.reason }}</span>
+                                            </div>
+                                        </div>
+
+                                        {% for timing in strategy_research.timing %}
+                                            {% if timing.strategy_name == strategy.name %}
+                                                <div class="strategy-timing">
+                                                    <div class="strategy-timing-header">
+                                                        <h4>{% if get_language() == 'no' %}Historisk timing{% else %}Historical Timing{% endif %}</h4>
+                                                        <span class="strategy-timing-badge">{{ timing.signals }} {% if get_language() == 'no' %}signaler{% else %}signals{% endif %}</span>
+                                                    </div>
+                                                    {% if timing.best_entry_price is not none %}
+                                                        <div class="strategy-timing-grid">
+                                                            <div><small>{% if get_language() == 'no' %}Maks. gunstig utvikling{% else %}Max favorable{% endif %}</small><strong class="timing-positive">+{{ timing.max_favorable_excursion }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}Median gunstig utvikling{% else %}Median favorable{% endif %}</small><strong>+{{ timing.median_favorable_excursion }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}Median drawdown{% else %}Median drawdown{% endif %}</small><strong>{{ timing.median_adverse_excursion }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}5-candle mål{% else %}5-candle target{% endif %}</small><strong>{{ timing.target_hit_5 }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}5-candle stopp{% else %}5-candle stop{% endif %}</small><strong>{{ timing.stop_hit_5 }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}20-candle mål{% else %}20-candle target{% endif %}</small><strong>{{ timing.target_hit_20 }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}20-candle stopp{% else %}20-candle stop{% endif %}</small><strong>{{ timing.stop_hit_20 }}%</strong></div>
+                                                            <div><small>{% if get_language() == 'no' %}Beste signalvindu{% else %}Best signal window{% endif %}</small><strong>{{ timing.best_window }} {% if get_language() == 'no' %}candles{% else %}candles{% endif %}</strong></div>
+                                                        </div>
+                                                        <p class="strategy-timing-note">{% if get_language() == 'no' %}MFE/MAE-analyse i fremoverskuende vindu. Dette måler en historisk mulighet, ikke realisert strategiavkastning.{% else %}MFE/MAE forward-window analysis. This measures historical opportunity, not executable strategy return.{% endif %}</p>
+                                                    {% else %}
+                                                        <p class="strategy-timing-empty">{% if get_language() == 'no' %}Ingen historisk timingmulighet ble funnet.{% else %}No historical timing opportunity was detected.{% endif %}</p>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endfor %}
+                            </section>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>{% if get_language() == 'no' %}ATLAS fant ingen strategihypoteser i tilgjengelig research.{% else %}ATLAS found no strategy hypotheses in the available research.{% endif %}</p>
+                {% endif %}
             </div>
+
         {% else %}
-            <div class="card market-empty-card"><h2>🔎 {% if get_language() == 'no' %}Ingen markeder funnet{% else %}No markets found{% endif %}</h2><p>{% if get_language() == 'no' %}Prøv å søke etter et selskapsnavn, ticker eller kryptovaluta.{% else %}Try searching for a company name, ticker or cryptocurrency.{% endif %}</p></div>
+            <div class="card market-empty-card">
+                <h2>🔎 {% if get_language() == 'no' %}Ingen markeder funnet{% else %}No markets found{% endif %}</h2>
+                <p>{% if get_language() == 'no' %}Prøv å søke etter et selskapsnavn, ticker eller kryptovaluta.{% else %}Try searching for a company name, ticker or cryptocurrency.{% endif %}</p>
+            </div>
         {% endif %}
     {% else %}
         <div class="markets-columns">
             {% for type, name, symbol in [('crypto','Bitcoin','BTC-USD'),('crypto','Ethereum','ETH-USD'),('stock','NVIDIA Corporation','NVDA')] %}
-            <section class="card market-card"><div class="market-card-type">{% if type == 'crypto' %}🪙 {% if get_language() == 'no' %}KRYPTO{% else %}CRYPTO{% endif %}{% else %}📈 {% if get_language() == 'no' %}AKSJE{% else %}STOCK{% endif %}{% endif %}</div><h2>{{ name }}</h2><p class="market-symbol">{{ symbol }}</p><a href="/?symbol={{ symbol }}" class="market-analyze-button">🤖 {% if get_language() == 'no' %}Analyser med ATLAS →{% else %}Analyze with ATLAS →{% endif %}</a></section>
+                <section class="card market-card">
+                    <div class="market-card-type">{% if type == 'crypto' %}🪙 {% if get_language() == 'no' %}KRYPTO{% else %}CRYPTO{% endif %}{% else %}📈 {% if get_language() == 'no' %}AKSJE{% else %}STOCK{% endif %}{% endif %}</div>
+                    <h2>{{ name }}</h2><p class="market-symbol">{{ symbol }}</p>
+                    <a href="/?symbol={{ symbol }}" class="market-analyze-button">🤖 {% if get_language() == 'no' %}Analyser med ATLAS →{% else %}Analyze with ATLAS →{% endif %}</a>
+                </section>
             {% endfor %}
         </div>
     {% endif %}
 </div>
 
-<div class="market-search-modal" id="market-search-modal" aria-hidden="true"><div class="market-search-overlay" id="market-search-overlay"></div><div class="market-search-dialog" role="dialog" aria-modal="true" aria-labelledby="market-search-title"><div class="market-search-dialog-header"><h2 id="market-search-title">{% if get_language() == 'no' %}Symbolsøk{% else %}Symbol search{% endif %}</h2><button type="button" class="market-search-close" id="market-search-close" aria-label="{% if get_language() == 'no' %}Lukk søk{% else %}Close search{% endif %}">×</button></div><div class="market-search-input-wrap"><span class="market-search-input-icon">🔍</span><input id="market-search-input" type="search" autocomplete="off" placeholder="{% if get_language() == 'no' %}Søk etter symbol eller selskap...{% else %}Search symbol or company...{% endif %}"><button type="button" class="market-search-clear" id="market-search-clear">×</button></div><div class="market-search-tabs"><button type="button" class="market-search-tab active" data-market-filter="all">{{ t('all') }}</button><button type="button" class="market-search-tab" data-market-filter="stock">{{ t('stocks') }}</button><button type="button" class="market-search-tab" data-market-filter="crypto">{{ t('crypto') }}</button></div><div class="market-search-results" id="market-search-results"></div><div class="market-search-empty" id="market-search-empty" hidden>{% if get_language() == 'no' %}Ingen markeder funnet.{% else %}No markets found.{% endif %}</div><div class="market-search-footer"><span>↑ ↓ {% if get_language() == 'no' %}Naviger{% else %}Navigate{% endif %}</span><span>Enter {% if get_language() == 'no' %}Velg{% else %}Select{% endif %}</span><span>Esc {% if get_language() == 'no' %}Lukk{% else %}Close{% endif %}</span></div></div></div>
+<div class="market-search-modal" id="market-search-modal" aria-hidden="true">
+    <div class="market-search-overlay" id="market-search-overlay"></div>
+    <div class="market-search-dialog" role="dialog" aria-modal="true" aria-labelledby="market-search-title">
+        <div class="market-search-dialog-header">
+            <h2 id="market-search-title">{% if get_language() == 'no' %}Symbolsøk{% else %}Symbol search{% endif %}</h2>
+            <button type="button" class="market-search-close" id="market-search-close" aria-label="{% if get_language() == 'no' %}Lukk søk{% else %}Close search{% endif %}">×</button>
+        </div>
+        <div class="market-search-input-wrap">
+            <span class="market-search-input-icon">🔍</span>
+            <input id="market-search-input" type="search" autocomplete="off" placeholder="{% if get_language() == 'no' %}Søk etter symbol eller selskap...{% else %}Search symbol or company...{% endif %}">
+            <button type="button" class="market-search-clear" id="market-search-clear">×</button>
+        </div>
+        <div class="market-search-tabs">
+            <button type="button" class="market-search-tab active" data-market-filter="all">{{ t('all') }}</button>
+            <button type="button" class="market-search-tab" data-market-filter="stock">{{ t('stocks') }}</button>
+            <button type="button" class="market-search-tab" data-market-filter="crypto">{{ t('crypto') }}</button>
+        </div>
+        <div class="market-search-results" id="market-search-results"></div>
+        <div class="market-search-empty" id="market-search-empty" hidden>{% if get_language() == 'no' %}Ingen markeder funnet.{% else %}No markets found.{% endif %}</div>
+        <div class="market-search-footer"><span>↑ ↓ {% if get_language() == 'no' %}Naviger{% else %}Navigate{% endif %}</span><span>Enter {% if get_language() == 'no' %}Velg{% else %}Select{% endif %}</span><span>Esc {% if get_language() == 'no' %}Lukk{% else %}Close{% endif %}</span></div>
+    </div>
+</div>
 
 <script>
 (function () {
