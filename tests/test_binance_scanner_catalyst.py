@@ -26,7 +26,9 @@ class MarketData:
 
 @dataclass
 class FakeArticle:
-    related: tuple[str, ...]
+    related: tuple[str, ...] = ()
+    title: str = ""
+    summary: str = ""
 
 
 class FakeNewsAdapter:
@@ -70,6 +72,52 @@ def test_scanner_maps_related_crypto_news_to_binance_pairs():
         "SOLUSDT": False,
     }
     assert news.calls == 1
+
+
+def test_scanner_detects_crypto_catalyst_from_headline_without_related_field():
+    tickers = [
+        {"symbol": "BTCUSDT", "lastPrice": "100000", "quoteVolume": "500000000", "priceChangePercent": "12"},
+        {"symbol": "ETHUSDT", "lastPrice": "4000", "quoteVolume": "300000000", "priceChangePercent": "8"},
+        {"symbol": "SOLUSDT", "lastPrice": "200", "quoteVolume": "200000000", "priceChangePercent": "5"},
+    ]
+    news = FakeNewsAdapter([
+        FakeArticle(
+            title="Bitcoin surges as institutional demand accelerates",
+            summary="Analysts expect stronger BTC flows.",
+        ),
+    ])
+
+    service = BinanceScannerService(
+        MarketData(FakeAdapter(tickers)),
+        news_adapter=news,
+        volume_enrichment_limit=0,
+    )
+
+    observations = service.observations()
+    catalysts = {item.symbol: item.news_catalyst for item in observations}
+
+    assert catalysts["BTCUSDT"] is True
+    assert catalysts["ETHUSDT"] is False
+    assert catalysts["SOLUSDT"] is False
+
+
+def test_scanner_does_not_match_ticker_as_substring():
+    tickers = [
+        {"symbol": "SOLUSDT", "lastPrice": "200", "quoteVolume": "200000000", "priceChangePercent": "5"},
+    ]
+    news = FakeNewsAdapter([
+        FakeArticle(title="Consolidation follows broader market weakness"),
+    ])
+
+    service = BinanceScannerService(
+        MarketData(FakeAdapter(tickers)),
+        news_adapter=news,
+        volume_enrichment_limit=0,
+    )
+
+    observations = service.observations()
+
+    assert observations[0].news_catalyst is False
 
 
 def test_scanner_catalyst_feed_is_cached_for_one_hour():
