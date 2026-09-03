@@ -45,6 +45,13 @@ class BinanceAdapter:
         """Return 24-hour ticker statistics for a symbol."""
         return self._get("/ticker/24hr", {"symbol": symbol})
 
+    def get_24hr_tickers(self) -> list[dict]:
+        """Return all Binance Spot 24-hour ticker statistics."""
+        payload = self._get("/ticker/24hr")
+        if not isinstance(payload, list):
+            raise RuntimeError("Binance returned an invalid ticker list")
+        return payload
+
     def get_order_book(
         self,
         symbol: str,
