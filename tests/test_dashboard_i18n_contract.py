@@ -100,3 +100,21 @@ def test_dashboard_language_contract_covers_analysis():
         'predictions', 'accuracy', 'decision_pipeline',
     ):
         assert f'"{key}"' in translations
+
+
+def test_dashboard_language_contract_covers_markets_and_preserves_research_sections():
+    markets = (TEMPLATES / "markets.html").read_text(encoding="utf-8")
+
+    for marker in (
+        "{{ t('markets') }}", "{{ t('all') }}", "{{ t('stocks') }}", "{{ t('crypto') }}",
+        "market-search-trigger", "market-search-modal", "strategy-research-card",
+        "strategy-learning-history", "strategy-backtest", "strategy-timing",
+        "strategy-assessment", "research-source-summary", "/api/market-search?q=",
+        "atlas.last_market_search", "/market/", "market-analyze-button",
+        "market-research-button",
+    ):
+        assert marker in markets
+
+    # Trading research terminology and machine-readable status values remain stable.
+    for marker in ("PASS", "REJECT", "INCONCLUSIVE", "MA20", "MA50", "PF", "DD"):
+        assert marker in markets
