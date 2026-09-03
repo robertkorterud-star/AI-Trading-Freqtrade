@@ -2,6 +2,7 @@
 ATLAS Dashboard
 """
 
+from datetime import datetime
 import time
 
 from fastapi import FastAPI, Request
@@ -77,6 +78,45 @@ def get_cached_strategy_research(symbol: str, research_items: list[dict]):
 
 def build_dashboard(selected_symbol=None):
     return service.get_dashboard(selected_symbol=selected_symbol)
+
+
+def _normalize_candle_timestamp(value) -> float:
+    """Return a Lightweight Charts-compatible Unix timestamp in seconds."""
+    if isinstance(value, (int, float)):
+        numeric = float(value)
+        return numeric / 1000.0 if numeric > 10_000_000_000 else numeric
+
+    text = str(value).strip()
+    if not text:
+        raise ValueError("Candle timestamp is empty")
+
+    try:
+        numeric = float(text)
+        return numeric / 1000.0 if numeric > 10_000_000_000 else numeric
+    except ValueError:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return parsed.timestamp()
+
+
+def _serialize_binance_candle(candle) -> dict:
+    return {
+        "timestamp": _normalize_candle_timestamp(candle.timestamp),
+        "open": float(candle.open),
+        "high": float(candle.high),
+        "low": float(candle.low),
+        "close": float(candle.close),
+        "volume": float(candle.volume),
+    }
+
+
+def _normalize_market_candles(candles: list[dict]) -> list[dict]:
+    return [
+        {
+            **candle,
+            "timestamp": _normalize_candle_timestamp(candle["timestamp"]),
+        }
+        for candle in candles
+    ]
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -214,10 +254,25 @@ async def fx_rate_api(request: Request):
 
 @app.get("/api/binance-candles")
 async def binance_candles_api(request: Request):
-    symbol = request.query_params.get("symbol", "BTCUSDT")
-    interval = request.query_params.get("interval", "1h")
-    limit = int(request.query_params.get("limit", "200"))
-    return JSONResponse(content=binance_market_data.candles(symbol=symbol, interval=interval, limit=limit))
+    symbol = request.query_params.get("symbol", "BTCUSDT").strip().upper()
+    interval = request.query_params.get("interval", "1h").strip().lower()
+    try:
+        limit = max(1, min(int(request.query_params.get("limit", "200")), 1000))
+    except ValueError:
+        limit = 200
+
+    try:
+        candles = binance_market_data.get_candles(symbol=symbol, interval=interval, limit=limit)
+    except Exception as exc:
+        return JSONResponse(content={"symbol": symbol, "interval": interval, "candles": [], "error": str(exc)}, status_code=502)
+
+    return JSONResponse(
+        content={
+            "symbol": symbol,
+            "interval": interval,
+            "candles": [_serialize_binance_candle(candle) for candle in candles],
+        }
+    )
 
 
 @app.get("/api/market-candles")
@@ -233,6 +288,7 @@ async def market_candles_api(request: Request):
     interval = interval if interval in valid_intervals else "1h"
     try:
         candles = historical_market_data.get(symbol, period=valid_periods[period], interval=valid_intervals[interval])
+        candles = _normalize_market_candles(candles)
     except Exception as exc:
         return JSONResponse(content={"error": str(exc), "candles": []}, status_code=502)
     return JSONResponse(content={"symbol": symbol, "period": period, "interval": interval, "candles": candles[-2000:]})
