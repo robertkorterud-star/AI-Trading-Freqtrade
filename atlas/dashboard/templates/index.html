@@ -48,7 +48,7 @@
                 <div class="overview-pulse-price">{{ item.price_nok }} NOK</div>
                 <div class="overview-pulse-bottom"><span class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</span><span>{{ item.confidence }}% {{ t("confidence_lower") }}</span></div>
             </a>
-            {% else %}<p>{{ t("no_market_data") }}</p>{% endfor %}
+            {% else %}<p>{{ t("no_ranked_candidates") }}</p>{% endfor %}
         </div>
     </section>
 
@@ -87,9 +87,9 @@
 
     <section class="overview-columns">
         <div class="overview-card table-wrap">
-            <header><div><h2>{{ t("watchlist") }}</h2><small>{{ t("watchlist_context") }}</small></div><a class="overview-button" href="/markets">{{ t("manage") }}</a></header>
+            <header><div><h2>{{ t("watchlist") }}</h2><small>{{ t("latest_context") }}</small></div><a class="overview-button" href="/markets">{{ t("manage") }}</a></header>
             <table class="overview-table">
-                <thead><tr><th>{{ t("asset") }}</th><th>{{ t("price") }}</th><th>{{ t("change") }}</th><th>ATLAS</th></tr></thead>
+                <thead><tr><th>{{ t("asset") }}</th><th>{{ t("current_price") }}</th><th>{{ t("return") }}</th><th>ATLAS</th></tr></thead>
                 <tbody>
                 {% for item in dashboard.market %}
                 <tr><td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td><td>{{ item.price_nok }} NOK</td><td class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</td><td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }} · {{ item.confidence }}%</span></td></tr>
