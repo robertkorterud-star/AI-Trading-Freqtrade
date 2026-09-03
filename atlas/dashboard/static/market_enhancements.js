@@ -51,6 +51,101 @@
 
 
     // ---------------------------------------------------------
+    // Overview chart compatibility.
+    //
+    // HistoricalMarketDataAdapter returns Yahoo timestamps as ISO strings,
+    // while Lightweight Charts expects Unix seconds. Normalize that response
+    // at the fetch boundary so the chart remains exchange-neutral and the
+    // existing dashboard endpoint contract stays unchanged.
+    // ---------------------------------------------------------
+    const fetchWithFxCompatibility = window.fetch.bind(window);
+
+    window.fetch = async function (input, init) {
+        const rawUrl = typeof input === "string" ? input : input && input.url;
+        const response = await fetchWithFxCompatibility(input, init);
+
+        if (!rawUrl || !rawUrl.includes("/api/market-candles")) {
+            return response;
+        }
+
+        try {
+            const data = await response.clone().json();
+            if (!Array.isArray(data.candles)) {
+                return response;
+            }
+
+            const toUnixSeconds = function (value) {
+                if (typeof value === "number" && Number.isFinite(value)) {
+                    return Math.floor(value > 100000000000 ? value / 1000 : value);
+                }
+
+                if (typeof value === "string") {
+                    const numeric = Number(value);
+                    if (Number.isFinite(numeric)) {
+                        return Math.floor(numeric > 100000000000 ? numeric / 1000 : numeric);
+                    }
+
+                    const parsed = Date.parse(value);
+                    if (Number.isFinite(parsed)) {
+                        return Math.floor(parsed / 1000);
+                    }
+                }
+
+                return null;
+            };
+
+            data.candles = data.candles
+                .map(function (candle) {
+                    return Object.assign({}, candle, {
+                        timestamp: toUnixSeconds(candle.timestamp),
+                    });
+                })
+                .filter(function (candle) {
+                    return candle.timestamp !== null;
+                });
+
+            return new Response(JSON.stringify(data), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            });
+        } catch (_) {
+            return response;
+        }
+    };
+
+
+    // ---------------------------------------------------------
+    // Overview layout.
+    //
+    // Keep the live market/chart as the first content block. The descriptive
+    // "ATLAS AI Trading Intelligence / Markedsoversikt" hero follows directly
+    // underneath it, matching the intended command-center hierarchy without
+    // changing any dashboard data or route behavior.
+    // ---------------------------------------------------------
+    function installOverviewLayout() {
+        const moveHeroBelowChart = function () {
+            const page = document.querySelector(".overview-page");
+            const hero = page && page.querySelector(":scope > .overview-hero");
+            const workspace = page && page.querySelector(
+                ":scope > .overview-market-workspace"
+            );
+
+            if (!hero || !workspace) {
+                return;
+            }
+
+            if (workspace.nextElementSibling !== hero) {
+                workspace.parentNode.insertBefore(hero, workspace.nextElementSibling);
+            }
+        };
+
+        moveHeroBelowChart();
+        window.setTimeout(moveHeroBelowChart, 0);
+    }
+
+
+    // ---------------------------------------------------------
     // Research overlay.
     // ---------------------------------------------------------
     function installResearchOverlay() {
@@ -382,8 +477,12 @@
     installStyles();
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", installResearchOverlay);
+        document.addEventListener("DOMContentLoaded", function () {
+            installOverviewLayout();
+            installResearchOverlay();
+        });
     } else {
+        installOverviewLayout();
         installResearchOverlay();
     }
 })();
