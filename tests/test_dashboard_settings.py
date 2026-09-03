@@ -10,9 +10,9 @@ def test_settings_page_contains_trading_mode_controls():
 
     text = SETTINGS_TEMPLATE.read_text()
 
-    assert "Trading Mode" in text
-    assert "Advisor" in text
-    assert "Paper / Dry Run" in text
+    assert "{{ t('trading_mode') }}" in text
+    assert "{{ t('advisor') }}" in text
+    assert "{{ t('paper_dry_run') }}" in text
     assert "paper_trading" in text
 
 
@@ -31,7 +31,7 @@ def test_settings_page_contains_save_form():
     assert '<form' in text
     assert 'action="/settings"' in text
     assert 'method="post"' in text
-    assert 'Save Settings' in text
+    assert "{{ t('save_settings') }}" in text
 
 
 def test_settings_page_marks_active_trading_mode():
@@ -48,7 +48,7 @@ def test_settings_page_contains_ai_provider_controls():
 
     text = SETTINGS_TEMPLATE.read_text()
 
-    assert "AI Provider" in text
+    assert "{{ t('ai_provider') }}" in text
     assert "OpenAI" in text
     assert "Ollama" in text
     assert 'name="ai_provider"' in text
