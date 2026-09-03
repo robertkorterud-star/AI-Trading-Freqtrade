@@ -439,10 +439,13 @@ async def update_settings(request: Request):
     form = await request.form()
     trading_mode = form.get("trading_mode")
     language = form.get("language")
-    if trading_mode:
-        settings_service.set_trading_mode(str(trading_mode))
-    if language:
-        settings_service.set_language(str(language))
+    ai_provider = form.get("ai_provider")
+    if trading_mode is not None:
+        settings_service.set_trading_mode(trading_mode)
+    if language is not None:
+        settings_service.set_language(language)
+    if ai_provider is not None:
+        settings_service.set_ai_provider(ai_provider)
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -450,3 +453,9 @@ async def update_settings(request: Request):
 async def settings(request: Request):
     dashboard = service.get_dashboard()
     return templates.TemplateResponse(request=request, name="settings.html", context={"request": request, "dashboard": dashboard})
+
+
+@app.get("/agents", response_class=HTMLResponse)
+async def agents(request: Request):
+    dashboard = service.get_dashboard()
+    return templates.TemplateResponse(request=request, name="agents.html", context={"request": request, "dashboard": dashboard})
