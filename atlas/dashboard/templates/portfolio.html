@@ -13,6 +13,28 @@
         </div>
     </div>
 
+    <div class="card portfolio-dashboard-card" id="atlas-dry-run-card">
+        <div class="portfolio-header-content">
+            <div>
+                <h2>🤖 ATLAS Dry-Run</h2>
+                <p>Persistent virtuell konto fra ATLAS sin markedsbaserte dry-run. Ingen ekte ordre.</p>
+            </div>
+            <span class="paper-badge">VIRTUAL ONLY</span>
+        </div>
+        <div class="portfolio-summary-grid" id="atlas-dry-run-summary">
+            <div class="card portfolio-stat"><small>Startkapital</small><strong id="atlas-starting-capital">—</strong></div>
+            <div class="card portfolio-stat"><small>Kontanter</small><strong id="atlas-cash">—</strong></div>
+            <div class="card portfolio-stat"><small>Posisjonsverdi</small><strong id="atlas-position-value">—</strong></div>
+            <div class="card portfolio-stat"><small>Realisert P&amp;L</small><strong id="atlas-realized-pnl">—</strong></div>
+        </div>
+        <div style="margin-top:16px">
+            <h3>Åpne ATLAS-posisjoner</h3>
+            <div id="atlas-dry-run-positions">
+                <div class="empty-portfolio"><div class="empty-icon">📭</div><h3>Ingen åpne virtuelle posisjoner</h3><p>Kjør ATLAS dry-run. En faktisk virtuell BUY vil vises her.</p></div>
+            </div>
+        </div>
+    </div>
+
     <div class="portfolio-summary-grid">
         <div class="card portfolio-stat"><small>{{ t('total_equity') }}</small><strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong></div>
         <div class="card portfolio-stat"><small>{{ t('cash') }}</small><strong>{{ dashboard.portfolio.cash_nok }} NOK</strong></div>
@@ -80,6 +102,71 @@
                 </div>
             {% endif %}
         </section>
+
+        <section class="card portfolio-dashboard-card trade-history-dashboard-card">
+            <h2>🤖 ATLAS Dry-Run handler</h2>
+            <div id="atlas-dry-run-history">
+                <div class="empty-portfolio"><div class="empty-icon">📭</div><h3>Ingen virtuelle handler ennå</h3><p>ATLAS viser BUY/SELL her når en beslutning faktisk endrer den virtuelle posisjonen.</p></div>
+            </div>
+        </section>
     </div>
 </div>
+
+<script>
+(() => {
+    const money = value => `${Number(value || 0).toLocaleString('nb-NO', {minimumFractionDigits: 2, maximumFractionDigits: 2})} NOK`;
+    const signedMoney = value => `${Number(value || 0) >= 0 ? '+' : ''}${money(value)}`;
+
+    async function loadAtlasDryRun() {
+        try {
+            const response = await fetch('/static/paper_portfolio.json', {cache: 'no-store'});
+            if (!response.ok) return;
+            const state = await response.json();
+            const positions = state.positions || {};
+
+            document.getElementById('atlas-starting-capital').textContent = money(state.initial_cash);
+            document.getElementById('atlas-cash').textContent = money(state.cash);
+            document.getElementById('atlas-realized-pnl').textContent = signedMoney(state.realized_pnl);
+
+            let positionValue = 0;
+            const rows = Object.entries(positions).map(([symbol, position]) => {
+                const quantity = Number(position.quantity || 0);
+                const value = quantity * Number(position.average_price || 0);
+                positionValue += value;
+                return `<tr><td>${symbol}</td><td>${quantity.toFixed(8)}</td><td>${Number(position.average_price || 0).toLocaleString('nb-NO', {maximumFractionDigits: 2})}</td><td>${money(value)}</td></tr>`;
+            }).join('');
+
+            document.getElementById('atlas-position-value').textContent = money(positionValue);
+            const container = document.getElementById('atlas-dry-run-positions');
+            container.innerHTML = rows
+                ? `<table><thead><tr><th>Symbol</th><th>Antall</th><th>Snittpris</th><th>Verdi</th></tr></thead><tbody>${rows}</tbody></table>`
+                : `<div class="empty-portfolio"><div class="empty-icon">📭</div><h3>Ingen åpne virtuelle posisjoner</h3><p>Kjør ATLAS dry-run. En faktisk virtuell BUY vil vises her.</p></div>`;
+        } catch (error) {
+            console.debug('ATLAS dry-run portfolio not available yet', error);
+        }
+    }
+
+    async function loadAtlasHistory() {
+        try {
+            const response = await fetch('/static/virtual_trades.json', {cache: 'no-store'});
+            if (!response.ok) return;
+            const trades = await response.json();
+            const recent = Array.isArray(trades) ? trades.slice(-20).reverse() : [];
+            if (!recent.length) return;
+
+            document.getElementById('atlas-dry-run-history').innerHTML = `<div class="trade-history">${recent.map(trade => `
+                <div class="trade-row">
+                    <div class="trade-main"><span class="trade-action ${trade.action === 'BUY' ? 'buy' : 'sell'}">${trade.action}</span><strong>${trade.symbol}</strong></div>
+                    <div class="trade-details"><span>${Number(trade.quantity || 0).toFixed(8)}</span><span>${Number(trade.price || 0).toLocaleString('nb-NO', {maximumFractionDigits: 2})}</span>${trade.action === 'SELL' ? `<strong class="${Number(trade.realized_pnl || 0) >= 0 ? 'positive' : 'negative'}">${signedMoney(trade.realized_pnl)}</strong>` : ''}</div>
+                    <small class="trade-time">${trade.timestamp_iso || ''}</small>
+                </div>`).join('')}</div>`;
+        } catch (error) {
+            console.debug('ATLAS dry-run history not available yet', error);
+        }
+    }
+
+    loadAtlasDryRun();
+    loadAtlasHistory();
+})();
+</script>
 {% endblock %}
