@@ -2,274 +2,112 @@
 
 {% block content %}
 
-<form
-    action="/settings"
-    method="post"
-    class="settings-page"
->
-
-    <!-- SETTINGS HEADER -->
+<form action="/settings" method="post" class="settings-page">
 
     <div class="card settings-header">
-
-        <h2>⚙️ Settings</h2>
-
-        <p>
-            Configure how ATLAS operates.
-        </p>
-
+        <h2>⚙️ {{ t('settings') }}</h2>
+        <p>{{ t('configure_atlas') }}</p>
     </div>
-
-
-    <!-- SETTINGS COLUMNS -->
 
     <div class="settings-columns">
 
-        <!-- TRADING MODE -->
-
         <div class="card settings-dashboard-card">
-
-            <h2>Trading Mode</h2>
-
+            <h2>{{ t('trading_mode') }}</h2>
             <p>
-                Active mode:
-                <strong>
-                    {{ dashboard.trading.mode.upper() }}
-                </strong>
+                {{ t('active_mode') }}:
+                <strong>{{ dashboard.trading.mode.upper() }}</strong>
             </p>
 
             <div class="settings-option">
-
                 <label>
-
-                    <input
-                        type="radio"
-                        name="trading_mode"
-                        value="advisor"
-                        {% if dashboard.trading.mode == "advisor" %}checked{% endif %}
-                    >
-
-                    Advisor
-
+                    <input type="radio" name="trading_mode" value="advisor" {% if dashboard.trading.mode == "advisor" %}checked{% endif %}>
+                    {{ t('advisor') }}
                 </label>
-
-                <small>
-                    ATLAS analyzes the market but does not place orders.
-                </small>
-
+                <small>{{ t('advisor_description') }}</small>
             </div>
-
 
             <div class="settings-option">
-
                 <label>
-
-                    <input
-                        type="radio"
-                        name="trading_mode"
-                        value="paper"
-                        id="paper_trading"
-                        {% if dashboard.trading.mode == "paper" %}checked{% endif %}
-                    >
-
-                    Paper / Dry Run
-
+                    <input type="radio" name="trading_mode" value="paper" id="paper_trading" {% if dashboard.trading.mode == "paper" %}checked{% endif %}>
+                    {{ t('paper_dry_run') }}
                 </label>
-
-                <small>
-                    ATLAS simulates trades without placing real orders.
-                </small>
-
+                <small>{{ t('paper_description') }}</small>
             </div>
-
         </div>
-
-
-    <!-- LANGUAGE -->
-
-    <div class="card settings-dashboard-card">
-
-        <h2>🌐 Language / Språk</h2>
-
-        <div class="settings-option">
-
-            <label>
-
-                <input
-                    type="radio"
-                    name="language"
-                    value="no"
-                    {% if dashboard.trading.language == "no" %}checked{% endif %}
-                >
-
-                🇳🇴 Norsk
-
-            </label>
-
-        </div>
-
-        <div class="settings-option">
-
-            <label>
-
-                <input
-                    type="radio"
-                    name="language"
-                    value="en"
-                    {% if dashboard.trading.language == "en" %}checked{% endif %}
-                >
-
-                🇬🇧 English
-
-            </label>
-
-        </div>
-
-    </div>
-
-
-    <!-- AI PROVIDER -->
-
-    <div class="card settings-dashboard-card">
-
-        <h2>🤖 AI Provider</h2>
-
-        <p>
-            Active provider:
-            <strong>
-                {{ dashboard.trading.ai_provider.upper() }}
-            </strong>
-        </p>
-
-        <div class="settings-option">
-
-            <label>
-
-                <input
-                    type="radio"
-                    name="ai_provider"
-                    value="openai"
-                    {% if dashboard.trading.ai_provider == "openai" %}checked{% endif %}
-                >
-
-                OpenAI
-
-            </label>
-
-            <small>
-                Use OpenAI for ATLAS AI analysis.
-            </small>
-
-        </div>
-
-
-        <div class="settings-option">
-
-            <label>
-
-                <input
-                    type="radio"
-                    name="ai_provider"
-                    value="ollama"
-                    {% if dashboard.trading.ai_provider == "ollama" %}checked{% endif %}
-                >
-
-                Ollama
-
-            </label>
-
-            <small>
-                Use local Ollama with qwen3:4b.
-            </small>
-
-        </div>
-
-    </div>
-
-
-        <!-- PAPER TRADING -->
 
         <div class="card settings-dashboard-card">
-
-            <h2>Paper Trading</h2>
-
-            <div class="settings-row">
-
-                <span>Paper trading</span>
-
-                <strong>
-                    {% if dashboard.trading.paper_trading %}
-                        ON
-                    {% else %}
-                        OFF
-                    {% endif %}
-                </strong>
-
+            <h2>🌐 {{ t('language') }}</h2>
+            <div class="settings-option">
+                <label>
+                    <input type="radio" name="language" value="no" {% if dashboard.trading.language == "no" %}checked{% endif %}>
+                    🇳🇴 {{ t('language_norwegian') }}
+                </label>
             </div>
-
-
-            <div class="settings-row">
-
-                <span>Virtual capital</span>
-
-                <strong>
-                    {{ "{:,.0f}".format(
-                        dashboard.trading.virtual_capital_nok
-                        if dashboard.trading is defined
-                        else 5000
-                    ) }}
-                    NOK
-                </strong>
-
+            <div class="settings-option">
+                <label>
+                    <input type="radio" name="language" value="en" {% if dashboard.trading.language == "en" %}checked{% endif %}>
+                    🇬🇧 {{ t('language_english') }}
+                </label>
             </div>
-
-
-            <div class="settings-row">
-
-                <span>Live orders</span>
-
-                <strong>
-                    DISABLED
-                </strong>
-
-            </div>
-
         </div>
 
+        <div class="card settings-dashboard-card">
+            <h2>🤖 {{ t('ai_provider') }}</h2>
+            <p>
+                {{ t('active_provider') }}:
+                <strong>{{ dashboard.trading.ai_provider.upper() }}</strong>
+            </p>
 
-        <!-- SAFETY -->
+            <div class="settings-option">
+                <label>
+                    <input type="radio" name="ai_provider" value="openai" {% if dashboard.trading.ai_provider == "openai" %}checked{% endif %}>
+                    OpenAI
+                </label>
+                <small>{{ t('openai_description') }}</small>
+            </div>
+
+            <div class="settings-option">
+                <label>
+                    <input type="radio" name="ai_provider" value="ollama" {% if dashboard.trading.ai_provider == "ollama" %}checked{% endif %}>
+                    Ollama
+                </label>
+                <small>{{ t('ollama_description') }}</small>
+            </div>
+        </div>
+
+        <div class="card settings-dashboard-card">
+            <h2>{{ t('paper_trading') }}</h2>
+            <div class="settings-row">
+                <span>{{ t('paper_trading') }}</span>
+                <strong>{% if dashboard.trading.paper_trading %}{{ t('on') }}{% else %}{{ t('off') }}{% endif %}</strong>
+            </div>
+            <div class="settings-row">
+                <span>{{ t('virtual_capital') }}</span>
+                <strong>
+                    {{ "{:,.0f}".format(dashboard.trading.virtual_capital_nok if dashboard.trading is defined else 5000) }} NOK
+                </strong>
+            </div>
+            <div class="settings-row">
+                <span>{{ t('live_orders') }}</span>
+                <strong>{{ t('disabled') }}</strong>
+            </div>
+        </div>
 
         <div class="card settings-dashboard-card settings-safety-card">
-
-            <h2>🛡️ Safety</h2>
-
+            <h2>🛡️ {{ t('safety') }}</h2>
             <div class="settings-safety-row">
-
-                <span>Live orders</span>
-
-                <strong class="settings-disabled">
-                    DISABLED
-                </strong>
-
+                <span>{{ t('live_orders') }}</span>
+                <strong class="settings-disabled">{{ t('disabled') }}</strong>
             </div>
-
             <p class="settings-safety-text">
-                ATLAS cannot place real orders.
-                Trading remains protected while this setting is disabled.
+                {{ t('safety_description') }}
             </p>
-
         </div>
 
     </div>
 
-
-    <!-- SAVE -->
-
-    <button
-        type="submit"
-        class="settings-save-button"
-    >
-        💾 Save Settings
+    <button type="submit" class="settings-save-button">
+        💾 {{ t('save_settings') }}
     </button>
 
 </form>
