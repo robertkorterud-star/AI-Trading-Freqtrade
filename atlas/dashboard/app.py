@@ -58,8 +58,7 @@ web_research = WebResearchAdapter()
 binance_market_data = BinanceMarketDataAdapter()
 historical_market_data = HistoricalMarketDataAdapter()
 multi_timeframe = MultiTimeframeService(
-    binance_market_data=binance_market_data,
-    historical_market_data=historical_market_data,
+    market_data=historical_market_data,
 )
 
 
@@ -86,8 +85,6 @@ async def dashboard(request: Request):
 async def scanner(request: Request):
     """ATLAS Scanner page; uses only the hourly scanner snapshot."""
     scanner_data = service.get_scanner()
-    # Keep the lightweight route compatible with template contracts even when
-    # a caller supplies a minimal scanner snapshot (for example in tests).
     scanner_data.setdefault(
         "rules",
         {
