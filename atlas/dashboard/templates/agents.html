@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-ATLAS - Agents
+ATLAS - {{ t('agents') }}
 {% endblock %}
 
 {% block content %}
@@ -9,9 +9,9 @@ ATLAS - Agents
 <div class="agents-page">
 
     <div class="card agents-header">
-        <h1>🤖 AI Agents</h1>
+        <h1>🤖 {{ t('agents') }}</h1>
         <p>
-            Performance and adaptive weights for ATLAS analysts.
+            {{ t('agents_description') }}
         </p>
     </div>
 
@@ -31,22 +31,22 @@ ATLAS - Agents
                     <div class="agent-metrics">
 
                         <div>
-                            <small>Predictions</small>
+                            <small>{{ t('predictions') }}</small>
                             <strong>{{ agent.predictions }}</strong>
                         </div>
 
                         <div>
-                            <small>Correct</small>
+                            <small>{{ t('correct') }}</small>
                             <strong>{{ agent.correct }}</strong>
                         </div>
 
                         <div>
-                            <small>Wrong</small>
+                            <small>{{ t('wrong') }}</small>
                             <strong>{{ agent.wrong }}</strong>
                         </div>
 
                         <div>
-                            <small>Accuracy</small>
+                            <small>{{ t('accuracy') }}</small>
                             <strong>{{ agent.accuracy }}%</strong>
                         </div>
 
@@ -60,7 +60,7 @@ ATLAS - Agents
                     <div class="agent-weight">
 
                         <span>
-                            Current Weight
+                            {{ t('current_weight') }}
                         </span>
 
                         <strong>
@@ -78,25 +78,25 @@ ATLAS - Agents
 
                     <div class="agent-weight-scale">
                         <span>0%</span>
-                        <span>60% safety limit</span>
+                        <span>{{ t('safety_limit') }}</span>
                     </div>
 
                     <div class="agent-learning-status">
 
                         <span>
-                            Learning
+                            {{ t('learning') }}
                         </span>
 
                         {% if agent.predictions >= 20 %}
 
                             <strong>
-                                ● Adaptive
+                                ● {{ t('adaptive') }}
                             </strong>
 
                         {% else %}
 
                             <strong>
-                                ● Building history
+                                ● {{ t('building_history') }}
                             </strong>
 
                         {% endif %}
@@ -114,7 +114,7 @@ ATLAS - Agents
                         <div class="agent-weight-explanation">
 
                             <div class="agent-explanation-title">
-                                Why this weight?
+                                {{ t('why_this_weight') }}
                             </div>
 
                             <p>
@@ -126,17 +126,17 @@ ATLAS - Agents
                                 <div class="agent-explanation-metrics">
 
                                     <span>
-                                        Accuracy:
+                                        {{ t('accuracy') }}:
                                         {{ explanation.accuracy | round(1) }}%
                                     </span>
 
                                     <span>
-                                        Stabilized:
+                                        {{ t('stabilized') }}:
                                         {{ explanation.stabilized_accuracy }}%
                                     </span>
 
                                     <span>
-                                        Average:
+                                        {{ t('average') }}:
                                         {{ explanation.average_stabilized_accuracy }}%
                                     </span>
 
@@ -162,10 +162,10 @@ ATLAS - Agents
 
             <div class="card agent-empty-card">
 
-                <h2>No performance history yet</h2>
+                <h2>{{ t('no_performance_history') }}</h2>
 
                 <p>
-                    ATLAS has not evaluated any agent predictions yet.
+                    {{ t('no_agent_predictions_evaluated') }}
                 </p>
 
             </div>
