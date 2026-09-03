@@ -7,238 +7,104 @@ ATLAS - Scanner
 {% block content %}
 
 <style>
-    .scanner-page {
-        display: grid;
-        gap: 18px;
-    }
-
-    .scanner-hero {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 20px;
-        flex-wrap: wrap;
-    }
-
-    .scanner-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border: 1px solid #253046;
-        border-radius: 999px;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .scanner-dot {
-        width: 9px;
-        height: 9px;
-        border-radius: 50%;
-        background: #22c55e;
-        box-shadow: 0 0 10px rgba(34, 197, 94, 0.65);
-    }
-
-    .scanner-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-    }
-
-    .scanner-card {
-        min-height: 150px;
-    }
-
-    .scanner-card h2 {
-        margin-bottom: 10px;
-        font-size: 18px;
-    }
-
-    .scanner-card p {
-        color: #94a3b8;
-        line-height: 1.55;
-    }
-
-    .scanner-flow {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 10px;
-        align-items: stretch;
-    }
-
-    .scanner-step {
-        padding: 16px;
-        border: 1px solid #253046;
-        border-radius: 10px;
-        background: #0b0f17;
-    }
-
-    .scanner-step strong {
-        display: block;
-        margin-bottom: 5px;
-    }
-
-    .scanner-step span {
-        color: #94a3b8;
-        font-size: 13px;
-    }
-
-    .scanner-empty {
-        text-align: center;
-        padding: 38px 20px;
-    }
-
-    .scanner-empty .icon {
-        font-size: 34px;
-        margin-bottom: 10px;
-    }
-
-    .scanner-empty p {
-        max-width: 720px;
-        margin: 8px auto 0;
-        color: #94a3b8;
-        line-height: 1.6;
-    }
-
-    .scanner-rules {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px 24px;
-        margin-top: 12px;
-    }
-
-    .scanner-rule {
-        display: flex;
-        justify-content: space-between;
-        gap: 20px;
-        padding: 10px 0;
-        border-bottom: 1px solid #182033;
-    }
-
-    .scanner-rule span {
-        color: #94a3b8;
-    }
-
-    @media (max-width: 900px) {
-        .scanner-grid,
-        .scanner-flow,
-        .scanner-rules {
-            grid-template-columns: 1fr;
-        }
-    }
+    .scanner-page { display: grid; gap: 18px; }
+    .scanner-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+    .scanner-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #253046; border-radius: 999px; font-size: 13px; font-weight: 700; }
+    .scanner-dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.65); }
+    .scanner-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .scanner-card { min-height: 150px; }
+    .scanner-card h2 { margin-bottom: 10px; font-size: 18px; }
+    .scanner-card p { color: #94a3b8; line-height: 1.55; }
+    .scanner-flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+    .scanner-step { padding: 16px; border: 1px solid #253046; border-radius: 10px; background: #0b0f17; }
+    .scanner-step strong { display: block; margin-bottom: 5px; }
+    .scanner-step span { color: #94a3b8; font-size: 13px; }
+    .scanner-empty { text-align: center; padding: 38px 20px; }
+    .scanner-empty .icon { font-size: 34px; margin-bottom: 10px; }
+    .scanner-empty p { max-width: 720px; margin: 8px auto 0; color: #94a3b8; line-height: 1.6; }
+    .scanner-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin-top: 12px; }
+    .scanner-rule { display: flex; justify-content: space-between; gap: 20px; padding: 10px 0; border-bottom: 1px solid #182033; }
+    .scanner-rule span { color: #94a3b8; }
+    .scanner-feed { display: grid; gap: 10px; }
+    .scanner-summary { display: flex; gap: 24px; flex-wrap: wrap; color: #94a3b8; }
+    .scanner-summary strong { color: inherit; }
+    .scanner-candidate { padding: 14px 16px; border: 1px solid #253046; border-radius: 10px; display: grid; gap: 8px; }
+    .scanner-candidate-head { display: flex; justify-content: space-between; gap: 16px; }
+    .scanner-score { font-weight: 800; }
+    .scanner-reasons { margin: 0; padding-left: 20px; color: #94a3b8; }
+    @media (max-width: 900px) { .scanner-grid, .scanner-flow, .scanner-rules { grid-template-columns: 1fr; } }
 </style>
 
 <div class="scanner-page">
-
     <div class="card scanner-hero">
         <div>
             <h1>🔎 ATLAS Scanner</h1>
-            <p>
-                Market discovery layer for stocks and crypto.
-                ATLAS uses this stage to find interesting candidates
-                before deeper analysis and trading decisions.
-            </p>
+            <p>Market discovery layer for stocks and crypto. Kandidater går videre til horisont, algoritmer, AI-analyse, risiko og kostnad.</p>
         </div>
-
-        <div class="scanner-status">
-            <span class="scanner-dot"></span>
-            Scanner engine ready
-        </div>
+        <div class="scanner-status"><span class="scanner-dot"></span>Scanner engine connected</div>
     </div>
 
     <div class="scanner-grid">
+        <div class="card scanner-card"><h2>📈 Stocks</h2><p>Forberedt for momentum, relativt volum, breakouts, catalysts, likviditet og float.</p></div>
+        <div class="card scanner-card"><h2>₿ Crypto</h2><p>Forberedt for 24/7 scanning med momentum, volum, breakout og likviditet.</p></div>
+        <div class="card scanner-card"><h2>🧠 Research only</h2><p>Scanner-resultater er kandidater, ikke ordre. Trading forblir paper/dry-run.</p></div>
+    </div>
 
-        <div class="card scanner-card">
-            <h2>📈 Stocks</h2>
-            <p>
-                Prepared for momentum, relative volume, breakouts,
-                catalysts, liquidity and float-aware signals.
-            </p>
+    <div class="card">
+        <h2>Live scanner feed</h2>
+        <div class="scanner-summary" style="margin:10px 0 16px;">
+            <span>Observasjoner: <strong>{{ dashboard.scanner.scanned }}</strong></span>
+            <span>Eligible kandidater: <strong>{{ dashboard.scanner.eligible }}</strong></span>
         </div>
-
-        <div class="card scanner-card">
-            <h2>₿ Crypto</h2>
-            <p>
-                Prepared for 24/7 market scanning with momentum,
-                volume, breakout and liquidity signals.
-            </p>
-        </div>
-
-        <div class="card scanner-card">
-            <h2>🧠 Research only</h2>
-            <p>
-                Scanner findings are candidates, not orders.
-                Every candidate must pass later analysis, risk and
-                trading-cost checks.
-            </p>
-        </div>
-
+        {% if dashboard.scanner.candidates %}
+            <div class="scanner-feed">
+                {% for candidate in dashboard.scanner.candidates %}
+                    <div class="scanner-candidate">
+                        <div class="scanner-candidate-head">
+                            <strong>{{ candidate.symbol }} · {{ candidate.asset_type }}</strong>
+                            <span class="scanner-score">Score {{ "%.2f"|format(candidate.score) }}</span>
+                        </div>
+                        <div class="scanner-summary">
+                            <span>Momentum {{ "%.1f"|format(candidate.momentum_score) }}</span>
+                            <span>Volume {{ "%.1f"|format(candidate.volume_score) }}</span>
+                            <span>Breakout {{ "%.1f"|format(candidate.breakout_score) }}</span>
+                            <span>Catalyst {{ "%.1f"|format(candidate.catalyst_score) }}</span>
+                            <span>Liquidity {{ "%.1f"|format(candidate.liquidity_score) }}</span>
+                        </div>
+                        {% if candidate.reasons %}<ul class="scanner-reasons">{% for reason in candidate.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="scanner-empty" style="padding:20px 0 8px;">
+                <div class="icon">📡</div>
+                <h3>Ingen markedsobservasjoner er koblet til ennå</h3>
+                <p>ScannerService er nå koblet til dashboard-kontrakten. Neste steg er å mate den med ekte, read-only markedsdata — uten å simulere kandidater.</p>
+            </div>
+        {% endif %}
     </div>
 
     <div class="card">
         <h2>ATLAS decision pipeline</h2>
-        <p style="color:#94a3b8; margin:8px 0 16px;">
-            The scanner is the first stage of the candidate discovery pipeline.
-        </p>
-
+        <p style="color:#94a3b8; margin:8px 0 16px;">Scanner → Horizon → Algorithms → AI Analyst → Risk + Cost → Candidate Ranker → Decision Engine</p>
         <div class="scanner-flow">
-            <div class="scanner-step">
-                <strong>🔎 Scanner</strong>
-                <span>Find candidates</span>
-            </div>
-            <div class="scanner-step">
-                <strong>🎯 Horizon</strong>
-                <span>Day / Swing / Position</span>
-            </div>
-            <div class="scanner-step">
-                <strong>⚙️ Algorithms</strong>
-                <span>Technical signals</span>
-            </div>
-            <div class="scanner-step">
-                <strong>🧠 AI Analyst</strong>
-                <span>Deep analysis</span>
-            </div>
-            <div class="scanner-step">
-                <strong>🛡️ Risk + Cost</strong>
-                <span>Before paper trade</span>
-            </div>
+            <div class="scanner-step"><strong>🔎 Scanner</strong><span>Find candidates</span></div>
+            <div class="scanner-step"><strong>🎯 Horizon</strong><span>Day / Swing / Position</span></div>
+            <div class="scanner-step"><strong>⚙️ Algorithms</strong><span>Technical signals</span></div>
+            <div class="scanner-step"><strong>🧠 AI Analyst</strong><span>Deep analysis</span></div>
+            <div class="scanner-step"><strong>🛡️ Risk + Cost</strong><span>Before paper trade</span></div>
         </div>
     </div>
 
     <div class="card">
         <h2>Current scanner rules</h2>
-
         <div class="scanner-rules">
-            <div class="scanner-rule">
-                <span>Stock minimum price</span>
-                <strong>&gt; $1.00</strong>
-            </div>
-            <div class="scanner-rule">
-                <span>Minimum average volume</span>
-                <strong>100,000</strong>
-            </div>
-            <div class="scanner-rule">
-                <span>Minimum current volume</span>
-                <strong>100,000</strong>
-            </div>
-            <div class="scanner-rule">
-                <span>Liquidity</span>
-                <strong>Required</strong>
-            </div>
+            <div class="scanner-rule"><span>Stock minimum price</span><strong>&gt; $1.00</strong></div>
+            <div class="scanner-rule"><span>Minimum average volume</span><strong>100,000</strong></div>
+            <div class="scanner-rule"><span>Minimum current volume</span><strong>100,000</strong></div>
+            <div class="scanner-rule"><span>Liquidity</span><strong>Required</strong></div>
         </div>
     </div>
-
-    <div class="card scanner-empty">
-        <div class="icon">📡</div>
-        <h2>Live candidate feed kommer i neste steg</h2>
-        <p>
-            Denne fanen er nå koblet inn som ATLAS Scanner-arbeidsflate.
-            Neste steg er å koble den faktiske markedsdatastreamen til
-            MarketScout slik at du kan se kandidater, score, årsaker,
-            momentum, volum, breakout og catalyst mens ATLAS jobber.
-        </p>
-    </div>
-
 </div>
 
 {% endblock %}
