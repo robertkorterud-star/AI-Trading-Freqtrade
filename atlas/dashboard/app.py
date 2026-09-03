@@ -66,6 +66,10 @@ def get_language():
     return settings_service.get_language()
 
 
+# Keep both helpers available to every dashboard template, including
+# standalone pages such as Scanner that extend base.html.
+templates.env.globals["get_language"] = get_language
+
 def build_dashboard(selected_symbol=None):
     return service.get_dashboard(selected_symbol=selected_symbol)
 
@@ -126,110 +130,4 @@ async def dashboard_api(request: Request):
             "trade_history": dashboard["trade_history"],
             "agent_performance": dashboard["agent_performance"],
         }
-    )
-
-
-@app.get("/api/market-search")
-async def market_search_api(request: Request):
-    query = request.query_params.get("q", "")
-    return JSONResponse(content=market_search.search(query))
-
-
-@app.get("/analysis", response_class=HTMLResponse)
-async def analysis_page(request: Request):
-    dashboard = build_dashboard()
-    return templates.TemplateResponse(
-        request=request,
-        name="analysis.html",
-        context={"request": request, "dashboard": dashboard},
-    )
-
-
-@app.get("/market/{symbol}", response_class=HTMLResponse)
-async def market_page(request: Request, symbol: str):
-    return RedirectResponse(url=f"/?symbol={symbol}")
-
-
-@app.get("/api/fx-rate")
-async def fx_rate_api():
-    rate = service.data.exchange.get_rate("USD", "NOK")
-    return JSONResponse(
-        content={"base": rate.base, "target": rate.target, "rate": rate.rate}
-    )
-
-
-@app.get("/api/binance-candles")
-async def binance_candles_api(request: Request):
-    symbol = request.query_params.get("symbol", "BTCUSDT")
-    interval = request.query_params.get("interval", "1h")
-    limit = int(request.query_params.get("limit", "200"))
-    return JSONResponse(
-        content=binance_market_data.candles(
-            symbol=symbol,
-            interval=interval,
-            limit=limit,
-        )
-    )
-
-
-@app.get("/api/market-candles")
-async def market_candles_api(request: Request):
-    symbol = request.query_params.get("symbol", "NVDA")
-    interval = request.query_params.get("interval", "1d")
-    limit = int(request.query_params.get("limit", "200"))
-    return JSONResponse(
-        content=historical_market_data.candles(
-            symbol=symbol,
-            interval=interval,
-            limit=limit,
-        )
-    )
-
-
-@app.get("/api/multi-timeframe")
-async def multi_timeframe_api(request: Request):
-    symbol = request.query_params.get("symbol", "BTCUSDT")
-    return JSONResponse(content=multi_timeframe.build(symbol))
-
-
-@app.get("/api/strategy-research")
-async def strategy_research_api(request: Request):
-    symbol = request.query_params.get("symbol", "BTCUSDT")
-    return JSONResponse(content=strategy_research.research(symbol))
-
-
-@app.get("/portfolio", response_class=HTMLResponse)
-async def portfolio_page(request: Request):
-    dashboard = build_dashboard()
-    return templates.TemplateResponse(
-        request=request,
-        name="portfolio.html",
-        context={"request": request, "dashboard": dashboard},
-    )
-
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    dashboard = build_dashboard()
-    return templates.TemplateResponse(
-        request=request,
-        name="settings.html",
-        context={"request": request, "dashboard": dashboard},
-    )
-
-
-@app.post("/settings/language")
-async def set_language(request: Request):
-    form = await request.form()
-    settings_service.set_language(form.get("language", "no"))
-    return RedirectResponse(url="/settings", status_code=303)
-
-
-@app.get("/agents", response_class=HTMLResponse)
-async def agents_page(request: Request):
-    dashboard = build_dashboard()
-    return templates.TemplateResponse(
-        request=request,
-        name="agents.html",
-        context={"request": request, "dashboard": dashboard},
     )
