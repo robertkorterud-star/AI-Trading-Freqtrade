@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ get_language() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,9 +21,9 @@
         ATLAS v0.8.1
         <span id="atlas-refresh-status">
             {% if request and request.url.path == "/scanner" %}
-                · Scanner refresh: manual
+                · {{ t("manual_refresh") }}
             {% else %}
-                · Live refresh: 30s
+                · {{ t("live_refresh") }}: 30s
             {% endif %}
         </span>
     </footer>
@@ -36,7 +36,7 @@
     const status = document.getElementById("atlas-refresh-status");
     const timer = window.setInterval(function () {
         countdown -= 1;
-        if (status) status.textContent = " · Live refresh: " + countdown + "s";
+        if (status) status.textContent = " · {{ t('live_refresh') }}: " + countdown + "s";
         if (countdown <= 0) {
             window.clearInterval(timer);
             if (window.location.pathname.startsWith("/market/")) return;
