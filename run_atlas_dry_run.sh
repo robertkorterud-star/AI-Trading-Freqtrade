@@ -3,7 +3,6 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
 cd "$PROJECT_DIR"
 
 echo "========================================"
@@ -39,13 +38,8 @@ from atlas.adapters.binance import BinanceAdapter
 from atlas.core.config import AtlasConfig
 from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.trading.dry_run_trader import DryRunTrader
-from atlas.trading.paper_portfolio import PaperPortfolio
-from atlas.agents import (
-    MomentumAgent,
-    TrendAgent,
-    VolumeAgent,
-    VolatilityAgent,
-)
+from atlas.trading.paper_portfolio_store import PaperPortfolioStore
+from atlas.agents import MomentumAgent, TrendAgent, VolumeAgent, VolatilityAgent
 
 SYMBOL = "BTCUSDT"
 INTERVAL = "1m"
@@ -62,39 +56,24 @@ print(f"Fetching {LIMIT} x {INTERVAL} candles for {SYMBOL}...")
 print()
 
 adapter = BinanceAdapter()
-
-portfolio = PaperPortfolio(initial_cash=capital_limit)
-trader = DryRunTrader(
-    portfolio=portfolio,
-    max_position_value=capital_limit,
-)
+portfolio_store = PaperPortfolioStore()
+portfolio = portfolio_store.load(initial_cash=capital_limit)
+trader = DryRunTrader(portfolio=portfolio, max_position_value=capital_limit)
 
 loop = DryRunLoop(
-    agents=[
-        TrendAgent(),
-        MomentumAgent(),
-        VolumeAgent(),
-        VolatilityAgent(),
-    ],
+    agents=[TrendAgent(), MomentumAgent(), VolumeAgent(), VolatilityAgent()],
     trader=trader,
 )
 
-result = loop.process_binance(
-    adapter=adapter,
-    symbol=SYMBOL,
-    interval=INTERVAL,
-    limit=LIMIT,
-)
+result = loop.process_binance(adapter=adapter, symbol=SYMBOL, interval=INTERVAL, limit=LIMIT)
 
-# Persist only actual virtual position changes.
-# This file is runtime data and is deliberately not committed.
+# Persist the complete virtual account between independent dry-run cycles.
+portfolio_store.save(portfolio)
+
+# Persist actual virtual position changes for dashboard trade history.
 action_value = getattr(result.execution.action, "value", result.execution.action)
 if result.execution.executed and result.execution.quantity > 0.0:
-    action_map = {
-        "ENTER": "BUY",
-        "REDUCE": "SELL",
-        "EXIT": "SELL",
-    }
+    action_map = {"ENTER": "BUY", "REDUCE": "SELL", "EXIT": "SELL"}
     marker_action = action_map.get(str(action_value))
     if marker_action:
         history_path = Path("atlas/dashboard/static/virtual_trades.json")
@@ -122,7 +101,6 @@ if result.execution.executed and result.execution.quantity > 0.0:
             "equity": result.execution.equity,
             "reason": result.execution.reason,
         }
-
         if not any(item.get("id") == event["id"] for item in history):
             history.append(event)
             history = history[-500:]
@@ -135,47 +113,24 @@ print("========================================")
 print()
 print(f"Symbol:              {result.symbol}")
 print(f"Price:               {result.price}")
-print(
-    f"Intelligence score:  "
-    f"{result.intelligence_score:.4f}"
-)
-print(
-    f"Intelligence conf.:  "
-    f"{result.intelligence_confidence:.4f}"
-)
+print(f"Intelligence score:  {result.intelligence_score:.4f}")
+print(f"Intelligence conf.:  {result.intelligence_confidence:.4f}")
 print()
 
 print("Agent observations:")
 for observation in result.observations:
-    print(
-        f"  {observation.agent:12s} "
-        f"{observation.direction:8s} "
-        f"score={observation.score:.4f} "
-        f"confidence={observation.confidence:.4f}"
-    )
+    print(f"  {observation.agent:12s} {observation.direction:8s} score={observation.score:.4f} confidence={observation.confidence:.4f}")
 
 print()
 print("Algorithm signals:")
 for signal in result.algorithm_signals:
     action = getattr(signal.action, "value", signal.action)
-
-    print(
-        f"  {signal.algorithm:24s} "
-        f"{str(action):5s} "
-        f"score={signal.score:.4f} "
-        f"confidence={signal.confidence:.4f}"
-    )
+    print(f"  {signal.algorithm:24s} {str(action):5s} score={signal.score:.4f} confidence={signal.confidence:.4f}")
 
 print()
 print("FINAL ATLAS DECISION")
 print("----------------------------------------")
-
-decision_action = getattr(
-    result.decision.action,
-    "value",
-    result.decision.action,
-)
-
+decision_action = getattr(result.decision.action, "value", result.decision.action)
 print(f"Action:       {decision_action}")
 print(f"Score:        {result.decision.score:.4f}")
 print(f"Confidence:   {result.decision.confidence:.4f}")
@@ -193,6 +148,15 @@ print(f"Equity:       {result.execution.equity}")
 print(f"Realized PnL: {result.execution.realized_pnl}")
 print(f"Executed:     {result.execution.executed}")
 print(f"Reason:       {result.execution.reason}")
+
+print()
+print("PERSISTENT PAPER PORTFOLIO")
+print("----------------------------------------")
+print(f"Cash:         {portfolio.cash}")
+print(f"Positions:    {len(portfolio.positions)}")
+print(f"Realized PnL: {portfolio.realized_pnl}")
+for position in portfolio.positions.values():
+    print(f"  {position.symbol}: qty={position.quantity:.8f} avg={position.average_price:.2f}")
 
 print()
 print("========================================")
