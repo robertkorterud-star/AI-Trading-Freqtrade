@@ -28,11 +28,18 @@ ATLAS - Scanner
     .scanner-feed { display: grid; gap: 10px; }
     .scanner-summary { display: flex; gap: 24px; flex-wrap: wrap; color: #94a3b8; }
     .scanner-summary strong { color: inherit; }
+    .scanner-controls { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(150px, 1fr)); gap: 10px; align-items: end; margin: 4px 0 16px; }
+    .scanner-control { display: grid; gap: 6px; }
+    .scanner-control label { color: #94a3b8; font-size: 12px; font-weight: 700; }
+    .scanner-control input, .scanner-control select { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #253046; border-radius: 8px; background: #0b0f17; color: inherit; font: inherit; }
+    .scanner-control input:focus, .scanner-control select:focus { outline: 2px solid rgba(56, 189, 248, 0.35); outline-offset: 1px; }
+    .scanner-results-meta { color: #94a3b8; font-size: 13px; margin: -4px 0 12px; }
     .scanner-candidate { padding: 14px 16px; border: 1px solid #253046; border-radius: 10px; display: grid; gap: 8px; }
     .scanner-candidate-head { display: flex; justify-content: space-between; gap: 16px; }
     .scanner-score { font-weight: 800; }
     .scanner-reasons { margin: 0; padding-left: 20px; color: #94a3b8; }
-    @media (max-width: 900px) { .scanner-grid, .scanner-flow, .scanner-rules { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .scanner-grid, .scanner-flow, .scanner-rules { grid-template-columns: 1fr; } .scanner-controls { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .scanner-controls { grid-template-columns: 1fr; } }
 </style>
 
 <div class="scanner-page">
@@ -57,9 +64,52 @@ ATLAS - Scanner
             <span>Eligible kandidater: <strong>{{ dashboard.scanner.eligible }}</strong></span>
         </div>
         {% if dashboard.scanner.candidates %}
-            <div class="scanner-feed">
+            <div class="scanner-controls" aria-label="Scanner filters and sorting">
+                <div class="scanner-control">
+                    <label for="scanner-search">Søk symbol</label>
+                    <input id="scanner-search" type="search" placeholder="BTC, ETH, SOL …" autocomplete="off">
+                </div>
+                <div class="scanner-control">
+                    <label for="scanner-asset-filter">Marked</label>
+                    <select id="scanner-asset-filter">
+                        <option value="all">Alle</option>
+                        <option value="crypto">Crypto</option>
+                        <option value="stock">Stocks</option>
+                    </select>
+                </div>
+                <div class="scanner-control">
+                    <label for="scanner-catalyst-filter">Catalyst</label>
+                    <select id="scanner-catalyst-filter">
+                        <option value="all">Alle</option>
+                        <option value="yes">Med catalyst</option>
+                        <option value="no">Uten catalyst</option>
+                    </select>
+                </div>
+                <div class="scanner-control">
+                    <label for="scanner-sort">Sorter etter</label>
+                    <select id="scanner-sort">
+                        <option value="score">Score</option>
+                        <option value="momentum">Momentum</option>
+                        <option value="volume">Volume</option>
+                        <option value="breakout">Breakout</option>
+                        <option value="catalyst">Catalyst</option>
+                        <option value="liquidity">Liquidity</option>
+                        <option value="symbol">Symbol</option>
+                    </select>
+                </div>
+            </div>
+            <div class="scanner-results-meta" id="scanner-results-meta"></div>
+            <div class="scanner-feed" id="scanner-feed">
                 {% for candidate in dashboard.scanner.candidates %}
-                    <div class="scanner-candidate">
+                    <div class="scanner-candidate"
+                         data-symbol="{{ candidate.symbol }}"
+                         data-asset-type="{{ candidate.asset_type }}"
+                         data-score="{{ candidate.score }}"
+                         data-momentum="{{ candidate.momentum_score }}"
+                         data-volume="{{ candidate.volume_score }}"
+                         data-breakout="{{ candidate.breakout_score }}"
+                         data-catalyst="{{ candidate.catalyst_score }}"
+                         data-liquidity="{{ candidate.liquidity_score }}">
                         <div class="scanner-candidate-head">
                             <strong>{{ candidate.symbol }} · {{ candidate.asset_type }}</strong>
                             <span class="scanner-score">Score {{ "%.2f"|format(candidate.score) }}</span>
@@ -106,5 +156,66 @@ ATLAS - Scanner
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const feed = document.getElementById("scanner-feed");
+    if (!feed) return;
+
+    const search = document.getElementById("scanner-search");
+    const assetFilter = document.getElementById("scanner-asset-filter");
+    const catalystFilter = document.getElementById("scanner-catalyst-filter");
+    const sortSelect = document.getElementById("scanner-sort");
+    const meta = document.getElementById("scanner-results-meta");
+    const candidates = Array.from(feed.querySelectorAll(".scanner-candidate"));
+
+    function numberValue(element, key) {
+        const value = Number.parseFloat(element.dataset[key]);
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    function applyScannerView() {
+        const query = (search.value || "").trim().toUpperCase();
+        const asset = assetFilter.value;
+        const catalyst = catalystFilter.value;
+        const sortKey = sortSelect.value;
+
+        const visible = candidates.filter((candidate) => {
+            const symbol = (candidate.dataset.symbol || "").toUpperCase();
+            const candidateAsset = (candidate.dataset.assetType || "").toLowerCase();
+            const catalystScore = numberValue(candidate, "catalyst");
+            const matchesSearch = !query || symbol.includes(query);
+            const matchesAsset = asset === "all" || candidateAsset === asset;
+            const matchesCatalyst = catalyst === "all"
+                || (catalyst === "yes" && catalystScore > 0)
+                || (catalyst === "no" && catalystScore <= 0);
+            return matchesSearch && matchesAsset && matchesCatalyst;
+        });
+
+        visible.sort((a, b) => {
+            if (sortKey === "symbol") {
+                return (a.dataset.symbol || "").localeCompare(b.dataset.symbol || "");
+            }
+            return numberValue(b, sortKey) - numberValue(a, sortKey);
+        });
+
+        const fragment = document.createDocumentFragment();
+        visible.forEach((candidate) => fragment.appendChild(candidate));
+        feed.appendChild(fragment);
+        candidates.forEach((candidate) => {
+            candidate.hidden = !visible.includes(candidate);
+        });
+
+        meta.textContent = `Viser ${visible.length} av ${candidates.length} kandidater`;
+    }
+
+    [search, assetFilter, catalystFilter, sortSelect].forEach((control) => {
+        control.addEventListener("input", applyScannerView);
+        control.addEventListener("change", applyScannerView);
+    });
+
+    applyScannerView();
+})();
+</script>
 
 {% endblock %}
