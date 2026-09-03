@@ -11,13 +11,13 @@ def test_overview_template_has_command_center_sections():
     text = TEMPLATE.read_text(encoding="utf-8")
 
     for marker in (
-        "Market Overview",
-        "Market Pulse",
-        "ATLAS Opportunities",
-        "ATLAS Intelligence",
-        "Watchlist",
-        "News & Events",
-        "Live Market",
+        '{{ t("market_overview") }}',
+        '{{ t("market_pulse") }}',
+        '{{ t("opportunities") }}',
+        '{{ t("intelligence") }}',
+        '{{ t("watchlist") }}',
+        '{{ t("news_events") }}',
+        '{{ t("live_market") }}',
         "/scanner",
         "/markets",
         "/market/{{ item.symbol }}",
