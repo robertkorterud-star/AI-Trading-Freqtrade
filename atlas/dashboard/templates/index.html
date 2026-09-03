@@ -7,7 +7,7 @@
         <div>
             <div class="overview-kicker">ATLAS AI Trading Intelligence</div>
             <h1>Market Overview</h1>
-            <p>One command center for portfolio, watchlist, market movement and ATLAS conviction. Start broad, then drill into the Market Terminal when you want detail.</p>
+            <p>One command center for portfolio, market movement, watchlist and ATLAS conviction. Scan the pulse first, then drill into the Market Terminal for deeper research.</p>
         </div>
         <div class="overview-hero-actions">
             <a class="overview-button primary" href="/scanner">Open Scanner</a>
@@ -38,18 +38,36 @@
         </div>
     </section>
 
+    <section class="overview-card overview-pulse">
+        <header>
+            <div><h2>Market Pulse</h2><small>Current dashboard universe · click any asset for the Market Terminal</small></div>
+            <a class="overview-button" href="/markets">Full market view</a>
+        </header>
+        <div class="overview-pulse-grid">
+            {% for item in dashboard.market[:6] %}
+            <a class="overview-pulse-item" href="/market/{{ item.symbol }}">
+                <div class="overview-pulse-top"><strong>{{ item.symbol }}</strong><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></div>
+                <div class="overview-pulse-price">{{ item.price_nok }} NOK</div>
+                <div class="overview-pulse-bottom"><span class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</span><span>{{ item.confidence }}% confidence</span></div>
+            </a>
+            {% else %}
+            <p>No market data is available yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
     <section class="overview-columns">
         <div class="overview-card table-wrap">
             <header>
                 <div>
                     <h2>ATLAS Opportunities</h2>
-                    <small>Ranked candidates from the existing ATLAS decision layer</small>
+                    <small>Ranked candidates from the existing discovery and decision layers</small>
                 </div>
                 <a class="overview-button" href="/scanner">View scanner</a>
             </header>
             {% if dashboard.market_scan %}
             <table class="overview-table">
-                <thead><tr><th>Asset</th><th>Signal</th><th>Confidence</th><th>Discovery</th></tr></thead>
+                <thead><tr><th>Asset</th><th>Signal</th><th>Confidence</th><th>Discovery</th><th>Why it matters</th></tr></thead>
                 <tbody>
                 {% for item in dashboard.market_scan %}
                 <tr>
@@ -57,6 +75,7 @@
                     <td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></td>
                     <td><span class="overview-score">{{ item.confidence }}%</span></td>
                     <td>{{ item.discovery_score }}</td>
+                    <td class="overview-why">{% if item.selected %}Highest current ATLAS ranking{% elif item.decision == "BUY" %}Positive decision signal{% elif item.decision == "SELL" %}Downside signal detected{% else %}Mixed evidence / watch{% endif %}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -79,6 +98,11 @@
                 <div><small>Evidence</small><strong>{{ dashboard.intelligence.evidence }}%</strong></div>
                 <div><small>Agreement</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
             </div>
+            <div class="overview-intelligence overview-intelligence-secondary">
+                <div><small>Robustness</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div>
+                <div><small>Robustness level</small><strong>{{ dashboard.decision_robustness.level }}</strong></div>
+                <div><small>Dominant influence</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div>
+            </div>
             {% if dashboard.intelligence.reasoning %}
                 {% for reason in dashboard.intelligence.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}
             {% elif dashboard.decision.reasoning %}
@@ -92,7 +116,7 @@
     <section class="overview-columns">
         <div class="overview-card table-wrap">
             <header>
-                <div><h2>Watchlist</h2><small>Market pulse across the current dashboard universe</small></div>
+                <div><h2>Watchlist</h2><small>Personal watchlist with live ATLAS signal context</small></div>
                 <a class="overview-button" href="/markets">Manage</a>
             </header>
             <table class="overview-table">
@@ -100,7 +124,7 @@
                 <tbody>
                 {% for item in dashboard.market %}
                 <tr>
-                    <td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a></td>
+                    <td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td>
                     <td>{{ item.price_nok }} NOK</td>
                     <td class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</td>
                     <td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }} · {{ item.confidence }}%</span></td>
@@ -135,7 +159,7 @@
             </div>
         </header>
         <div id="atlas-candles" class="overview-chart"></div>
-        <div style="display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:.85rem;color:#64748b;">
+        <div class="overview-chart-footer">
             <span>ATLAS signal is informational; paper trading remains the execution boundary.</span>
             <span id="atlas-chart-price">—</span>
         </div>
