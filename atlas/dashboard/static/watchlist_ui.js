@@ -1,32 +1,179 @@
 /* ATLAS personal Watchlist UI */
 (function () {
     "use strict";
-    function esc(value) { return String(value == null ? "" : value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;"); }
+
+    const STORAGE_KEY = "atlas.watchlist.v1";
+    const DEFAULT_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "NVDA"];
+
+    function esc(value) {
+        return String(value == null ? "" : value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function normalize(value) {
+        let symbol = String(value || "").trim().toUpperCase();
+        if (!symbol) return "";
+        symbol = symbol.replaceAll("/", "-");
+        if (symbol.endsWith("USDT")) symbol = symbol.slice(0, -4) + "-USD";
+        if (symbol.endsWith("USDC")) symbol = symbol.slice(0, -4) + "-USD";
+        return symbol;
+    }
+
+    function loadSymbols() {
+        try {
+            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+            if (Array.isArray(stored)) {
+                return [...new Set(stored.map(normalize).filter(Boolean))];
+            }
+        } catch (_) {}
+        return [...DEFAULT_SYMBOLS];
+    }
+
+    function saveSymbols(symbols) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(symbols));
+    }
+
     function init() {
-        const heading = Array.from(document.querySelectorAll("h2")).find(n => n.textContent.includes("Watchlist"));
+        const heading = Array.from(document.querySelectorAll("h2"))
+            .find((node) => node.textContent.includes("Watchlist"));
         if (!heading) return;
-        const section = heading.closest("section"), table = section && section.querySelector("table"), tbody = table && table.querySelector("tbody");
+
+        const section = heading.closest("section");
+        const table = section && section.querySelector("table");
+        const tbody = table && table.querySelector("tbody");
         if (!section || !table || !tbody || section.dataset.watchlistReady) return;
         section.dataset.watchlistReady = "1";
+
+        const serverRows = {};
+        tbody.querySelectorAll("tr").forEach((row) => {
+            const link = row.querySelector("a");
+            if (!link) return;
+            const symbol = normalize(link.textContent);
+            if (!symbol) return;
+            const cells = row.querySelectorAll("td");
+            serverRows[symbol] = {
+                trend: cells[1] ? cells[1].textContent.trim() : "—",
+                ai: cells[2] ? cells[2].textContent.trim() : "—",
+            };
+        });
+
         const controls = document.createElement("div");
         controls.className = "watchlist-controls";
-        controls.innerHTML = '<input type="text" placeholder="Søk symbol, f.eks. BTC-USD eller AAPL" autocomplete="off"><button type="button">＋ Legg til</button>';
+        controls.innerHTML = `
+            <div class="watchlist-search-wrap">
+                <input class="watchlist-search" type="text"
+                    placeholder="Søk aksje eller krypto, f.eks. BTC, SOL, AAPL…"
+                    autocomplete="off">
+                <div class="watchlist-suggestions" hidden></div>
+            </div>
+            <button type="button" class="watchlist-add">＋ Legg til</button>
+        `;
         section.insertBefore(controls, table);
-        const input = controls.querySelector("input"), add = controls.querySelector("button");
-        async function refresh() {
-            const r = await fetch("/api/watchlist"); if (!r.ok) throw new Error("Watchlist unavailable");
-            render((await r.json()).symbols || []);
+
+        const input = controls.querySelector(".watchlist-search");
+        const suggestions = controls.querySelector(".watchlist-suggestions");
+        const addButton = controls.querySelector(".watchlist-add");
+
+        function render() {
+            const symbols = loadSymbols();
+            tbody.innerHTML = symbols.map((symbol) => {
+                const info = serverRows[symbol] || {trend: "—", ai: "—"};
+                return `
+                    <tr>
+                        <td>
+                            <a href="/market/${encodeURIComponent(symbol)}"
+                               class="watchlist-symbol">${esc(symbol)}</a>
+                        </td>
+                        <td>${esc(info.trend)}</td>
+                        <td>
+                            ${esc(info.ai)}
+                            <button type="button" class="watchlist-remove"
+                                    data-symbol="${esc(symbol)}" title="Fjern fra Watchlist">✕</button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
+            tbody.querySelectorAll(".watchlist-remove").forEach((button) => {
+                button.addEventListener("click", () => {
+                    const next = loadSymbols().filter((item) => item !== button.dataset.symbol);
+                    saveSymbols(next);
+                    render();
+                });
+            });
         }
-        function render(symbols) {
-            tbody.innerHTML = symbols.map(s => '<tr><td><a href="/market/' + encodeURIComponent(s) + '" style="color:white;text-decoration:none;font-weight:bold">' + esc(s) + '</a></td><td>—</td><td><button type="button" class="watchlist-remove" data-symbol="' + esc(s) + '">✕</button></td></tr>').join("");
-            tbody.querySelectorAll(".watchlist-remove").forEach(b => b.addEventListener("click", async () => { b.disabled = true; await fetch("/api/watchlist/" + encodeURIComponent(b.dataset.symbol), {method:"DELETE"}); await refresh(); }));
+
+        function closeSuggestions() {
+            suggestions.hidden = true;
+            suggestions.innerHTML = "";
         }
-        async function addSymbol() {
-            const symbol = input.value.trim(); if (!symbol) return; add.disabled = true;
-            try { await fetch("/api/watchlist", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({symbol})}); input.value=""; await refresh(); }
-            finally { add.disabled = false; }
+
+        async function search() {
+            const query = input.value.trim();
+            if (!query) {
+                closeSuggestions();
+                return;
+            }
+            try {
+                const response = await fetch("/api/market-search?q=" + encodeURIComponent(query));
+                if (!response.ok) throw new Error("search failed");
+                const data = await response.json();
+                const results = Array.isArray(data.results) ? data.results.slice(0, 8) : [];
+                suggestions.innerHTML = results.map((item) => `
+                    <button type="button" class="watchlist-suggestion"
+                            data-symbol="${esc(item.symbol)}">
+                        <strong>${esc(item.symbol)}</strong>
+                        <span>${esc(item.name || item.market || "")}</span>
+                    </button>
+                `).join("");
+                suggestions.hidden = results.length === 0;
+                suggestions.querySelectorAll(".watchlist-suggestion").forEach((button) => {
+                    button.addEventListener("click", () => {
+                        input.value = button.dataset.symbol;
+                        addSymbol();
+                    });
+                });
+            } catch (_) {
+                closeSuggestions();
+            }
         }
-        add.addEventListener("click", addSymbol); input.addEventListener("keydown", e => { if (e.key === "Enter") addSymbol(); }); refresh().catch(() => {});
+
+        function addSymbol() {
+            const symbol = normalize(input.value);
+            if (!symbol) return;
+            const symbols = loadSymbols();
+            if (!symbols.includes(symbol)) symbols.push(symbol);
+            saveSymbols(symbols);
+            input.value = "";
+            closeSuggestions();
+            render();
+        }
+
+        let searchTimer = null;
+        input.addEventListener("input", () => {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(search, 180);
+        });
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") addSymbol();
+            if (event.key === "Escape") closeSuggestions();
+        });
+        addButton.addEventListener("click", addSymbol);
+        document.addEventListener("click", (event) => {
+            if (!controls.contains(event.target)) closeSuggestions();
+        });
+
+        if (!localStorage.getItem(STORAGE_KEY)) saveSymbols(DEFAULT_SYMBOLS);
+        render();
     }
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
 })();
