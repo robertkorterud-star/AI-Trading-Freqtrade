@@ -37,7 +37,11 @@
     <footer>
         ATLAS v0.8.1
         <span id="atlas-refresh-status">
-            · Live refresh: 30s
+            {% if request.url.path == "/scanner" %}
+                · Scanner refresh: manual
+            {% else %}
+                · Live refresh: 30s
+            {% endif %}
         </span>
     </footer>
 
@@ -47,13 +51,13 @@
 (function () {
     /*
      * ATLAS live refresh:
-     * reloads the current dashboard every 30 seconds.
-     * The current ?symbol=... URL is preserved automatically,
-     * so the selected asset remains selected.
-     *
-     * Favorites are stored in localStorage by watchlist.html
-     * and therefore also survive the refresh.
+     * the Scanner page is intentionally excluded because its local
+     * filters/search state must not be destroyed by a full page reload.
      */
+
+    if (window.location.pathname === "/scanner") {
+        return;
+    }
 
     const REFRESH_MS = 30000;
 
