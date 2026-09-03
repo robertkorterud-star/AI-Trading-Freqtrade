@@ -36,7 +36,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from atlas.adapters.binance import BinanceAdapter
+from atlas.core.config import AtlasConfig
 from atlas.trading.dry_run_loop import DryRunLoop
+from atlas.trading.dry_run_trader import DryRunTrader
+from atlas.trading.paper_portfolio import PaperPortfolio
 from atlas.agents import (
     MomentumAgent,
     TrendAgent,
@@ -48,10 +51,23 @@ SYMBOL = "BTCUSDT"
 INTERVAL = "1m"
 LIMIT = 100
 
+config = AtlasConfig()
+capital_limit = float(config.capital_limit)
+
+print(f"ATLAS capital limit: {capital_limit:.2f} NOK")
+print(f"Paper trading:       {config.paper_trading}")
+print(f"Trading mode:        {config.trading_mode}")
+print()
 print(f"Fetching {LIMIT} x {INTERVAL} candles for {SYMBOL}...")
 print()
 
 adapter = BinanceAdapter()
+
+portfolio = PaperPortfolio(initial_cash=capital_limit)
+trader = DryRunTrader(
+    portfolio=portfolio,
+    max_position_value=capital_limit,
+)
 
 loop = DryRunLoop(
     agents=[
@@ -59,7 +75,8 @@ loop = DryRunLoop(
         MomentumAgent(),
         VolumeAgent(),
         VolatilityAgent(),
-    ]
+    ],
+    trader=trader,
 )
 
 result = loop.process_binance(
