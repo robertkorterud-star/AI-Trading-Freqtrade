@@ -24,6 +24,7 @@ class NewsItem:
     summary: str
     url: str
     sentiment: str
+    related: tuple[str, ...] = ()
 
 
 class NewsAdapter:
@@ -115,6 +116,50 @@ class NewsAdapter:
 
         return self._company_news(normalized)
 
+    def latest_crypto_market_news(self) -> list[NewsItem]:
+        """Return the current crypto-news feed with provider relationships."""
+        try:
+            response = requests.get(
+                f"{self.BASE_URL}/news",
+                params={
+                    "category": "crypto",
+                    "token": self.api_key,
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            articles = response.json()
+        except Exception as error:
+            print(
+                "Crypto market news error: "
+                f"{type(error).__name__}: {error}"
+            )
+            return []
+
+        if not isinstance(articles, list):
+            return []
+
+        news: list[NewsItem] = []
+        for article in articles:
+            headline = str(article.get("headline", "")).strip()
+            if not headline:
+                continue
+
+            related = self._related_symbols(article.get("related", ""))
+            summary = self._clean_summary(article.get("summary", ""))
+            news.append(
+                NewsItem(
+                    title=headline,
+                    source=article.get("source", ""),
+                    summary=summary,
+                    url=article.get("url", ""),
+                    sentiment=self._sentiment(f"{headline} {summary}"),
+                    related=related,
+                )
+            )
+
+        return news
+
     def _company_news(self, symbol: str) -> list[NewsItem]:
         """Fetch company-specific stock news."""
 
@@ -157,9 +202,6 @@ class NewsAdapter:
 
             headline_text = headline.lower()
 
-            # Finnhub can return loosely related market articles.
-            # Only keep articles that explicitly mention the
-            # selected company or ticker.
             company_keywords = {
                 symbol.lower(),
             }
@@ -203,63 +245,19 @@ class NewsAdapter:
     def _crypto_news(self, symbol: str) -> list[NewsItem]:
         """Fetch crypto news and prioritize the selected asset."""
 
-        try:
-            response = requests.get(
-                f"{self.BASE_URL}/news",
-                params={
-                    "category": "crypto",
-                    "token": self.api_key,
-                },
-                timeout=10,
-            )
-
-            response.raise_for_status()
-            articles = response.json()
-
-        except Exception as error:
-            print(
-                f"Crypto news error for {symbol}: "
-                f"{type(error).__name__}: {error}"
-            )
-            return []
-
-        if not isinstance(articles, list):
-            return []
-
+        articles = self.latest_crypto_market_news()
         keywords = self.CRYPTO_SYMBOLS[symbol]["names"]
 
         relevant = []
 
         for article in articles:
-            headline = article.get("headline", "").strip()
-            summary = self._clean_summary(article.get("summary", ""))
-
-            if not headline:
-                continue
-
-            # For asset-specific dashboard news, the headline
-            # must explicitly mention the selected cryptocurrency.
-            # Do not let a mention buried in the summary make an
-            # unrelated Bitcoin/Ethereum/Solana article relevant.
-            headline_text = headline.lower()
-
-            item = NewsItem(
-                title=headline,
-                source=article.get("source", ""),
-                summary=summary,
-                url=article.get("url", ""),
-                sentiment=self._sentiment(f"{headline} {summary}"),
-            )
-
+            headline_text = article.title.lower()
             if any(
                 keyword in headline_text
                 for keyword in keywords
-            ):
-                relevant.append(item)
+            ) or symbol.removesuffix("-USD") in article.related:
+                relevant.append(article)
 
-        # Only return articles that explicitly mention the
-        # selected cryptocurrency. Do not fill the list with
-        # news about other crypto assets.
         news = relevant[:10]
 
         print(
@@ -271,19 +269,29 @@ class NewsAdapter:
         return news
 
     @staticmethod
+    def _related_symbols(value) -> tuple[str, ...]:
+        """Normalize Finnhub's related-symbol field."""
+        if isinstance(value, str):
+            parts = re.split(r"[,;\s]+", value)
+        elif isinstance(value, (list, tuple, set)):
+            parts = value
+        else:
+            parts = []
+        return tuple(
+            str(part).strip().upper()
+            for part in parts
+            if str(part).strip()
+        )
+
+    @staticmethod
     def _clean_summary(summary: str) -> str:
         """Clean HTML and URL-only summaries from news providers."""
 
         summary = unescape(summary or "").strip()
-
-        # Some providers return HTML inside the summary.
         summary = re.sub(r"<[^>]+>", " ", summary)
+        summary = re.sub(r"\s+", " ", summary).strip()
 
-        # Normalize whitespace after removing HTML.
-        summary = re.sub(r"\\s+", " ", summary).strip()
-
-        # Some providers use the article URL itself as the summary.
-        if re.fullmatch(r"https?://\\S+", summary):
+        if re.fullmatch(r"https?://\S+", summary):
             return ""
 
         return summary
