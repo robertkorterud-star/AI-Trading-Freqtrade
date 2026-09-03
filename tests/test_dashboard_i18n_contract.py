@@ -12,33 +12,25 @@ def test_dashboard_language_contract_covers_settings_and_portfolio():
     translations = TRANSLATIONS.read_text(encoding="utf-8")
 
     for marker in (
-        "{{ t('settings') }}",
-        "{{ t('trading_mode') }}",
-        "{{ t('language') }}",
-        "{{ t('ai_provider') }}",
-        "{{ t('paper_trading') }}",
-        "{{ t('safety') }}",
+        "{{ t('settings') }}", "{{ t('trading_mode') }}", "{{ t('language') }}",
+        "{{ t('ai_provider') }}", "{{ t('paper_trading') }}", "{{ t('safety') }}",
         "{{ t('save_settings') }}",
     ):
         assert marker in settings
 
     for marker in (
-        "{{ t('portfolio') }}",
-        "{{ t('total_equity') }}",
-        "{{ t('performance') }}",
-        "{{ t('positions') }}",
-        "{{ t('trade_history') }}",
-        "{{ t('no_open_positions') }}",
+        "{{ t('portfolio') }}", "{{ t('total_equity') }}", "{{ t('performance') }}",
+        "{{ t('positions') }}", "{{ t('trade_history') }}", "{{ t('no_open_positions') }}",
         "{{ t('no_trades_yet') }}",
     ):
         assert marker in portfolio
 
     for key in (
-        'advisor_description', 'paper_description', 'safety_description',
-        'ai_provider', 'active_provider', 'openai_description', 'ollama_description',
-        'on', 'off', 'virtual_capital', 'paper_account_overview', 'profit_vault',
-        'performance', 'symbol', 'value', 'no_open_positions',
-        'no_active_paper_positions', 'trade_history', 'no_trades_yet', 'no_paper_trades',
+        'advisor_description', 'paper_description', 'safety_description', 'ai_provider',
+        'active_provider', 'openai_description', 'ollama_description', 'on', 'off',
+        'virtual_capital', 'paper_account_overview', 'profit_vault', 'performance', 'symbol',
+        'value', 'no_open_positions', 'no_active_paper_positions', 'trade_history',
+        'no_trades_yet', 'no_paper_trades',
     ):
         assert f'"{key}"' in translations
 
@@ -48,15 +40,10 @@ def test_dashboard_language_contract_covers_scanner():
     translations = TRANSLATIONS.read_text(encoding="utf-8")
 
     for marker in (
-        "{{ t('scanner_title') }}",
-        "{{ t('scanner_description') }}",
-        "{{ t('scanner_connected') }}",
-        "{{ t('stocks') }}",
-        "{{ t('crypto') }}",
-        "{{ t('live_scanner_feed') }}",
-        "{{ t('scanner_filters') }}",
-        "{{ t('decision_pipeline') }}",
-        "{{ t('current_scanner_rules') }}",
+        "{{ t('scanner_title') }}", "{{ t('scanner_description') }}",
+        "{{ t('scanner_connected') }}", "{{ t('stocks') }}", "{{ t('crypto') }}",
+        "{{ t('live_scanner_feed') }}", "{{ t('scanner_filters') }}",
+        "{{ t('decision_pipeline') }}", "{{ t('current_scanner_rules') }}",
     ):
         assert marker in scanner
 
@@ -70,5 +57,24 @@ def test_dashboard_language_contract_covers_scanner():
         'find_candidates', 'horizon_day_swing_position', 'technical_signals', 'deep_analysis',
         'before_paper_trade', 'current_scanner_rules', 'stock_min_price',
         'minimum_average_volume', 'minimum_current_volume', 'required',
+    ):
+        assert f'"{key}"' in translations
+
+
+def test_dashboard_language_contract_covers_agents():
+    agents = (TEMPLATES / "agents.html").read_text(encoding="utf-8")
+    translations = TRANSLATIONS.read_text(encoding="utf-8")
+
+    for marker in (
+        "{{ t('agents') }}", "{{ t('agents_description') }}", "{{ t('predictions') }}",
+        "{{ t('accuracy') }}", "{{ t('current_weight') }}", "{{ t('learning') }}",
+        "{{ t('why_this_weight') }}", "{{ t('no_performance_history') }}",
+    ):
+        assert marker in agents
+
+    for key in (
+        'agents_description', 'predictions', 'correct', 'wrong', 'accuracy', 'current_weight',
+        'safety_limit', 'learning', 'adaptive', 'building_history', 'why_this_weight',
+        'stabilized', 'average', 'no_performance_history', 'no_agent_predictions_evaluated',
     ):
         assert f'"{key}"' in translations
