@@ -35,10 +35,10 @@ ATLAS - Scanner
     .scanner-control input:focus, .scanner-control select:focus { outline: 2px solid rgba(56, 189, 248, 0.35); outline-offset: 1px; }
     .scanner-results-meta { color: #94a3b8; font-size: 13px; margin: -4px 0 12px; }
     .scanner-candidate-link { display: block; color: inherit; text-decoration: none; }
+    .scanner-candidate-link.scanner-hidden { display: none !important; }
     .scanner-candidate { padding: 14px 16px; border: 1px solid #253046; border-radius: 10px; display: grid; gap: 8px; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
     .scanner-candidate-link:hover .scanner-candidate { border-color: #38bdf8; background: rgba(56, 189, 248, 0.045); transform: translateY(-1px); }
     .scanner-candidate-link:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; border-radius: 10px; }
-    .scanner-candidate.scanner-hidden { display: none !important; }
     .scanner-candidate-head { display: flex; justify-content: space-between; gap: 16px; }
     .scanner-candidate-open { color: #38bdf8; font-size: 12px; font-weight: 700; white-space: nowrap; }
     .scanner-score { font-weight: 800; }
@@ -206,7 +206,7 @@ ATLAS - Scanner
             );
         });
 
-        visible.sort((a, b) => {
+        const ordered = [...candidates].sort((a, b) => {
             if (sortKey === "symbol") {
                 return (candidateData(a).symbol || "").localeCompare(candidateData(b).symbol || "");
             }
@@ -216,11 +216,12 @@ ATLAS - Scanner
         });
 
         const fragment = document.createDocumentFragment();
-        visible.forEach((candidate) => fragment.appendChild(candidate));
+        ordered.forEach((candidate) => fragment.appendChild(candidate));
         feed.appendChild(fragment);
 
         candidates.forEach((candidate) => {
-            candidate.querySelector(".scanner-candidate")?.classList.toggle("scanner-hidden", !visible.includes(candidate));
+            candidate.classList.toggle("scanner-hidden", !visible.includes(candidate));
+            candidate.setAttribute("aria-hidden", visible.includes(candidate) ? "false" : "true");
         });
 
         meta.textContent = `Viser ${visible.length} av ${candidates.length} kandidater`;
