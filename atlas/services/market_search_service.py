@@ -177,6 +177,27 @@ class MarketSearchService:
         if results:
             return results
 
+        # Scanner v2 uses native Binance symbols such as SOLUSDT.
+        # Resolve those directly so a Scanner candidate can open the
+        # existing Market Terminal without requiring a separate catalog entry.
+        normalized_upper = normalized.upper()
+        for quote_asset in ("USDT", "USDC"):
+            if normalized_upper.endswith(quote_asset) and len(normalized_upper) > len(quote_asset):
+                base_asset = normalized_upper[: -len(quote_asset)]
+                return [
+                    {
+                        "symbol": normalized_upper,
+                        "name": base_asset,
+                        "type": "crypto",
+                        "market": "Binance",
+                        "currency": quote_asset,
+                        "price_usd": None,
+                        "change": None,
+                        "ma20": None,
+                        "ma50": None,
+                    }
+                ]
+
         assets = self.internet_resolver.resolve(
             normalized
         )
