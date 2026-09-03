@@ -3,6 +3,7 @@
     "use strict";
 
     const STORAGE_KEY = "atlas.watchlist.v1";
+    const MARKET_PATH = "/market/";
     const DEFAULT_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "NVDA"];
 
     function esc(value) {
@@ -177,7 +178,7 @@
                 const info = serverRows[symbol] || {trend: "—", ai: "—"};
                 return `
                     <tr>
-                        <td><a href="/market/${encodeURIComponent(symbol)}" class="watchlist-symbol">${esc(symbol)}</a></td>
+                        <td><a href="${MARKET_PATH}${encodeURIComponent(symbol)}" class="watchlist-symbol">${esc(symbol)}</a></td>
                         <td>${esc(info.trend)}</td>
                         <td>${esc(info.ai)}
                             <button type="button" class="watchlist-remove"
