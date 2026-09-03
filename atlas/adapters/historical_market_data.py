@@ -10,6 +10,18 @@ import yfinance as yf
 class HistoricalMarketDataAdapter:
     """Fetches historical market candles."""
 
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        """Normalize common FX symbols to Yahoo Finance ticker symbols."""
+        normalized = symbol.strip().upper()
+        fx_aliases = {
+            "USDNOK=X": "NOK=X",
+            "USDDKK=X": "DKK=X",
+            "USDSEK=X": "SEK=X",
+            "USDEUR=X": "EUR=X",
+        }
+        return fx_aliases.get(normalized, normalized)
+
     def get(
         self,
         symbol: str,
@@ -18,7 +30,9 @@ class HistoricalMarketDataAdapter:
     ) -> list[dict]:
         """Return historical candles."""
 
-        history = yf.Ticker(symbol).history(
+        history = yf.Ticker(
+            self._normalize_symbol(symbol)
+        ).history(
             period=period,
             interval=interval,
         )
