@@ -12,6 +12,7 @@ def test_overview_template_has_command_center_sections():
 
     for marker in (
         "Market Overview",
+        "Market Pulse",
         "ATLAS Opportunities",
         "ATLAS Intelligence",
         "Watchlist",
@@ -37,6 +38,9 @@ def test_overview_uses_existing_dashboard_data_contract():
         "dashboard.intelligence.confidence",
         "dashboard.intelligence.evidence",
         "dashboard.intelligence.agreement",
+        "dashboard.decision_robustness.robustness",
+        "dashboard.decision_robustness.level",
+        "dashboard.decision_influence.dominant_action",
         "dashboard.news",
     ):
         assert field in text
@@ -51,6 +55,7 @@ def test_overview_styles_are_loaded_and_responsive():
         ".overview-page",
         ".overview-grid",
         ".overview-columns",
+        ".overview-pulse-grid",
         ".overview-table",
         ".overview-intelligence",
         "@media (max-width:700px)",
