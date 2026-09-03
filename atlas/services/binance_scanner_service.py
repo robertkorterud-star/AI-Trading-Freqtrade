@@ -89,11 +89,7 @@ class BinanceScannerService:
                     symbol=symbol,
                     asset_type=AssetType.CRYPTO,
                     price=price,
-                    # For enriched symbols both sides are 1h quote-volume
-                    # values, making relative volume dimensionally comparable.
                     volume=volume,
-                    # Fall back to current 24h volume when candle enrichment
-                    # is unavailable, preserving the neutral v1 behaviour.
                     average_volume=average_volume,
                     change_percent=change_percent,
                     breakout_percent=breakout_percent,
@@ -131,8 +127,6 @@ class BinanceScannerService:
                 return current, average, breakout
 
         try:
-            # Request one extra candle so an in-progress latest candle can be
-            # excluded while still retaining ``volume_samples`` prior candles.
             klines = self.market_data.adapter.get_klines(
                 symbol,
                 interval=self.volume_interval,
@@ -144,8 +138,6 @@ class BinanceScannerService:
 
         candles = self._completed_market_candles(klines)
         if candles is None:
-            # If the feed does not expose usable close timestamps, accept the
-            # supplied candles as completed rather than dropping enrichment.
             volumes = self._parse_volume_candles(klines)
             if len(volumes) < self.volume_samples + 1:
                 self._volume_cache[symbol] = (now, None, None, None)
@@ -169,7 +161,9 @@ class BinanceScannerService:
             self._volume_cache[symbol] = (now, None, None, None)
             return None
 
-        breakout = max(0.0, breakout)
+        # Normalize harmless IEEE-754 noise so percentage values are stable
+        # for scoring, caching, and display (e.g. 6.000000000000005 -> 6.0).
+        breakout = round(max(0.0, breakout), 6)
         self._volume_cache[symbol] = (now, current, average, breakout)
         return current, average, breakout
 
@@ -179,7 +173,6 @@ class BinanceScannerService:
         volumes: list[float] = []
         for kline in klines:
             try:
-                # Binance kline index 7 is quote asset volume.
                 volume = float(kline[7])
             except (IndexError, TypeError, ValueError):
                 continue
