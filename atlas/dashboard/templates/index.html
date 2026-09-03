@@ -2,7 +2,6 @@
 
 {% block content %}
 <div class="overview-page">
-
     <section class="overview-hero">
         <div>
             <div class="overview-kicker">ATLAS AI Trading Intelligence</div>
@@ -15,34 +14,33 @@
         </div>
     </section>
 
-    <section class="overview-grid" aria-label="Portfolio summary">
-        <div class="overview-stat">
-            <small>Portfolio value</small>
-            <strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong>
-            <span class="muted">Virtual paper portfolio</span>
+    {% set primary_action = dashboard.intelligence.action %}
+    <section class="overview-conviction">
+        <div class="overview-conviction-copy">
+            <div class="overview-kicker">ATLAS Conviction</div>
+            <div class="overview-conviction-title">
+                <span>ATLAS sees</span>
+                {% if primary_action == "BUY" %}<span class="overview-action buy">BUY</span>{% elif primary_action == "SELL" %}<span class="overview-action sell">SELL</span>{% else %}<span class="overview-action hold">HOLD</span>{% endif %}
+                <a class="overview-symbol" href="/market/{{ dashboard.intelligence.symbol }}">{{ dashboard.intelligence.symbol }}</a>
+            </div>
+            <p>{% if dashboard.intelligence.reasoning %}{{ dashboard.intelligence.reasoning[0] }}{% elif dashboard.decision.reasoning %}{{ dashboard.decision.reasoning[0] }}{% else %}ATLAS is waiting for enough evidence to explain the current decision.{% endif %}</p>
         </div>
-        <div class="overview-stat">
-            <small>Cash available</small>
-            <strong>{{ dashboard.portfolio.cash_nok }} NOK</strong>
-            <span class="muted">Capital {{ dashboard.capital }} NOK</span>
-        </div>
-        <div class="overview-stat">
-            <small>Positions</small>
-            <strong>{{ dashboard.portfolio.position_count }}</strong>
-            <span class="muted">Invested {{ dashboard.portfolio.invested_nok }} NOK</span>
-        </div>
-        <div class="overview-stat">
-            <small>Total return</small>
-            <strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent }}%</strong>
-            <span class="muted">P/L {{ dashboard.portfolio.total_pnl_nok }} NOK</span>
+        <div class="overview-conviction-metrics">
+            <div><small>Confidence</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div>
+            <div><small>Robustness</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div>
+            <div><small>Consensus</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
         </div>
     </section>
 
+    <section class="overview-grid" aria-label="Portfolio summary">
+        <div class="overview-stat"><small>Portfolio value</small><strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong><span class="muted">Virtual paper portfolio</span></div>
+        <div class="overview-stat"><small>Cash available</small><strong>{{ dashboard.portfolio.cash_nok }} NOK</strong><span class="muted">Capital {{ dashboard.capital }} NOK</span></div>
+        <div class="overview-stat"><small>Positions</small><strong>{{ dashboard.portfolio.position_count }}</strong><span class="muted">Invested {{ dashboard.portfolio.invested_nok }} NOK</span></div>
+        <div class="overview-stat"><small>Total return</small><strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent }}%</strong><span class="muted">P/L {{ dashboard.portfolio.total_pnl_nok }} NOK</span></div>
+    </section>
+
     <section class="overview-card overview-pulse">
-        <header>
-            <div><h2>Market Pulse</h2><small>Current dashboard universe · click any asset for the Market Terminal</small></div>
-            <a class="overview-button" href="/markets">Full market view</a>
-        </header>
+        <header><div><h2>Market Pulse</h2><small>Current dashboard universe · click any asset for the Market Terminal</small></div><a class="overview-button" href="/markets">Full market view</a></header>
         <div class="overview-pulse-grid">
             {% for item in dashboard.market[:6] %}
             <a class="overview-pulse-item" href="/market/{{ item.symbol }}">
@@ -50,21 +48,13 @@
                 <div class="overview-pulse-price">{{ item.price_nok }} NOK</div>
                 <div class="overview-pulse-bottom"><span class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</span><span>{{ item.confidence }}% confidence</span></div>
             </a>
-            {% else %}
-            <p>No market data is available yet.</p>
-            {% endfor %}
+            {% else %}<p>No market data is available yet.</p>{% endfor %}
         </div>
     </section>
 
     <section class="overview-columns">
         <div class="overview-card table-wrap">
-            <header>
-                <div>
-                    <h2>ATLAS Opportunities</h2>
-                    <small>Ranked candidates from the existing discovery and decision layers</small>
-                </div>
-                <a class="overview-button" href="/scanner">View scanner</a>
-            </header>
+            <header><div><h2>ATLAS Opportunities</h2><small>Ranked candidates from discovery and decision layers</small></div><a class="overview-button" href="/scanner">View scanner</a></header>
             {% if dashboard.market_scan %}
             <table class="overview-table">
                 <thead><tr><th>Asset</th><th>Signal</th><th>Confidence</th><th>Discovery</th><th>Why it matters</th></tr></thead>
@@ -80,91 +70,41 @@
                 {% endfor %}
                 </tbody>
             </table>
-            {% else %}
-            <p>No ranked candidates are available yet. Open Scanner to refresh and inspect the market universe.</p>
-            {% endif %}
+            {% else %}<p>No ranked candidates are available yet. Open Scanner to refresh and inspect the market universe.</p>{% endif %}
         </div>
 
         <div class="overview-card">
-            <header>
-                <div>
-                    <h2>ATLAS Intelligence</h2>
-                    <small>{{ dashboard.intelligence.symbol }}</small>
-                </div>
-                {% if dashboard.intelligence.action == "BUY" %}<span class="overview-action buy">BUY{% elif dashboard.intelligence.action == "SELL" %}<span class="overview-action sell">SELL{% else %}<span class="overview-action hold">HOLD{% endif %}</span>
-            </header>
+            <header><div><h2>ATLAS Intelligence</h2><small>{{ dashboard.intelligence.symbol }}</small></div>{% if primary_action == "BUY" %}<span class="overview-action buy">BUY{% elif primary_action == "SELL" %}<span class="overview-action sell">SELL{% else %}<span class="overview-action hold">HOLD{% endif %}</span></header>
             <div class="overview-intelligence">
-                <div><small>Confidence</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div>
-                <div><small>Evidence</small><strong>{{ dashboard.intelligence.evidence }}%</strong></div>
-                <div><small>Agreement</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
+                <div><small>Confidence</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div><div><small>Evidence</small><strong>{{ dashboard.intelligence.evidence }}%</strong></div><div><small>Agreement</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
             </div>
             <div class="overview-intelligence overview-intelligence-secondary">
-                <div><small>Robustness</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div>
-                <div><small>Robustness level</small><strong>{{ dashboard.decision_robustness.level }}</strong></div>
-                <div><small>Dominant influence</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div>
+                <div><small>Robustness</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div><div><small>Level</small><strong>{{ dashboard.decision_robustness.level }}</strong></div><div><small>Dominant influence</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div>
             </div>
-            {% if dashboard.intelligence.reasoning %}
-                {% for reason in dashboard.intelligence.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}
-            {% elif dashboard.decision.reasoning %}
-                {% for reason in dashboard.decision.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}
-            {% else %}
-                <div class="overview-reason">ATLAS is waiting for enough evidence to explain the current decision.</div>
-            {% endif %}
+            {% if dashboard.intelligence.reasoning %}{% for reason in dashboard.intelligence.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}{% elif dashboard.decision.reasoning %}{% for reason in dashboard.decision.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}{% else %}<div class="overview-reason">ATLAS is waiting for enough evidence to explain the current decision.</div>{% endif %}
         </div>
     </section>
 
     <section class="overview-columns">
         <div class="overview-card table-wrap">
-            <header>
-                <div><h2>Watchlist</h2><small>Personal watchlist with live ATLAS signal context</small></div>
-                <a class="overview-button" href="/markets">Manage</a>
-            </header>
+            <header><div><h2>Watchlist</h2><small>Personal watchlist with live ATLAS signal context</small></div><a class="overview-button" href="/markets">Manage</a></header>
             <table class="overview-table">
                 <thead><tr><th>Asset</th><th>Price</th><th>Change</th><th>ATLAS</th></tr></thead>
                 <tbody>
                 {% for item in dashboard.market %}
-                <tr>
-                    <td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td>
-                    <td>{{ item.price_nok }} NOK</td>
-                    <td class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</td>
-                    <td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }} · {{ item.confidence }}%</span></td>
-                </tr>
+                <tr><td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td><td>{{ item.price_nok }} NOK</td><td class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</td><td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }} · {{ item.confidence }}%</span></td></tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
-
-        <div class="overview-card">
-            <header><div><h2>News & Events</h2><small>Latest context for the selected asset</small></div></header>
-            <div class="overview-news">
-                {% if dashboard.news %}
-                    {% for article in dashboard.news[:5] %}
-                    <div class="overview-news-item">
-                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a>
-                        <small>{{ article.source }}</small>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <p>No news is currently available.</p>
-                {% endif %}
-            </div>
-        </div>
+        <div class="overview-card"><header><div><h2>News & Events</h2><small>Latest context for the selected asset</small></div></header><div class="overview-news">{% if dashboard.news %}{% for article in dashboard.news[:5] %}<div class="overview-news-item"><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a><small>{{ article.source }}</small></div>{% endfor %}{% else %}<p>No news is currently available.</p>{% endif %}</div></div>
     </section>
 
     <section class="overview-card">
-        <header>
-            <div><h2>Live Market</h2><small>BTCUSDT · 1m · read-only market view</small></div>
-            <div>
-                {% if dashboard.decision.action.value == "BUY" %}<span id="atlas-chart-signal" class="overview-action buy">BUY{% elif dashboard.decision.action.value == "SELL" %}<span id="atlas-chart-signal" class="overview-action sell">SELL{% else %}<span id="atlas-chart-signal" class="overview-action hold">HOLD{% endif %}</span>
-            </div>
-        </header>
+        <header><div><h2>Live Market</h2><small>BTCUSDT · 1m · read-only market view</small></div>{% if dashboard.decision.action.value == "BUY" %}<span id="atlas-chart-signal" class="overview-action buy">BUY{% elif dashboard.decision.action.value == "SELL" %}<span id="atlas-chart-signal" class="overview-action sell">SELL{% else %}<span id="atlas-chart-signal" class="overview-action hold">HOLD{% endif %}</span></header>
         <div id="atlas-candles" class="overview-chart"></div>
-        <div class="overview-chart-footer">
-            <span>ATLAS signal is informational; paper trading remains the execution boundary.</span>
-            <span id="atlas-chart-price">—</span>
-        </div>
+        <div class="overview-chart-footer"><span>ATLAS signal is informational; paper trading remains the execution boundary.</span><span id="atlas-chart-price">—</span></div>
     </section>
-
 </div>
 
 <script src="https://unpkg.com/lightweight-charts@5.0.4/dist/lightweight-charts.standalone.production.js"></script>
@@ -172,32 +112,10 @@
 (function () {
     const container = document.getElementById('atlas-candles');
     if (!container || !window.LightweightCharts) return;
-    const chart = LightweightCharts.createChart(container, {
-        width: container.clientWidth, height: 360,
-        layout: { background: { type: 'solid', color: '#0d1117' }, textColor: '#9aa4b2' },
-        grid: { vertLines: { color: '#18202a' }, horzLines: { color: '#18202a' } },
-        rightPriceScale: { borderColor: '#263241' },
-        timeScale: { borderColor: '#263241', timeVisible: true, secondsVisible: false }
-    });
-    const series = chart.addSeries(LightweightCharts.CandlestickSeries, {
-        upColor:'#16c784', downColor:'#ea3943', borderVisible:false,
-        wickUpColor:'#16c784', wickDownColor:'#ea3943'
-    });
-    async function refreshChart() {
-        try {
-            const response = await fetch('/api/binance-candles?symbol=BTCUSDT&interval=1m&limit=120', { cache:'no-store' });
-            const data = await response.json();
-            if (!response.ok || !data.candles || !data.candles.length) throw new Error(data.error || 'No candle data');
-            const candles = data.candles.map(c => ({time:Math.floor(Number(c.timestamp)),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)}));
-            series.setData(candles);
-            const last = candles[candles.length - 1];
-            document.getElementById('atlas-chart-price').textContent = '$' + last.close.toLocaleString(undefined,{maximumFractionDigits:2});
-            chart.timeScale().fitContent();
-        } catch (error) { console.error('ATLAS overview chart refresh failed:', error); }
-    }
-    refreshChart();
-    setInterval(refreshChart, 15000);
-    new ResizeObserver(() => chart.applyOptions({width:container.clientWidth})).observe(container);
+    const chart = LightweightCharts.createChart(container, { width: container.clientWidth, height: 360, layout: { background: { type: 'solid', color: '#0d1117' }, textColor: '#9aa4b2' }, grid: { vertLines: { color: '#18202a' }, horzLines: { color: '#18202a' } }, rightPriceScale: { borderColor: '#263241' }, timeScale: { borderColor: '#263241', timeVisible: true, secondsVisible: false } });
+    const series = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor:'#16c784', downColor:'#ea3943', borderVisible:false, wickUpColor:'#16c784', wickDownColor:'#ea3943' });
+    async function refreshChart() { try { const response = await fetch('/api/binance-candles?symbol=BTCUSDT&interval=1m&limit=120', { cache:'no-store' }); const data = await response.json(); if (!response.ok || !data.candles || !data.candles.length) throw new Error(data.error || 'No candle data'); const candles = data.candles.map(c => ({time:Math.floor(Number(c.timestamp)),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)})); series.setData(candles); const last = candles[candles.length - 1]; document.getElementById('atlas-chart-price').textContent = '$' + last.close.toLocaleString(undefined,{maximumFractionDigits:2}); chart.timeScale().fitContent(); } catch (error) { console.error('ATLAS overview chart refresh failed:', error); } }
+    refreshChart(); setInterval(refreshChart, 15000); new ResizeObserver(() => chart.applyOptions({width:container.clientWidth})).observe(container);
 })();
 </script>
 {% endblock %}
