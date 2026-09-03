@@ -12,7 +12,10 @@ class FakeAdapter:
 
     def get_klines(self, symbol, interval="1h", limit=24):
         self.klines_calls.append((symbol, interval, limit))
-        return [[0, "1", "1", "1", "1", "0", 0, str(self.volumes[symbol])] for _ in range(limit)]
+        values = self.volumes[symbol]
+        if isinstance(values, (list, tuple)):
+            return [[0, "1", "1", "1", "1", "0", 0, str(value)] for value in values]
+        return [[0, "1", "1", "1", "1", "0", 0, str(values)] for _ in range(limit)]
 
 
 class MarketData:
@@ -42,6 +45,7 @@ def test_volume_enrichment_is_bounded_to_volume_and_momentum_shortlists():
     assert len(observations) == 5
     assert {call[0] for call in adapter.klines_calls} == {"AUSDT", "BUSDT", "CUSDT", "DUSDT"}
     assert len(adapter.klines_calls) == 4
+    assert all(call[2] == 25 for call in adapter.klines_calls)
 
 
 def test_historical_volume_is_cached_between_observation_builds():
@@ -55,8 +59,27 @@ def test_historical_volume_is_cached_between_observation_builds():
     second = service.observations()
 
     assert first[0].average_volume == 2500000
+    assert first[0].volume == 2500000
     assert second[0].average_volume == 2500000
-    assert adapter.klines_calls == [("BTCUSDT", "1h", 24)]
+    assert second[0].volume == 2500000
+    assert adapter.klines_calls == [("BTCUSDT", "1h", 25)]
+
+
+def test_scanner_volume_uses_current_completed_1h_against_previous_average():
+    tickers = [
+        {"symbol": "BTCUSDT", "lastPrice": "100000", "quoteVolume": "500000000", "priceChangePercent": "12"},
+    ]
+    adapter = FakeAdapter(
+        tickers,
+        {"BTCUSDT": [1_000_000] * 24 + [5_000_000]},
+    )
+    service = BinanceScannerService(MarketData(adapter), volume_enrichment_limit=1)
+
+    observations = service.observations()
+
+    assert observations[0].volume == 5_000_000
+    assert observations[0].average_volume == 1_000_000
+    assert observations[0].volume / observations[0].average_volume == 5.0
 
 
 def test_historical_volume_uses_binance_quote_volume_field():
@@ -69,7 +92,8 @@ def test_historical_volume_uses_binance_quote_volume_field():
     observations = service.observations()
 
     assert observations[0].average_volume == 1000000
-    assert adapter.klines_calls == [("BTCUSDT", "1h", 3)]
+    assert observations[0].volume == 1000000
+    assert adapter.klines_calls == [("BTCUSDT", "1h", 4)]
 
 
 def test_failed_volume_enrichment_falls_back_to_current_volume():
@@ -87,3 +111,4 @@ def test_failed_volume_enrichment_falls_back_to_current_volume():
     observations = service.observations()
 
     assert observations[0].average_volume == observations[0].volume
+    assert adapter.klines_calls == [("BTCUSDT", "1h", 25)]
