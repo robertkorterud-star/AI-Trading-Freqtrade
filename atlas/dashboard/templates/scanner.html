@@ -104,7 +104,7 @@
             <div class="scanner-results-meta" id="scanner-results-meta"></div>
             <div class="scanner-feed" id="scanner-feed">
                 {% for candidate in dashboard.scanner.candidates %}
-                    <a class="scanner-candidate-link" href="/market/{{ candidate.symbol|urlencode }}" aria-label="{{ t('open_chart') }} {{ candidate.symbol }} i ATLAS Market Terminal">
+                    <a class="scanner-candidate-link" href="/market/{{ candidate.symbol|urlencode }}" aria-label="{{ t('open_chart') }} {{ candidate.symbol }} — ATLAS Market Terminal">
                         <div class="scanner-candidate"
                              data-symbol="{{ candidate.symbol }}"
                              data-asset-type="{{ candidate.asset_type }}"
