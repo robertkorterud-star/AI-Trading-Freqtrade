@@ -42,7 +42,7 @@ from atlas.market.candidate_decision_ranker import CandidateDecisionRanker
 
 
 class DashboardDataService:
-    """Collects dashboard data."""
+    """Collects all data required by the dashboard."""
 
     def __init__(self, config=None):
         self.config = config or AtlasConfig()
@@ -79,6 +79,7 @@ class DashboardDataService:
 
     @staticmethod
     def _snapshot_results(snapshot):
+        """Rebuild AnalysisResult objects from a snapshot."""
         return [
             AnalysisResult(
                 analyst=result["analyst"],
@@ -93,6 +94,7 @@ class DashboardDataService:
 
     @staticmethod
     def _snapshot_decision(snapshot):
+        """Rebuild DecisionResult from a snapshot."""
         data = snapshot.decision
         dominant_action = data.get("dominant_action")
         return DecisionResult(
@@ -117,13 +119,24 @@ class DashboardDataService:
 
     @staticmethod
     def _snapshot_intelligence(snapshot):
+        """Rebuild IntelligenceSummary from a snapshot."""
         data = snapshot.intelligence
         return IntelligenceSummary(
             symbol=data["symbol"],
             action=Action(data["action"]),
-            confidence=float(data["confidence"]),
             evidence=float(data["evidence"]),
+            confidence=float(data["confidence"]),
+            buy_count=int(data["buy_count"]),
+            hold_count=int(data["hold_count"]),
+            sell_count=int(data["sell_count"]),
             agreement=float(data["agreement"]),
+            conflict=bool(data["conflict"]),
+            weighted_buy=float(data.get("weighted_buy", 0.0)),
+            weighted_hold=float(data.get("weighted_hold", 0.0)),
+            weighted_sell=float(data.get("weighted_sell", 0.0)),
+            weighted_agreement=float(data.get("weighted_agreement", 0.0)),
+            weighted_conflict=bool(data.get("weighted_conflict", False)),
+            analysts=list(data.get("analysts", [])),
             reasoning=list(data.get("reasoning", [])),
         )
 
@@ -255,13 +268,52 @@ class DashboardDataService:
                 "target": exchange.target,
                 "rate": round(exchange.rate, 4),
             },
-            "technical": latest_snapshot,
-            "analysis": latest_results or [],
             "decision": latest_decision,
-            "intelligence": latest_intelligence,
-            "explanation": latest_explanation,
+            "decision_explanation": latest_explanation,
             "news_explanation": latest_news_explanation,
-            "news": latest_news,
+            "decision_robustness": {
+                "margin": round(latest_decision.decision_margin, 1),
+                "robustness": round(latest_decision.robustness, 1),
+                "level": latest_decision.robustness_level,
+            },
+            "decision_influence": {
+                "dominant_action": latest_decision.dominant_action.value if latest_decision.dominant_action else None,
+                "dominant_weight": round(latest_decision.dominant_weight, 1),
+                "action_support_analyst": latest_decision.action_support_analyst,
+                "action_support_action": latest_decision.action_support_action.value if latest_decision.action_support_action else None,
+                "action_support_weight": round(latest_decision.action_support_weight * 100, 1),
+                "opposing_analysts": latest_decision.opposing_analysts,
+                "adaptive_override": latest_decision.adaptive_override,
+            },
+            "intelligence": {
+                "symbol": latest_intelligence.symbol,
+                "action": latest_intelligence.action.value,
+                "evidence": round(latest_intelligence.evidence, 1),
+                "confidence": round(latest_intelligence.confidence, 1),
+                "buy_count": latest_intelligence.buy_count,
+                "hold_count": latest_intelligence.hold_count,
+                "sell_count": latest_intelligence.sell_count,
+                "agreement": round(latest_intelligence.agreement, 1),
+                "conflict": latest_intelligence.conflict,
+                "weighted_buy": round(latest_intelligence.weighted_buy, 1),
+                "weighted_hold": round(latest_intelligence.weighted_hold, 1),
+                "weighted_sell": round(latest_intelligence.weighted_sell, 1),
+                "weighted_agreement": round(latest_intelligence.weighted_agreement, 1),
+                "weighted_conflict": latest_intelligence.weighted_conflict,
+                "analysts": latest_intelligence.analysts,
+                "reasoning": latest_intelligence.reasoning,
+            },
+            "analysts": latest_results,
             "market": market,
             "market_scan": self.market_scan(),
+            "news": latest_news,
+            "technical": {
+                "symbol": latest_snapshot.symbol,
+                "price_usd": round(latest_snapshot.price, 2),
+                "price_nok": round(latest_snapshot.price * exchange.rate, 2),
+                "change": round(latest_snapshot.change_percent, 2),
+                "ma20": round(latest_snapshot.ma20, 2),
+                "ma50": round(latest_snapshot.ma50, 2),
+                "trend": latest_snapshot.trend,
+            },
         }
