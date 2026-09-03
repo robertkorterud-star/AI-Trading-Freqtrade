@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 from atlas.adapters.news import NewsAdapter
@@ -19,6 +20,32 @@ class BinanceScannerService:
     DEFAULT_VOLUME_ENRICHMENT_LIMIT = 15
     DEFAULT_VOLUME_CACHE_TTL_SECONDS = 300.0
     DEFAULT_CATALYST_CACHE_TTL_SECONDS = 3600.0
+
+    # Finnhub relationships are preferred, but crypto-news feeds are not
+    # guaranteed to populate them. These aliases make catalyst matching
+    # resilient when an article only mentions the asset in text.
+    CRYPTO_NAME_ALIASES = {
+        "BTC": ("bitcoin",),
+        "ETH": ("ethereum",),
+        "BNB": ("binance coin",),
+        "SOL": ("solana",),
+        "XRP": ("ripple",),
+        "ADA": ("cardano",),
+        "DOGE": ("dogecoin",),
+        "AVAX": ("avalanche",),
+        "DOT": ("polkadot",),
+        "LINK": ("chainlink",),
+        "TRX": ("tron",),
+        "SUI": ("sui",),
+        "TON": ("toncoin",),
+        "LTC": ("litecoin",),
+        "BCH": ("bitcoin cash",),
+        "NEAR": ("near protocol",),
+        "UNI": ("uniswap",),
+        "ATOM": ("cosmos",),
+        "XLM": ("stellar",),
+        "ETC": ("ethereum classic",),
+    }
 
     def __init__(
         self,
@@ -82,7 +109,9 @@ class BinanceScannerService:
             eligible.append((symbol, price, quote_volume, change_percent))
 
         enriched_symbols = self._select_volume_enrichment_symbols(eligible)
-        catalyst_symbols = self._catalyst_symbols_for_universe()
+        catalyst_symbols = self._catalyst_symbols_for_universe(
+            symbol for symbol, _, _, _ in eligible
+        )
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent in eligible:
             volume = quote_volume
@@ -108,12 +137,22 @@ class BinanceScannerService:
             )
         return observations
 
-    def _catalyst_symbols_for_universe(self) -> set[str]:
-        """Return Binance symbols mentioned by the current crypto-news feed."""
+    def _catalyst_symbols_for_universe(self, universe_symbols) -> set[str]:
+        """Return Binance symbols supported by the current crypto-news feed.
+
+        Finnhub's ``related`` field is the strongest signal. When it is absent,
+        fall back to asset ticker/name mentions in headline + summary. Matching
+        is limited to the current Binance universe.
+        """
         now = time.monotonic()
         if now - self._catalyst_cache_at < self.catalyst_cache_ttl_seconds:
             return set(self._catalyst_symbols)
 
+        universe = {
+            str(symbol).strip().upper()
+            for symbol in universe_symbols
+            if str(symbol).strip()
+        }
         adapter = self.news_adapter
         if adapter is None:
             try:
@@ -137,15 +176,53 @@ class BinanceScannerService:
                     continue
                 if ":" in normalized:
                     normalized = normalized.rsplit(":", 1)[-1]
-                if normalized.endswith(("USDT", "USDC")):
-                    symbols.add(normalized)
+                if normalized.endswith(tuple(self.quote_assets)):
+                    if normalized in universe:
+                        symbols.add(normalized)
                     continue
                 for quote_asset in self.quote_assets:
-                    symbols.add(f"{normalized}{quote_asset}")
+                    pair = f"{normalized}{quote_asset}"
+                    if pair in universe:
+                        symbols.add(pair)
+
+            text = " ".join(
+                str(getattr(article, field, "") or "")
+                for field in ("title", "summary")
+            ).lower()
+            if not text:
+                continue
+
+            for symbol in universe:
+                base = self._base_asset(symbol)
+                aliases = self.CRYPTO_NAME_ALIASES.get(base, ())
+                if self._contains_crypto_term(text, base) or any(
+                    self._contains_crypto_term(text, alias)
+                    for alias in aliases
+                ):
+                    symbols.add(symbol)
 
         self._catalyst_cache_at = now
         self._catalyst_symbols = symbols
         return set(symbols)
+
+    @staticmethod
+    def _contains_crypto_term(text: str, term: str) -> bool:
+        """Match an asset/ticker as a standalone term, not a substring."""
+        normalized = str(term).strip().lower()
+        if not normalized:
+            return False
+        return re.search(
+            rf"(?<![a-z0-9]){re.escape(normalized)}(?![a-z0-9])",
+            text,
+        ) is not None
+
+    @staticmethod
+    def _base_asset(symbol: str) -> str:
+        normalized = str(symbol).strip().upper()
+        for quote in ("USDT", "USDC"):
+            if normalized.endswith(quote):
+                return normalized[: -len(quote)]
+        return normalized
 
     def _select_volume_enrichment_symbols(
         self,
