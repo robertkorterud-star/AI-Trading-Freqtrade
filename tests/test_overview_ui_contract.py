@@ -1,0 +1,58 @@
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TEMPLATE = ROOT / "atlas" / "dashboard" / "templates" / "index.html"
+STYLE = ROOT / "atlas" / "dashboard" / "static" / "overview.css"
+BASE = ROOT / "atlas" / "dashboard" / "templates" / "base.html"
+
+
+def test_overview_template_has_command_center_sections():
+    text = TEMPLATE.read_text(encoding="utf-8")
+
+    for marker in (
+        "Market Overview",
+        "ATLAS Opportunities",
+        "ATLAS Intelligence",
+        "Watchlist",
+        "News & Events",
+        "Live Market",
+        "/scanner",
+        "/markets",
+        "/market/{{ item.symbol }}",
+    ):
+        assert marker in text
+
+
+def test_overview_uses_existing_dashboard_data_contract():
+    text = TEMPLATE.read_text(encoding="utf-8")
+
+    for field in (
+        "dashboard.portfolio.total_equity_nok",
+        "dashboard.portfolio.cash_nok",
+        "dashboard.portfolio.position_count",
+        "dashboard.portfolio.return_percent",
+        "dashboard.market_scan",
+        "dashboard.market",
+        "dashboard.intelligence.confidence",
+        "dashboard.intelligence.evidence",
+        "dashboard.intelligence.agreement",
+        "dashboard.news",
+    ):
+        assert field in text
+
+
+def test_overview_styles_are_loaded_and_responsive():
+    base = BASE.read_text(encoding="utf-8")
+    style = STYLE.read_text(encoding="utf-8")
+
+    assert '/static/overview.css' in base
+    for marker in (
+        ".overview-page",
+        ".overview-grid",
+        ".overview-columns",
+        ".overview-table",
+        ".overview-intelligence",
+        "@media (max-width:700px)",
+    ):
+        assert marker in style
