@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 
-from atlas.adapters.binance_market_data import BinanceMarketDataAdapter
 from atlas.adapters.news import NewsAdapter
 from atlas.market.market_scout import AssetType, MarketObservation
 from atlas.services.scanner_service import ScannerResult, ScannerService
@@ -110,7 +109,7 @@ class BinanceScannerService:
         return observations
 
     def _catalyst_symbols_for_universe(self) -> set[str]:
-        """Return symbols mentioned by the current crypto-news feed."""
+        """Return Binance symbols mentioned by the current crypto-news feed."""
         now = time.monotonic()
         if now - self._catalyst_cache_at < self.catalyst_cache_ttl_seconds:
             return set(self._catalyst_symbols)
@@ -134,8 +133,15 @@ class BinanceScannerService:
             related = getattr(article, "related", ())
             for related_symbol in related:
                 normalized = str(related_symbol).strip().upper()
-                if normalized:
+                if not normalized:
+                    continue
+                if ":" in normalized:
+                    normalized = normalized.rsplit(":", 1)[-1]
+                if normalized.endswith(("USDT", "USDC")):
                     symbols.add(normalized)
+                    continue
+                for quote_asset in self.quote_assets:
+                    symbols.add(f"{normalized}{quote_asset}")
 
         self._catalyst_cache_at = now
         self._catalyst_symbols = symbols
