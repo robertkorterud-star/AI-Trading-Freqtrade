@@ -60,66 +60,54 @@
 .overview-intelligence strong { font-size:16px; }
 .overview-intelligence-secondary { margin-top:10px; }
 
-/* =====================================================
+/* -----------------------------------------------------
    ATLAS Decision / Conviction
-   The decision is the visual anchor directly below the chart.
-   ===================================================== */
+   The decision is deliberately the visual focal point
+   immediately below the market chart.
+   ----------------------------------------------------- */
 .overview-conviction {
     display:grid;
-    grid-template-columns:minmax(180px,220px) minmax(0,1fr) minmax(300px,420px);
-    align-items:center;
+    grid-template-columns:minmax(300px,1.15fr) minmax(360px,1fr);
     gap:28px;
-    padding:22px 26px;
-    background:linear-gradient(135deg,#0f172a,#111827 58%,#0b1220);
+    align-items:center;
+    padding:26px 30px;
+    background:radial-gradient(circle at 18% 50%,rgba(56,189,248,.08),transparent 34%),linear-gradient(135deg,#111827,#101010 58%,#151515);
     border:1px solid #334155;
-    border-radius:16px;
-    box-shadow:0 14px 42px rgba(0,0,0,.18);
+    border-radius:18px;
+    box-shadow:0 14px 40px rgba(0,0,0,.22);
 }
-.overview-conviction-copy { min-width:0; }
-.overview-conviction-copy > .overview-kicker { margin-bottom:9px; }
-.overview-conviction-title { display:flex; align-items:center; flex-wrap:wrap; gap:10px; font-size:20px; font-weight:700; }
-.overview-conviction-title .overview-action {
-    width:126px;
-    height:126px;
-    padding:0;
-    display:inline-flex;
+.overview-conviction-copy { position:relative; min-height:190px; padding-left:214px; display:flex; flex-direction:column; justify-content:center; }
+.overview-conviction-copy::before {
+    content:"HOLD";
+    position:absolute;
+    left:0;
+    top:50%;
+    transform:translateY(-50%);
+    width:172px;
+    height:172px;
+    border-radius:50%;
+    display:flex;
     align-items:center;
     justify-content:center;
-    border-radius:50%;
-    border:8px solid currentColor;
-    background:radial-gradient(circle at 50% 45%,rgba(34,197,94,.18),rgba(15,23,42,.96) 67%);
-    box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),0 0 28px rgba(34,197,94,.12);
-    font-size:22px;
-    letter-spacing:.03em;
+    font-size:25px;
+    font-weight:900;
+    letter-spacing:.08em;
+    color:#facc15;
+    background:radial-gradient(circle,#17130a 0 54%,transparent 55%),conic-gradient(#facc15 0deg,#facc15 250deg,#3b3312 250deg,#3b3312 360deg);
+    box-shadow:0 0 0 8px rgba(250,204,21,.05),0 0 34px rgba(250,204,21,.18);
 }
-.overview-conviction-title .overview-action.sell { background:radial-gradient(circle at 50% 45%,rgba(239,68,68,.18),rgba(15,23,42,.96) 67%); box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),0 0 28px rgba(239,68,68,.12); }
-.overview-conviction-title .overview-action.hold { background:radial-gradient(circle at 50% 45%,rgba(250,204,21,.16),rgba(15,23,42,.96) 67%); box-shadow:inset 0 0 0 2px rgba(255,255,255,.05),0 0 28px rgba(250,204,21,.10); }
-.overview-conviction-title .overview-symbol { font-size:23px; }
-.overview-conviction-copy p { margin:12px 0 0; color:#94a3b8; line-height:1.5; max-width:650px; }
-.overview-conviction-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-.overview-conviction-metrics > div { padding:15px; border:1px solid #2d3a50; border-radius:11px; background:rgba(15,23,42,.62); }
-.overview-conviction-metrics small { display:block; color:#64748b; margin-bottom:7px; }
-.overview-conviction-metrics strong { font-size:20px; color:#f8fafc; }
+.overview-conviction:has(.overview-action.buy) .overview-conviction-copy::before { content:"KJØP"; color:#4ade80; background:radial-gradient(circle,#07150d 0 54%,transparent 55%),conic-gradient(#22c55e 0deg,#22c55e 300deg,#12331f 300deg,#12331f 360deg); box-shadow:0 0 0 8px rgba(34,197,94,.05),0 0 38px rgba(34,197,94,.24); }
+.overview-conviction:has(.overview-action.sell) .overview-conviction-copy::before { content:"SELG"; color:#f87171; background:radial-gradient(circle,#19090b 0 54%,transparent 55%),conic-gradient(#ef4444 0deg,#ef4444 300deg,#351216 300deg,#351216 360deg); box-shadow:0 0 0 8px rgba(239,68,68,.05),0 0 38px rgba(239,68,68,.22); }
+.overview-conviction-copy::after { content:"ATLAS BESLUTNING"; position:absolute; left:33px; top:calc(50% + 62px); width:106px; text-align:center; transform:translateY(0); color:#64748b; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.overview-conviction-title { display:flex; align-items:center; flex-wrap:wrap; gap:9px; font-size:25px; font-weight:800; }
+.overview-conviction-title > span:first-child { color:#94a3b8; font-size:15px; font-weight:600; }
+.overview-conviction-title .overview-symbol { font-size:25px; }
+.overview-conviction-copy p { margin:12px 0 0; color:#cbd5e1; line-height:1.55; max-width:680px; }
+.overview-conviction-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.overview-conviction-metrics > div { min-height:92px; padding:17px; border:1px solid #2d3a50; border-radius:13px; background:rgba(8,12,18,.72); display:flex; flex-direction:column; justify-content:center; }
+.overview-conviction-metrics small { color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+.overview-conviction-metrics strong { margin-top:6px; font-size:24px; }
+.overview-conviction .overview-action { font-size:12px; padding:6px 10px; }
 
-@media (max-width:1100px) {
-    .overview-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .overview-columns { grid-template-columns:1fr; }
-    .overview-pulse-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .overview-conviction { grid-template-columns:150px minmax(0,1fr); }
-    .overview-conviction-metrics { grid-column:1 / -1; }
-}
-@media (max-width:700px) {
-    .overview-hero { flex-direction:column; align-items:flex-start; }
-    .overview-grid { grid-template-columns:1fr; }
-    .overview-card { padding:16px; }
-    .overview-table { min-width:680px; }
-    .overview-card.table-wrap { overflow-x:auto; }
-    .overview-pulse-grid { grid-template-columns:1fr; }
-    .overview-intelligence { grid-template-columns:1fr; }
-    .overview-chart-footer { flex-direction:column; }
-    .overview-conviction { grid-template-columns:1fr; gap:18px; padding:20px; }
-    .overview-conviction-title { justify-content:center; }
-    .overview-conviction-title .overview-action { width:112px; height:112px; }
-    .overview-conviction-copy p { text-align:center; }
-    .overview-conviction-metrics { grid-column:auto; }
-}
+@media (max-width:1100px) { .overview-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .overview-columns { grid-template-columns:1fr; } .overview-pulse-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .overview-conviction { grid-template-columns:1fr; } }
+@media (max-width:700px) { .overview-hero { flex-direction:column; align-items:flex-start; } .overview-grid { grid-template-columns:1fr; } .overview-card { padding:16px; } .overview-table { min-width:680px; } .overview-card.table-wrap { overflow-x:auto; } .overview-pulse-grid { grid-template-columns:1fr; } .overview-intelligence { grid-template-columns:1fr; } .overview-chart-footer { flex-direction:column; } .overview-conviction { padding:22px 18px; } .overview-conviction-copy { min-height:270px; padding:195px 0 0; text-align:center; align-items:center; } .overview-conviction-copy::before { left:50%; top:0; transform:translateX(-50%); width:165px; height:165px; } .overview-conviction-copy::after { left:50%; top:157px; transform:translateX(-50%); } .overview-conviction-title { justify-content:center; } .overview-conviction-metrics { grid-template-columns:1fr; } }
