@@ -141,7 +141,7 @@ class BinanceScannerService:
             return None
 
         completed = self._completed_volume_candles(klines)
-        if len(completed) < self.volume_samples + 1:
+        if completed is None:
             # If the feed does not expose usable close timestamps, accept the
             # supplied candles as completed rather than dropping enrichment.
             completed = self._parse_volume_candles(klines)
@@ -175,7 +175,7 @@ class BinanceScannerService:
         return volumes
 
     @classmethod
-    def _completed_volume_candles(cls, klines) -> list[float]:
+    def _completed_volume_candles(cls, klines) -> list[float] | None:
         """Extract candles whose Binance close time has already passed."""
         now_ms = time.time() * 1000.0
         completed: list[float] = []
@@ -190,7 +190,7 @@ class BinanceScannerService:
             if close_time <= now_ms and volume > 0.0:
                 completed.append(volume)
         if not timestamp_seen:
-            return []
+            return None
         return completed
 
     @staticmethod
