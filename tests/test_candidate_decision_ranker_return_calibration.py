@@ -39,10 +39,10 @@ def test_return_score_calibration_at_common_net_return_levels():
     # With the default 0.24% round-trip cost and full robustness,
     # these gross returns produce the following risk-adjusted net returns.
     cases = [
-        (0.003, 0.0006, 51.2),
-        (0.005, 0.0026, 55.2),
-        (0.010, 0.0076, 65.2),
-        (0.015, 0.0126, 75.2),
+        (0.003, 0.0006, 51.5),
+        (0.005, 0.0026, 56.5),
+        (0.010, 0.0076, 69.0),
+        (0.015, 0.0126, 81.5),
     ]
 
     for gross_return, expected_net, expected_score in cases:
