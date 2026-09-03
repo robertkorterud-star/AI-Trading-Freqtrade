@@ -37,7 +37,7 @@
     <footer>
         ATLAS v0.8.1
         <span id="atlas-refresh-status">
-            {% if request.url.path == "/scanner" %}
+            {% if request and request.url.path == "/scanner" %}
                 · Scanner refresh: manual
             {% else %}
                 · Live refresh: 30s
