@@ -42,6 +42,7 @@ templates = Jinja2Templates(
     directory="atlas/dashboard/templates"
 )
 
+
 def template_translate(key):
     return translate(get_language(), key)
 
@@ -155,8 +156,8 @@ async def dashboard(request: Request):
 
 @app.get("/scanner", response_class=HTMLResponse)
 async def scanner(request: Request):
-    """ATLAS Scanner observation page; intentionally read-only."""
-    dashboard = service.get_dashboard()
+    """ATLAS Scanner page; uses only the hourly scanner snapshot."""
+    dashboard = {"scanner": service.get_scanner()}
     return templates.TemplateResponse(
         request=request,
         name="scanner.html",
@@ -438,13 +439,10 @@ async def update_settings(request: Request):
     form = await request.form()
     trading_mode = form.get("trading_mode")
     language = form.get("language")
-    ai_provider = form.get("ai_provider")
-    if trading_mode is not None:
-        settings_service.set_trading_mode(trading_mode)
-    if language is not None:
-        settings_service.set_language(language)
-    if ai_provider is not None:
-        settings_service.set_ai_provider(ai_provider)
+    if trading_mode:
+        settings_service.set_trading_mode(str(trading_mode))
+    if language:
+        settings_service.set_language(str(language))
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -452,9 +450,3 @@ async def update_settings(request: Request):
 async def settings(request: Request):
     dashboard = service.get_dashboard()
     return templates.TemplateResponse(request=request, name="settings.html", context={"request": request, "dashboard": dashboard})
-
-
-@app.get("/agents", response_class=HTMLResponse)
-async def agents(request: Request):
-    dashboard = service.get_dashboard()
-    return templates.TemplateResponse(request=request, name="agents.html", context={"request": request, "dashboard": dashboard})
