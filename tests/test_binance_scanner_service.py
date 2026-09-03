@@ -61,4 +61,5 @@ def test_binance_scanner_returns_ranked_candidates():
     assert result.eligible == 2
     assert len(result.candidates) == 1
     assert result.candidates[0].symbol == "BTCUSDT"
-    assert result.candidates[0].score > result.candidates[0].momentum_score
+    assert 0.0 < result.candidates[0].score < result.candidates[0].momentum_score
+    assert "strong daily momentum" in result.candidates[0].reasons
