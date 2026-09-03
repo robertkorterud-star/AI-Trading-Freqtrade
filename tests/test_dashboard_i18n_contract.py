@@ -41,3 +41,34 @@ def test_dashboard_language_contract_covers_settings_and_portfolio():
         'no_active_paper_positions', 'trade_history', 'no_trades_yet', 'no_paper_trades',
     ):
         assert f'"{key}"' in translations
+
+
+def test_dashboard_language_contract_covers_scanner():
+    scanner = (TEMPLATES / "scanner.html").read_text(encoding="utf-8")
+    translations = TRANSLATIONS.read_text(encoding="utf-8")
+
+    for marker in (
+        "{{ t('scanner_title') }}",
+        "{{ t('scanner_description') }}",
+        "{{ t('scanner_connected') }}",
+        "{{ t('stocks') }}",
+        "{{ t('crypto') }}",
+        "{{ t('live_scanner_feed') }}",
+        "{{ t('scanner_filters') }}",
+        "{{ t('decision_pipeline') }}",
+        "{{ t('current_scanner_rules') }}",
+    ):
+        assert marker in scanner
+
+    for key in (
+        'scanner_title', 'scanner_description', 'scanner_connected', 'stocks', 'crypto',
+        'research_only', 'stocks_description', 'crypto_description', 'research_only_description',
+        'live_scanner_feed', 'observations', 'eligible_candidates', 'scanner_filters',
+        'search_symbol', 'market', 'all', 'catalyst', 'with_catalyst', 'without_catalyst',
+        'sort_by', 'score', 'momentum', 'volume', 'breakout', 'liquidity', 'showing_candidates',
+        'open_chart', 'no_market_observations', 'scanner_empty_description', 'decision_pipeline',
+        'find_candidates', 'horizon_day_swing_position', 'technical_signals', 'deep_analysis',
+        'before_paper_trade', 'current_scanner_rules', 'stock_min_price',
+        'minimum_average_volume', 'minimum_current_volume', 'required',
+    ):
+        assert f'"{key}"' in translations
