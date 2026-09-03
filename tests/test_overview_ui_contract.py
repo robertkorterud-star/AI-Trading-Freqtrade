@@ -12,15 +12,32 @@ def test_overview_template_has_command_center_sections():
 
     for marker in (
         '{{ t("market_overview") }}',
+        '{{ t("live_market") }}',
         '{{ t("market_pulse") }}',
         '{{ t("opportunities") }}',
         '{{ t("intelligence") }}',
         '{{ t("watchlist") }}',
         '{{ t("news_events") }}',
-        '{{ t("live_market") }}',
         "/scanner",
         "/markets",
-        "/market/{{ item.symbol }}",
+        "/market/{{ dashboard.intelligence.symbol }}",
+    ):
+        assert marker in text
+
+
+def test_overview_market_workspace_supports_search_and_chart_selection():
+    text = TEMPLATE.read_text(encoding="utf-8")
+
+    for marker in (
+        'id="overview-market-search-input"',
+        'id="overview-market-search-results"',
+        'id="atlas-candles"',
+        "'/api/market-search?q=",
+        "'/api/binance-candles?symbol=",
+        "'/api/market-candles?symbol=",
+        "overview-period",
+        "overview-interval",
+        "new URLSearchParams(window.location.search).get('symbol')",
     ):
         assert marker in text
 
