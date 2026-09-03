@@ -40,7 +40,7 @@ def test_dashboard_language_contract_covers_scanner():
     translations = TRANSLATIONS.read_text(encoding="utf-8")
 
     for marker in (
-        "{{ t('scanner_title') }}", "{{ t('scanner_description') }}",
+        "{{ t('scanner_title')|replace('ATLAS-', '') }}", "{{ t('scanner_description') }}",
         "{{ t('scanner_connected') }}", "{{ t('stocks') }}", "{{ t('crypto') }}",
         "{{ t('live_scanner_feed') }}", "{{ t('scanner_filters') }}",
         "{{ t('decision_pipeline') }}", "{{ t('current_scanner_rules') }}",
