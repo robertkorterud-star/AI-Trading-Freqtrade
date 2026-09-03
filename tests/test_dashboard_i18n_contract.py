@@ -78,3 +78,25 @@ def test_dashboard_language_contract_covers_agents():
         'stabilized', 'average', 'no_performance_history', 'no_agent_predictions_evaluated',
     ):
         assert f'"{key}"' in translations
+
+
+def test_dashboard_language_contract_covers_analysis():
+    analysis = (TEMPLATES / "analysis.html").read_text(encoding="utf-8")
+    translations = TRANSLATIONS.read_text(encoding="utf-8")
+
+    for marker in (
+        "{{ t('market_overview') }}", "{{ t('watchlist') }}", "{{ t('symbol') }}",
+        "{{ t('trend') }}", "{{ t('technical_analysis') }}", "{{ t('ai_decision') }}",
+        "{{ t('confidence') }}", "{{ t('agreement') }}", "{{ t('dominant_influence') }}",
+        "{{ t('learning') }}", "{{ t('robustness') }}", "{{ t('latest_news') }}",
+        "{{ t('no_news_found') }}",
+    ):
+        assert marker in analysis
+
+    for key in (
+        'market_overview', 'watchlist', 'symbol', 'trend', 'technical_analysis', 'ai_decision',
+        'confidence', 'agreement', 'dominant_influence', 'learning', 'adaptive', 'robustness',
+        'level', 'signal', 'why_atlas', 'latest_news', 'no_news_found', 'positive', 'negative',
+        'predictions', 'accuracy', 'decision_pipeline',
+    ):
+        assert f'"{key}"' in translations
