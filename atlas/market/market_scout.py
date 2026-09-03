@@ -33,6 +33,7 @@ class MarketObservation:
     atr_percent: float = 0.0
     news_catalyst: bool = False
     liquid: bool = True
+    breakout_percent: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,10 +95,10 @@ class MarketScout:
         return self._clamp(ratio * 20.0)
 
     def _breakout_score(self, observation: MarketObservation) -> float:
-        # Gap and short-term relative volume together approximate breakout pressure.
-        gap = max(0.0, observation.gap_percent) * 5.0
+        # Gap/breakout distance and short-term relative volume approximate breakout pressure.
+        price_breakout = max(0.0, observation.gap_percent, observation.breakout_percent) * 5.0
         short_volume = max(0.0, observation.relative_volume_5m) * 10.0
-        return self._clamp(gap + short_volume)
+        return self._clamp(price_breakout + short_volume)
 
     @staticmethod
     def _catalyst_score(observation: MarketObservation) -> float:
@@ -136,8 +137,8 @@ class MarketScout:
             reasons.append("high relative volume")
         if observation.relative_volume_5m >= 5.0:
             reasons.append("high 5-minute relative volume")
-        if observation.gap_percent >= 5.0:
-            reasons.append("opening gap")
+        if max(observation.gap_percent, observation.breakout_percent) >= 5.0:
+            reasons.append("breakout pressure")
         if observation.news_catalyst:
             reasons.append("news catalyst")
         if observation.float_shares is not None and observation.float_shares < 10_000_000:
