@@ -37,6 +37,99 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(symbols));
     }
 
+    function installStyles() {
+        if (document.getElementById("atlas-watchlist-styles")) return;
+        const style = document.createElement("style");
+        style.id = "atlas-watchlist-styles";
+        style.textContent = `
+            .watchlist-controls {
+                display: flex;
+                gap: 8px;
+                margin: 0 0 14px;
+            }
+            .watchlist-search-wrap {
+                position: relative;
+                flex: 1;
+            }
+            .watchlist-search {
+                box-sizing: border-box;
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid rgba(56, 189, 248, .28);
+                border-radius: 9px;
+                background: rgba(15, 23, 42, .85);
+                color: white;
+                outline: none;
+            }
+            .watchlist-search:focus {
+                border-color: #38bdf8;
+            }
+            .watchlist-add {
+                border: 1px solid rgba(56, 189, 248, .45);
+                border-radius: 9px;
+                padding: 0 14px;
+                background: rgba(14, 116, 144, .22);
+                color: #7dd3fc;
+                font-weight: 700;
+                cursor: pointer;
+            }
+            .watchlist-suggestions {
+                position: absolute;
+                z-index: 20;
+                left: 0;
+                right: 0;
+                top: calc(100% + 5px);
+                overflow: hidden;
+                border: 1px solid rgba(148, 163, 184, .25);
+                border-radius: 10px;
+                background: #111827;
+                box-shadow: 0 14px 35px rgba(0, 0, 0, .35);
+            }
+            .watchlist-suggestion {
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+                padding: 10px 12px;
+                border: 0;
+                border-bottom: 1px solid rgba(148, 163, 184, .1);
+                background: transparent;
+                color: white;
+                text-align: left;
+                cursor: pointer;
+            }
+            .watchlist-suggestion:hover {
+                background: rgba(56, 189, 248, .12);
+            }
+            .watchlist-suggestion span {
+                color: #94a3b8;
+            }
+            .watchlist-symbol {
+                color: white;
+                text-decoration: none;
+                font-weight: 800;
+            }
+            .watchlist-symbol:hover {
+                color: #38bdf8;
+            }
+            .watchlist-remove {
+                float: right;
+                margin-left: 8px;
+                border: 0;
+                background: transparent;
+                color: #64748b;
+                cursor: pointer;
+            }
+            .watchlist-remove:hover {
+                color: #f87171;
+            }
+            @media (max-width: 600px) {
+                .watchlist-controls { flex-direction: column; }
+                .watchlist-add { min-height: 40px; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     function init() {
         const heading = Array.from(document.querySelectorAll("h2"))
             .find((node) => node.textContent.includes("Watchlist"));
@@ -84,13 +177,9 @@
                 const info = serverRows[symbol] || {trend: "—", ai: "—"};
                 return `
                     <tr>
-                        <td>
-                            <a href="/market/${encodeURIComponent(symbol)}"
-                               class="watchlist-symbol">${esc(symbol)}</a>
-                        </td>
+                        <td><a href="/market/${encodeURIComponent(symbol)}" class="watchlist-symbol">${esc(symbol)}</a></td>
                         <td>${esc(info.trend)}</td>
-                        <td>
-                            ${esc(info.ai)}
+                        <td>${esc(info.ai)}
                             <button type="button" class="watchlist-remove"
                                     data-symbol="${esc(symbol)}" title="Fjern fra Watchlist">✕</button>
                         </td>
@@ -124,8 +213,7 @@
                 const data = await response.json();
                 const results = Array.isArray(data.results) ? data.results.slice(0, 8) : [];
                 suggestions.innerHTML = results.map((item) => `
-                    <button type="button" class="watchlist-suggestion"
-                            data-symbol="${esc(item.symbol)}">
+                    <button type="button" class="watchlist-suggestion" data-symbol="${esc(item.symbol)}">
                         <strong>${esc(item.symbol)}</strong>
                         <span>${esc(item.name || item.market || "")}</span>
                     </button>
@@ -171,6 +259,7 @@
         render();
     }
 
+    installStyles();
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
     } else {
