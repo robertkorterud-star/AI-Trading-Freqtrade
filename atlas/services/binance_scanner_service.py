@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+from atlas.adapters.binance_market_data import BinanceMarketDataAdapter
+from atlas.adapters.news import NewsAdapter
 from atlas.market.market_scout import AssetType, MarketObservation
 from atlas.services.scanner_service import ScannerResult, ScannerService
 
@@ -17,6 +19,7 @@ class BinanceScannerService:
     DEFAULT_VOLUME_SAMPLES = 24
     DEFAULT_VOLUME_ENRICHMENT_LIMIT = 15
     DEFAULT_VOLUME_CACHE_TTL_SECONDS = 300.0
+    DEFAULT_CATALYST_CACHE_TTL_SECONDS = 3600.0
 
     def __init__(
         self,
@@ -28,6 +31,8 @@ class BinanceScannerService:
         volume_samples: int = DEFAULT_VOLUME_SAMPLES,
         volume_enrichment_limit: int = DEFAULT_VOLUME_ENRICHMENT_LIMIT,
         volume_cache_ttl_seconds: float = DEFAULT_VOLUME_CACHE_TTL_SECONDS,
+        news_adapter=None,
+        catalyst_cache_ttl_seconds: float = DEFAULT_CATALYST_CACHE_TTL_SECONDS,
     ) -> None:
         self.market_data = market_data
         self.scanner = scanner or ScannerService()
@@ -37,7 +42,11 @@ class BinanceScannerService:
         self.volume_samples = max(1, volume_samples)
         self.volume_enrichment_limit = max(0, volume_enrichment_limit)
         self.volume_cache_ttl_seconds = max(0.0, volume_cache_ttl_seconds)
+        self.news_adapter = news_adapter
+        self.catalyst_cache_ttl_seconds = max(0.0, catalyst_cache_ttl_seconds)
         self._volume_cache: dict[str, tuple[float, float, float, float] | tuple[float, None, None, None]] = {}
+        self._catalyst_cache_at = 0.0
+        self._catalyst_symbols: set[str] = set()
 
     def scan(self, limit: int = 50) -> ScannerResult:
         """Fetch the public ticker universe and return ranked candidates."""
@@ -74,6 +83,7 @@ class BinanceScannerService:
             eligible.append((symbol, price, quote_volume, change_percent))
 
         enriched_symbols = self._select_volume_enrichment_symbols(eligible)
+        catalyst_symbols = self._catalyst_symbols_for_universe()
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent in eligible:
             volume = quote_volume
@@ -92,11 +102,44 @@ class BinanceScannerService:
                     volume=volume,
                     average_volume=average_volume,
                     change_percent=change_percent,
+                    news_catalyst=symbol in catalyst_symbols,
                     breakout_percent=breakout_percent,
                     liquid=True,
                 )
             )
         return observations
+
+    def _catalyst_symbols_for_universe(self) -> set[str]:
+        """Return symbols mentioned by the current crypto-news feed."""
+        now = time.monotonic()
+        if now - self._catalyst_cache_at < self.catalyst_cache_ttl_seconds:
+            return set(self._catalyst_symbols)
+
+        adapter = self.news_adapter
+        if adapter is None:
+            try:
+                adapter = NewsAdapter()
+            except Exception:
+                self._catalyst_cache_at = now
+                self._catalyst_symbols = set()
+                return set()
+
+        try:
+            articles = adapter.latest_crypto_market_news()
+        except Exception:
+            articles = []
+
+        symbols: set[str] = set()
+        for article in articles:
+            related = getattr(article, "related", ())
+            for related_symbol in related:
+                normalized = str(related_symbol).strip().upper()
+                if normalized:
+                    symbols.add(normalized)
+
+        self._catalyst_cache_at = now
+        self._catalyst_symbols = symbols
+        return set(symbols)
 
     def _select_volume_enrichment_symbols(
         self,
@@ -161,8 +204,6 @@ class BinanceScannerService:
             self._volume_cache[symbol] = (now, None, None, None)
             return None
 
-        # Normalize harmless IEEE-754 noise so percentage values are stable
-        # for scoring, caching, and display (e.g. 6.000000000000005 -> 6.0).
         breakout = round(max(0.0, breakout), 6)
         self._volume_cache[symbol] = (now, current, average, breakout)
         return current, average, breakout
