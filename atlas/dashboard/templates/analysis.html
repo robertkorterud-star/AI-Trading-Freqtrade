@@ -1,613 +1,141 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="analysis-page">
-
-    <!-- ANALYSIS HEADER -->
-
     <div class="card analysis-header">
-
-        <h1>📊 Market Analysis</h1>
-
-        <p>
-            Market overview, technical analysis, AI decision and latest news.
-        </p>
-
+        <h1>📊 {{ t('market_overview') }}</h1>
+        <p>{{ t('market_overview') }}, {{ t('technical_analysis') }}, {{ t('ai_decision') }} og {{ t('latest_news')|lower }}.</p>
     </div>
 
-
-    <!-- ANALYSIS THREE COLUMN LAYOUT -->
-
     <div class="analysis-columns">
-
-        <!-- WATCHLIST -->
-
         <section class="card analysis-card">
-
-            <h2>⭐ Watchlist</h2>
-
+            <h2>⭐ {{ t('watchlist') }}</h2>
             <table>
-
-                <thead>
-
-                    <tr>
-                        <th>Symbol</th>
-                        <th>Trend</th>
-                        <th>AI</th>
-                    </tr>
-
-                </thead>
-
+                <thead><tr><th>{{ t('symbol') }}</th><th>{{ t('trend') }}</th><th>AI</th></tr></thead>
                 <tbody>
-
                 {% for item in dashboard.market %}
-
                     <tr>
-
+                        <td><a href="/analysis?symbol={{ item.symbol|urlencode }}" style="color:white;text-decoration:none;font-weight:bold;">{{ item.symbol }}</a></td>
                         <td>
-
-                            <a
-                                href="/analysis?symbol={{ item.symbol|urlencode }}"
-                                style="
-                                    color:white;
-                                    text-decoration:none;
-                                    font-weight:bold;
-                                "
-                            >
-                                {{ item.symbol }}
-                            </a>
-
+                            {% if item.trend == "Bullish" %}🟢 {{ t('bullish') }}{% elif item.trend == "Bearish" %}🔴 {{ t('bearish') }}{% else %}🟡 {{ t('neutral') }}{% endif %}
                         </td>
-
-
                         <td>
-
-                            {% if item.trend == "Bullish" %}
-                                🟢 Bullish
-                            {% elif item.trend == "Bearish" %}
-                                🔴 Bearish
-                            {% else %}
-                                🟡 Neutral
-                            {% endif %}
-
+                            {% if item.decision == "BUY" %}🟢 {{ t('buy') }}{% elif item.decision == "SELL" %}🔴 {{ t('sell') }}{% else %}🟡 {{ t('hold') }}{% endif %}
                         </td>
-
-
-                        <td>
-
-                            {% if item.decision == "BUY" %}
-                                🟢 BUY
-                            {% elif item.decision == "SELL" %}
-                                🔴 SELL
-                            {% else %}
-                                🟡 HOLD
-                            {% endif %}
-
-                        </td>
-
                     </tr>
-
                 {% endfor %}
-
                 </tbody>
-
             </table>
-
         </section>
 
-
-        <!-- TECHNICAL ANALYSIS + AI -->
-
         <section class="card analysis-card">
-
-            <h2>
-                {{ dashboard.technical.symbol }}
-            </h2>
-
+            <h2>{{ dashboard.technical.symbol }}</h2>
             <table>
-
-                <tr>
-                    <td>💰 USD</td>
-                    <td>{{ dashboard.technical.price_usd }}</td>
-                </tr>
-
-                <tr>
-                    <td>🇳🇴 NOK</td>
-                    <td>{{ dashboard.technical.price_nok }}</td>
-                </tr>
-
-                <tr>
-                    <td>📈 Change</td>
-                    <td>{{ dashboard.technical.change }} %</td>
-                </tr>
-
-                <tr>
-                    <td>📊 MA20</td>
-                    <td>{{ dashboard.technical.ma20 }}</td>
-                </tr>
-
-                <tr>
-                    <td>📊 MA50</td>
-                    <td>{{ dashboard.technical.ma50 }}</td>
-                </tr>
-
-                <tr>
-                    <td>📉 Trend</td>
-                    <td>{{ dashboard.technical.trend }}</td>
-                </tr>
-
+                <tr><td>💰 USD</td><td>{{ dashboard.technical.price_usd }}</td></tr>
+                <tr><td>🇳🇴 NOK</td><td>{{ dashboard.technical.price_nok }}</td></tr>
+                <tr><td>📈 {{ t('market_impact') }}</td><td>{{ dashboard.technical.change }} %</td></tr>
+                <tr><td>📊 MA20</td><td>{{ dashboard.technical.ma20 }}</td></tr>
+                <tr><td>📊 MA50</td><td>{{ dashboard.technical.ma50 }}</td></tr>
+                <tr><td>📉 {{ t('trend') }}</td><td>{{ dashboard.technical.trend }}</td></tr>
             </table>
 
-
             <hr>
-
-
-            <h3>AI Decision</h3>
-
-            <h2>
-                {{ dashboard.decision.action.value }}
-            </h2>
-
-
-            <p>
-                Confidence:
-                <strong>
-                    {{ dashboard.decision.confidence | round(1) }}%
-                </strong>
-            </p>
-
+            <h3>{{ t('ai_decision') }}</h3>
+            <h2>{{ dashboard.decision.action.value }}</h2>
+            <p>{{ t('confidence') }}: <strong>{{ dashboard.decision.confidence | round(1) }}%</strong></p>
 
             <div class="decision-summary">
-
                 <div class="decision-summary-header">
-
-                    <div>
-                        <span>Decision</span>
-                        <strong class="decision-action-{{ dashboard.decision.action.value | lower }}">
-                            {{ dashboard.decision.action.value }}
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Strength</span>
-                        <strong class="robustness-level-{{ dashboard.decision_robustness.level | lower }}">
-                            {{ dashboard.decision_robustness.level }}
-                        </strong>
-                    </div>
-
+                    <div><span>{{ t('ai_decision') }}</span><strong class="decision-action-{{ dashboard.decision.action.value | lower }}">{{ dashboard.decision.action.value }}</strong></div>
+                    <div><span>{{ t('level') }}</span><strong class="robustness-level-{{ dashboard.decision_robustness.level | lower }}">{{ dashboard.decision_robustness.level }}</strong></div>
                 </div>
-
                 <div class="decision-summary-metrics">
-
-                    <div>
-                        <span>Evidence</span>
-                        <strong>
-                            {{ dashboard.decision.evidence }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Agreement</span>
-                        <strong>
-                            {{ dashboard.intelligence.agreement | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Decision Margin</span>
-                        <strong>
-                            {{ dashboard.decision_robustness.margin | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Dominant Influence</span>
-                        <strong>
-                            {{ dashboard.decision_influence.dominant_weight | round(1) }}%
-                        </strong>
-                    </div>
-
+                    <div><span>{{ t('evidence') }}</span><strong>{{ dashboard.decision.evidence }}%</strong></div>
+                    <div><span>{{ t('agreement') }}</span><strong>{{ dashboard.intelligence.agreement | round(1) }}%</strong></div>
+                    <div><span>{{ t('margin') if false else t('robustness') }}</span><strong>{{ dashboard.decision_robustness.margin | round(1) }}%</strong></div>
+                    <div><span>{{ t('dominant_influence') }}</span><strong>{{ dashboard.decision_influence.dominant_weight | round(1) }}%</strong></div>
                     {% if dashboard.decision_influence.action_support_analyst %}
-                        <div>
-                            <span>Learned Action Support</span>
-                            <strong>
-                                {{ dashboard.decision_influence.action_support_action }}
-                                {{ dashboard.decision_influence.action_support_weight | round(1) }}%
-                            </strong>
-                        </div>
+                    <div><span>{{ t('learning') }}</span><strong>{{ dashboard.decision_influence.action_support_action }} {{ dashboard.decision_influence.action_support_weight | round(1) }}%</strong></div>
                     {% endif %}
-
                 </div>
-
-                {% if dashboard.decision_influence.adaptive_override %}
-                    <div class="decision-summary-override">
-                        Adaptive weighting influenced the final decision.
-                    </div>
-                {% endif %}
-
+                {% if dashboard.decision_influence.adaptive_override %}<div class="decision-summary-override">{{ t('learning') }}: {{ t('adaptive') }}.</div>{% endif %}
             </div>
 
-
-            <div class="confidence-bar">
-
-                <div
-                    class="confidence-fill"
-                    style="width:{{ dashboard.decision.confidence | round(1) }}%;"
-                >
-                </div>
-
-            </div>
-
+            <div class="confidence-bar"><div class="confidence-fill" style="width:{{ dashboard.decision.confidence | round(1) }}%;"></div></div>
 
             <div class="decision-intelligence">
-
-                <h3>Weighted Intelligence</h3>
-
+                <h3>{{ t('intelligence') }}</h3>
                 <div class="decision-weight-metrics">
-
-                    <div>
-                        <span>BUY influence</span>
-                        <strong>
-                            {{ dashboard.intelligence.weighted_buy | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>HOLD influence</span>
-                        <strong>
-                            {{ dashboard.intelligence.weighted_hold | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>SELL influence</span>
-                        <strong>
-                            {{ dashboard.intelligence.weighted_sell | round(1) }}%
-                        </strong>
-                    </div>
-
+                    <div><span>{{ t('buy') }} influence</span><strong>{{ dashboard.intelligence.weighted_buy | round(1) }}%</strong></div>
+                    <div><span>{{ t('hold') }} influence</span><strong>{{ dashboard.intelligence.weighted_hold | round(1) }}%</strong></div>
+                    <div><span>{{ t('sell') }} influence</span><strong>{{ dashboard.intelligence.weighted_sell | round(1) }}%</strong></div>
                 </div>
-
                 <div class="decision-agreement">
-
-                    <div>
-                        <span>Weighted Agreement</span>
-                        <strong>
-                            {{ dashboard.intelligence.weighted_agreement | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Weighted Conflict</span>
-
-                        {% if dashboard.intelligence.weighted_conflict %}
-                            <strong>Yes</strong>
-                        {% else %}
-                            <strong>No</strong>
-                        {% endif %}
-
-                    </div>
-
+                    <div><span>{{ t('agreement') }}</span><strong>{{ dashboard.intelligence.weighted_agreement | round(1) }}%</strong></div>
+                    <div><span>{{ t('level') }}</span>{% if dashboard.intelligence.weighted_conflict %}<strong>{{ t('negative') }}</strong>{% else %}<strong>{{ t('positive') }}</strong>{% endif %}</div>
                 </div>
-
             </div>
 
             <div class="learned-agent-influence">
-
-                <h3>🧠 Learned Agent Influence</h3>
-
+                <h3>🧠 {{ t('learning') }}</h3>
                 <div class="learned-agent-list">
-
-                    {% for agent in dashboard.agent_performance.history %}
-
-                        {% set agent_weight = (
-                            dashboard.agent_performance.weights
-                            .get(agent.analyst, 0)
-                        ) %}
-
-                        <div class="learned-agent">
-
-                            <div class="learned-agent-header">
-
-                                <div>
-                                    <strong>
-                                        {{ agent.analyst }}
-                                    </strong>
-
-                                    {% if agent.analyst in dashboard.intelligence.analysts %}
-                                        <span class="learned-agent-active">
-                                            Active
-                                        </span>
-                                    {% endif %}
-                                </div>
-
-                                <strong>
-                                    {{ (agent_weight * 100) | round(2) }}%
-                                </strong>
-
-                            </div>
-
-                            <div class="learned-agent-bar">
-
-                                <div
-                                    class="learned-agent-fill"
-                                    style="width: {{ ((agent_weight / 0.60) * 100) | round(2) }}%;"
-                                ></div>
-
-                            </div>
-
-                            <div class="learned-agent-meta">
-
-                                <span>
-                                    {{ agent.predictions }} predictions
-                                </span>
-
-                                <span>
-                                    {{ agent.accuracy }}% accuracy
-                                </span>
-
-                            </div>
-
-                            {% set explanation = (
-                                dashboard.agent_performance
-                                .weight_explanations
-                                .get(agent.analyst)
-                            ) %}
-
-                            {% if explanation %}
-
-                                <p class="learned-agent-reason">
-                                    {{ explanation.reason }}
-                                </p>
-
-                            {% endif %}
-
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-                {% if dashboard.decision_influence.adaptive_override %}
-
-                    <div class="learned-agent-override">
-                        Adaptive weighting influenced the final decision.
+                {% for agent in dashboard.agent_performance.history %}
+                    {% set agent_weight = dashboard.agent_performance.weights.get(agent.analyst, 0) %}
+                    <div class="learned-agent">
+                        <div class="learned-agent-header"><div><strong>{{ agent.analyst }}</strong>{% if agent.analyst in dashboard.intelligence.analysts %}<span class="learned-agent-active">{{ t('running') }}</span>{% endif %}</div><strong>{{ (agent_weight * 100) | round(2) }}%</strong></div>
+                        <div class="learned-agent-bar"><div class="learned-agent-fill" style="width: {{ ((agent_weight / 0.60) * 100) | round(2) }}%;"></div></div>
+                        <div class="learned-agent-meta"><span>{{ agent.predictions }} {{ t('predictions') }}</span><span>{{ agent.accuracy }}% {{ t('accuracy')|lower }}</span></div>
+                        {% set explanation = dashboard.agent_performance.weight_explanations.get(agent.analyst) %}
+                        {% if explanation %}<p class="learned-agent-reason">{{ explanation.reason }}</p>{% endif %}
                     </div>
-
-                {% endif %}
-
+                {% endfor %}
+                </div>
+                {% if dashboard.decision_influence.adaptive_override %}<div class="learned-agent-override">{{ t('learning') }}: {{ t('adaptive') }}.</div>{% endif %}
             </div>
 
-
             <div class="decision-robustness">
-
-                <h3>Decision Robustness</h3>
-
+                <h3>{{ t('robustness') }}</h3>
                 <div class="decision-robustness-metrics">
-
-                    <div>
-                        <span>Decision Margin</span>
-                        <strong>
-                            {{ dashboard.decision_robustness.margin | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Robustness</span>
-                        <strong>
-                            {{ dashboard.decision_robustness.robustness }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Strength</span>
-                        <strong class="robustness-level-{{ dashboard.decision_robustness.level | lower }}">
-                            {{ dashboard.decision_robustness.level }}
-                        </strong>
-                    </div>
-
+                    <div><span>{{ t('robustness') }}</span><strong>{{ dashboard.decision_robustness.margin | round(1) }}%</strong></div>
+                    <div><span>{{ t('robustness') }}</span><strong>{{ dashboard.decision_robustness.robustness }}%</strong></div>
+                    <div><span>{{ t('level') }}</span><strong class="robustness-level-{{ dashboard.decision_robustness.level | lower }}">{{ dashboard.decision_robustness.level }}</strong></div>
                 </div>
-
             </div>
 
             <div class="decision-explanation">
-
-                <div class="decision-explanation-header">
-
-                    <div>
-                        <span>ATLAS Explanation</span>
-                        <strong>
-                            {{ dashboard.decision_explanation.headline }}
-                        </strong>
-                    </div>
-
-                </div>
-
-                <p class="decision-explanation-summary">
-                    {{ dashboard.decision_explanation.summary }}
-                </p>
-
+                <div class="decision-explanation-header"><div><span>ATLAS</span><strong>{{ dashboard.decision_explanation.headline }}</strong></div></div>
+                <p class="decision-explanation-summary">{{ dashboard.decision_explanation.summary }}</p>
                 <div class="decision-explanation-metrics">
-
-                    <div>
-                        <span>Evidence</span>
-                        <strong>
-                            {{ dashboard.decision_explanation.evidence | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Confidence</span>
-                        <strong>
-                            {{ dashboard.decision_explanation.confidence | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Agreement</span>
-                        <strong>
-                            {{ dashboard.decision_explanation.agreement | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Decision Margin</span>
-                        <strong>
-                            {{ dashboard.decision_explanation.decision_margin | round(1) }}%
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Dominant Signal</span>
-                        <strong>
-                            {% if dashboard.decision_explanation.dominant_action %}
-                                {{ dashboard.decision_explanation.dominant_action.value }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>Dominant Influence</span>
-                        <strong>
-                            {{ dashboard.decision_explanation.dominant_weight | round(1) }}%
-                        </strong>
-                    </div>
-
+                    <div><span>{{ t('evidence') }}</span><strong>{{ dashboard.decision_explanation.evidence | round(1) }}%</strong></div>
+                    <div><span>{{ t('confidence') }}</span><strong>{{ dashboard.decision_explanation.confidence | round(1) }}%</strong></div>
+                    <div><span>{{ t('agreement') }}</span><strong>{{ dashboard.decision_explanation.agreement | round(1) }}%</strong></div>
+                    <div><span>{{ t('robustness') }}</span><strong>{{ dashboard.decision_explanation.decision_margin | round(1) }}%</strong></div>
+                    <div><span>{{ t('signal') }}</span><strong>{% if dashboard.decision_explanation.dominant_action %}{{ dashboard.decision_explanation.dominant_action.value }}{% else %}—{% endif %}</strong></div>
+                    <div><span>{{ t('dominant_influence') }}</span><strong>{{ dashboard.decision_explanation.dominant_weight | round(1) }}%</strong></div>
                 </div>
-
-                {% if dashboard.decision_explanation.opposing_analysts %}
-
-                    <div class="decision-explanation-opposing">
-
-                        <span>Opposing Analysts</span>
-
-                        <strong>
-                            {{ dashboard.decision_explanation.opposing_analysts | join(", ") }}
-                        </strong>
-
-                    </div>
-
-                {% endif %}
-
-                {% if dashboard.decision_explanation.adaptive_override %}
-
-                    <div class="decision-explanation-override">
-                        Adaptive weighting influenced the final decision.
-                    </div>
-
-                {% endif %}
-
-                <div class="decision-explanation-reasons">
-
-                    <h4>Key Reasons</h4>
-
-                    {% for reason in dashboard.decision_explanation.key_reasons %}
-
-                        <p>
-                            • {{ reason }}
-                        </p>
-
-                    {% endfor %}
-
-                </div>
-
+                {% if dashboard.decision_explanation.opposing_analysts %}<div class="decision-explanation-opposing"><span>{{ t('negative') }}</span><strong>{{ dashboard.decision_explanation.opposing_analysts | join(", ") }}</strong></div>{% endif %}
+                {% if dashboard.decision_explanation.adaptive_override %}<div class="decision-explanation-override">{{ t('learning') }}: {{ t('adaptive') }}.</div>{% endif %}
+                <div class="decision-explanation-reasons"><h4>{{ t('why_it_matters') }}</h4>{% for reason in dashboard.decision_explanation.key_reasons %}<p>• {{ reason }}</p>{% endfor %}</div>
             </div>
-
 
             <div class="decision-path">
-
-                <h3>Decision Path</h3>
-
+                <h3>{{ t('decision_pipeline') }}</h3>
                 <div class="decision-path-list">
-
-                    {% for step in dashboard.decision_explanation.decision_path %}
-
-                        <div class="decision-path-step">
-
-                            <span class="decision-path-number">
-                                {{ loop.index }}
-                            </span>
-
-                            <span>
-                                {{ step }}
-                            </span>
-
-                        </div>
-
-                    {% endfor %}
-
+                {% for step in dashboard.decision_explanation.decision_path %}<div class="decision-path-step"><span class="decision-path-number">{{ loop.index }}</span><span>{{ step }}</span></div>{% endfor %}
                 </div>
-
             </div>
 
-
-            <div class="decision-reasoning">
-
-                <h3>Why ATLAS decided this</h3>
-
-                {% for reason in dashboard.decision.reasoning %}
-
-                    <p>{{ reason }}</p>
-
-                {% endfor %}
-
-            </div>
-
+            <div class="decision-reasoning"><h3>{{ t('why_atlas') }}</h3>{% for reason in dashboard.decision.reasoning %}<p>{{ reason }}</p>{% endfor %}</div>
         </section>
-
-
-        <!-- NEWS -->
 
         <section class="card analysis-card">
-
-            <h2>📰 Latest News</h2>
-
+            <h2>📰 {{ t('latest_news') }}</h2>
             {% if dashboard.news %}
-
                 {% for article in dashboard.news %}
-
-                    <div class="news-item">
-
-                        <h4>
-                            {{ article.title }}
-                        </h4>
-
-                        <small>
-                            {{ article.source }}
-                        </small>
-
-                        <p>
-                            {{ article.summary }}
-                        </p>
-
-                        <a
-                            href="{{ article.url }}"
-                            target="_blank"
-                        >
-                            Read article →
-                        </a>
-
-                    </div>
-
-                    <hr>
-
+                    <div class="news-item"><h4>{{ article.title }}</h4><small>{{ article.source }}</small><p>{{ article.summary }}</p><a href="{{ article.url }}" target="_blank">{{ t('latest_news') }} →</a></div><hr>
                 {% endfor %}
-
-            {% else %}
-
-                <p>
-                    No news found.
-                </p>
-
-            {% endif %}
-
+            {% else %}<p>{{ t('no_news_found') }}</p>{% endif %}
         </section>
-
     </div>
-
 </div>
-
 {% endblock %}
