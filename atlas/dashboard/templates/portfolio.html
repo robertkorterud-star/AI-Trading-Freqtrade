@@ -1,260 +1,85 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="portfolio-page">
 
-    <!-- PORTFOLIO HEADER -->
-
     <div class="card portfolio-header">
-
         <div class="portfolio-header-content">
-
             <div>
-                <h1>💼 Portfolio</h1>
-                <p>Paper-trading account overview</p>
+                <h1>💼 {{ t('portfolio') }}</h1>
+                <p>{{ t('paper_account_overview') }}</p>
             </div>
-
-            <span class="paper-badge">
-                PAPER TRADING
-            </span>
-
+            <span class="paper-badge">{{ t('paper_trading_upper') }}</span>
         </div>
-
     </div>
-
-
-    <!-- PORTFOLIO SUMMARY -->
 
     <div class="portfolio-summary-grid">
-
-        <div class="card portfolio-stat">
-            <small>Total Equity</small>
-            <strong>
-                {{ dashboard.portfolio.total_equity_nok }} NOK
-            </strong>
-        </div>
-
-        <div class="card portfolio-stat">
-            <small>Cash</small>
-            <strong>
-                {{ dashboard.portfolio.cash_nok }} NOK
-            </strong>
-        </div>
-
-        <div class="card portfolio-stat">
-            <small>Invested</small>
-            <strong>
-                {{ dashboard.portfolio.invested_nok }} NOK
-            </strong>
-        </div>
-
-        <div class="card portfolio-stat">
-            <small>Profit Vault</small>
-            <strong>
-                {{ dashboard.portfolio.profit_vault_nok }} NOK
-            </strong>
-        </div>
-
+        <div class="card portfolio-stat"><small>{{ t('total_equity') }}</small><strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong></div>
+        <div class="card portfolio-stat"><small>{{ t('cash') }}</small><strong>{{ dashboard.portfolio.cash_nok }} NOK</strong></div>
+        <div class="card portfolio-stat"><small>{{ t('invested') }}</small><strong>{{ dashboard.portfolio.invested_nok }} NOK</strong></div>
+        <div class="card portfolio-stat"><small>{{ t('profit_vault') }}</small><strong>{{ dashboard.portfolio.profit_vault_nok }} NOK</strong></div>
     </div>
-
-
-    <!-- PORTFOLIO THREE COLUMN LAYOUT -->
 
     <div class="portfolio-dashboard-grid">
-
-        <!-- PERFORMANCE -->
-
         <section class="card portfolio-dashboard-card">
-
-            <h2>📈 Performance</h2>
-
-            <div class="
-                performance-value
-                {% if dashboard.portfolio.total_pnl_nok >= 0 %}
-                    positive
-                {% else %}
-                    negative
-                {% endif %}
-            ">
-
-                {% if dashboard.portfolio.total_pnl_nok >= 0 %}+{% endif %}
-                {{ dashboard.portfolio.total_pnl_nok }} NOK
-
+            <h2>📈 {{ t('performance') }}</h2>
+            <div class="performance-value {% if dashboard.portfolio.total_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">
+                {% if dashboard.portfolio.total_pnl_nok >= 0 %}+{% endif %}{{ dashboard.portfolio.total_pnl_nok }} NOK
             </div>
-
-            <p>
-                Return:
-                <strong>
-                    {% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}
-                    {{ dashboard.portfolio.return_percent }}%
-                </strong>
-            </p>
-
-            <p>
-                Unrealized P&amp;L:
-                <strong>
-                    {{ dashboard.portfolio.unrealized_pnl_nok }} NOK
-                </strong>
-            </p>
-
+            <p>{{ t('return') }}: <strong>{% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent }}%</strong></p>
+            <p>{{ t('unrealized_pl') }}: <strong>{{ dashboard.portfolio.unrealized_pnl_nok }} NOK</strong></p>
         </section>
-
-
-        <!-- POSITIONS -->
 
         <section class="card portfolio-dashboard-card">
-
-            <h2>📦 Positions</h2>
-
+            <h2>📦 {{ t('positions') }}</h2>
             {% if dashboard.portfolio.positions %}
-
                 <table>
-
-                    <thead>
-                        <tr>
-                            <th>Symbol</th>
-                            <th>Value</th>
-                            <th>P&amp;L</th>
-                        </tr>
-                    </thead>
-
+                    <thead><tr><th>{{ t('symbol') }}</th><th>{{ t('value') }}</th><th>P&amp;L</th></tr></thead>
                     <tbody>
-
                     {% for position in dashboard.portfolio.positions %}
-
-                        <tr>
-                            <td>{{ position.symbol }}</td>
-                            <td>{{ position.market_value_nok }} NOK</td>
-                            <td>{{ position.pnl_nok }} NOK</td>
-                        </tr>
-
+                        <tr><td>{{ position.symbol }}</td><td>{{ position.market_value_nok }} NOK</td><td>{{ position.pnl_nok }} NOK</td></tr>
                     {% endfor %}
-
                     </tbody>
-
                 </table>
-
             {% else %}
-
                 <div class="empty-portfolio">
-
                     <div class="empty-icon">📭</div>
-
-                    <h3>No open positions</h3>
-
-                    <p>
-                        ATLAS has no active paper-trading positions yet.
-                    </p>
-
+                    <h3>{{ t('no_open_positions') }}</h3>
+                    <p>{{ t('no_active_paper_positions') }}</p>
                 </div>
-
             {% endif %}
-
         </section>
-
-
-        <!-- TRADE HISTORY -->
 
         <section class="card portfolio-dashboard-card trade-history-dashboard-card">
-
-            <h2>📜 Trade History</h2>
-
+            <h2>📜 {{ t('trade_history') }}</h2>
             {% if dashboard.trade_history %}
-
                 <div class="trade-history">
-
-                    {% for trade in dashboard.trade_history %}
-
-                        <div class="trade-row">
-
-                            <div class="trade-main">
-
-                                <span class="
-                                    trade-action
-                                    {% if trade.action == 'BUY' %}
-                                        buy
-                                    {% else %}
-                                        sell
-                                    {% endif %}
-                                ">
-
-                                    {{ trade.action }}
-
-                                </span>
-
-                                <strong>
-                                    {{ trade.symbol }}
-                                </strong>
-
-                            </div>
-
-
-                            <div class="trade-details">
-
-                                <span>
-                                    {{ trade.quantity }}
-                                </span>
-
-                                <span>
-                                    ${{ "{:,.2f}".format(trade.price_usd) }}
-                                </span>
-
-                                <span>
-                                    {{ trade.amount_nok }} NOK
-                                </span>
-
-
-                                {% if trade.action == 'SELL' %}
-
-                                    <strong class="
-                                        {% if trade.realized_pnl_nok >= 0 %}
-                                            positive
-                                        {% else %}
-                                            negative
-                                        {% endif %}
-                                    ">
-
-                                        {% if trade.realized_pnl_nok >= 0 %}+{% endif %}
-                                        {{ trade.realized_pnl_nok }} NOK
-
-                                    </strong>
-
-                                {% endif %}
-
-                            </div>
-
-
-                            <small class="trade-time">
-                                {{ trade.timestamp }}
-                            </small>
-
+                {% for trade in dashboard.trade_history %}
+                    <div class="trade-row">
+                        <div class="trade-main">
+                            <span class="trade-action {% if trade.action == 'BUY' %}buy{% else %}sell{% endif %}">{{ trade.action }}</span>
+                            <strong>{{ trade.symbol }}</strong>
                         </div>
-
-                    {% endfor %}
-
+                        <div class="trade-details">
+                            <span>{{ trade.quantity }}</span>
+                            <span>${{ "{:,.2f}".format(trade.price_usd) }}</span>
+                            <span>{{ trade.amount_nok }} NOK</span>
+                            {% if trade.action == 'SELL' %}
+                                <strong class="{% if trade.realized_pnl_nok >= 0 %}positive{% else %}negative{% endif %}">{% if trade.realized_pnl_nok >= 0 %}+{% endif %}{{ trade.realized_pnl_nok }} NOK</strong>
+                            {% endif %}
+                        </div>
+                        <small class="trade-time">{{ trade.timestamp }}</small>
+                    </div>
+                {% endfor %}
                 </div>
-
             {% else %}
-
                 <div class="empty-portfolio">
-
                     <div class="empty-icon">📭</div>
-
-                    <h3>No trades yet</h3>
-
-                    <p>
-                        ATLAS has not executed any paper trades yet.
-                    </p>
-
+                    <h3>{{ t('no_trades_yet') }}</h3>
+                    <p>{{ t('no_paper_trades') }}</p>
                 </div>
-
             {% endif %}
-
         </section>
-
     </div>
-
 </div>
-
 {% endblock %}
