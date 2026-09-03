@@ -56,6 +56,7 @@ class MarketScout:
     MIN_STOCK_PRICE = 1.0
     MIN_CRYPTO_PRICE = 0.0
     MIN_AVERAGE_VOLUME = 100_000.0
+    MIN_VOLUME = 100_000.0
 
     def _eligible(self, observation: MarketObservation) -> bool:
         if not observation.symbol.strip():
@@ -67,6 +68,8 @@ class MarketScout:
         ):
             return False
         if observation.average_volume < self.MIN_AVERAGE_VOLUME:
+            return False
+        if observation.volume < self.MIN_VOLUME:
             return False
         if not observation.liquid:
             return False
