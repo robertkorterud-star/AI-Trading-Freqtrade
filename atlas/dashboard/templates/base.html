@@ -1,51 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ATLAS</title>
-
-    <link
-        rel="stylesheet"
-        href="/static/style.css"
-    >
-
-    <script
-        src="/static/market_enhancements.js"
-    ></script>
-
-    <script
-        src="/static/market_terminal_fix.js"
-    ></script>
-
-    <script
-        src="/static/watchlist_ui.js"
-    ></script>
-
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/overview.css">
+    <script src="/static/market_enhancements.js"></script>
+    <script src="/static/market_terminal_fix.js"></script>
+    <script src="/static/watchlist_ui.js"></script>
 </head>
-
 <body>
-
 <div class="container">
-
     {% include "components/navbar.html" %}
-
     {% include "components/status_bar.html" %}
-
     <main>
-
-        {% block content %}
-        {% endblock %}
-
+        {% block content %}{% endblock %}
     </main>
-
     <footer>
         ATLAS v0.8.1
         <span id="atlas-refresh-status">
@@ -56,55 +27,23 @@
             {% endif %}
         </span>
     </footer>
-
 </div>
-
 <script>
 (function () {
-    /*
-     * ATLAS live refresh:
-     * the Scanner page is intentionally excluded because its local
-     * filters/search state must not be destroyed by a full page reload.
-     */
-
-    if (window.location.pathname === "/scanner") {
-        return;
-    }
-
+    if (window.location.pathname === "/scanner") return;
     const REFRESH_MS = 30000;
-
     let countdown = REFRESH_MS / 1000;
     const status = document.getElementById("atlas-refresh-status");
-
     const timer = window.setInterval(function () {
-
         countdown -= 1;
-
-        if (status) {
-            status.textContent =
-                " · Live refresh: " + countdown + "s";
-        }
-
+        if (status) status.textContent = " · Live refresh: " + countdown + "s";
         if (countdown <= 0) {
-
             window.clearInterval(timer);
-
-            if (
-                window.location.pathname.startsWith(
-                    "/market/"
-                )
-            ) {
-                return;
-            }
-
+            if (window.location.pathname.startsWith("/market/")) return;
             window.location.reload();
         }
-
     }, 1000);
-
 })();
 </script>
-
 </body>
-
 </html>
