@@ -5,91 +5,91 @@
     <section class="overview-hero">
         <div>
             <div class="overview-kicker">ATLAS AI Trading Intelligence</div>
-            <h1>Market Overview</h1>
-            <p>One command center for portfolio, market movement, watchlist and ATLAS conviction. Scan the pulse first, then drill into the Market Terminal for deeper research.</p>
+            <h1>{{ t("market_overview") }}</h1>
+            <p>Én kommandosentral for portefølje, markedsbevegelser, overvåkningsliste og ATLAS-overbevisning. Se markedsbildet først, og gå deretter til markedsterminalen for dypere analyse.</p>
         </div>
         <div class="overview-hero-actions">
-            <a class="overview-button primary" href="/scanner">Open Scanner</a>
-            <a class="overview-button" href="/markets">Markets</a>
+            <a class="overview-button primary" href="/scanner">{{ t("scanner") }}</a>
+            <a class="overview-button" href="/markets">{{ t("markets") }}</a>
         </div>
     </section>
 
     {% set primary_action = dashboard.intelligence.action %}
     <section class="overview-conviction">
         <div class="overview-conviction-copy">
-            <div class="overview-kicker">ATLAS Conviction</div>
+            <div class="overview-kicker">{{ t("atlas_conviction") }}</div>
             <div class="overview-conviction-title">
-                <span>ATLAS sees</span>
-                {% if primary_action == "BUY" %}<span class="overview-action buy">BUY</span>{% elif primary_action == "SELL" %}<span class="overview-action sell">SELL</span>{% else %}<span class="overview-action hold">HOLD</span>{% endif %}
+                <span>{{ t("atlas_sees") }}</span>
+                {% if primary_action == "BUY" %}<span class="overview-action buy">{{ t("buy") }}</span>{% elif primary_action == "SELL" %}<span class="overview-action sell">{{ t("sell") }}</span>{% else %}<span class="overview-action hold">{{ t("hold") }}</span>{% endif %}
                 <a class="overview-symbol" href="/market/{{ dashboard.intelligence.symbol }}">{{ dashboard.intelligence.symbol }}</a>
             </div>
-            <p>{% if dashboard.intelligence.reasoning %}{{ dashboard.intelligence.reasoning[0] }}{% elif dashboard.decision.reasoning %}{{ dashboard.decision.reasoning[0] }}{% else %}ATLAS is waiting for enough evidence to explain the current decision.{% endif %}</p>
+            <p>{% if dashboard.intelligence.reasoning %}{{ dashboard.intelligence.reasoning[0] }}{% elif dashboard.decision.reasoning %}{{ dashboard.decision.reasoning[0] }}{% else %}{{ t("waiting_evidence") }}{% endif %}</p>
         </div>
         <div class="overview-conviction-metrics">
-            <div><small>Confidence</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div>
-            <div><small>Robustness</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div>
-            <div><small>Consensus</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
+            <div><small>{{ t("confidence") }}</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div>
+            <div><small>{{ t("robustness") }}</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div>
+            <div><small>{{ t("consensus") }}</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
         </div>
     </section>
 
-    <section class="overview-grid" aria-label="Portfolio summary">
-        <div class="overview-stat"><small>Portfolio value</small><strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong><span class="muted">Virtual paper portfolio</span></div>
-        <div class="overview-stat"><small>Cash available</small><strong>{{ dashboard.portfolio.cash_nok }} NOK</strong><span class="muted">Capital {{ dashboard.capital }} NOK</span></div>
-        <div class="overview-stat"><small>Positions</small><strong>{{ dashboard.portfolio.position_count }}</strong><span class="muted">Invested {{ dashboard.portfolio.invested_nok }} NOK</span></div>
-        <div class="overview-stat"><small>Total return</small><strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent }}%</strong><span class="muted">P/L {{ dashboard.portfolio.total_pnl_nok }} NOK</span></div>
+    <section class="overview-grid" aria-label="{{ t('portfolio_summary') }}">
+        <div class="overview-stat"><small>{{ t("total_equity") }}</small><strong>{{ dashboard.portfolio.total_equity_nok }} NOK</strong><span class="muted">{{ t("virtual_paper_portfolio") }}</span></div>
+        <div class="overview-stat"><small>{{ t("cash_available") }}</small><strong>{{ dashboard.portfolio.cash_nok }} NOK</strong><span class="muted">{{ t("capital") }} {{ dashboard.capital }} NOK</span></div>
+        <div class="overview-stat"><small>{{ t("positions") }}</small><strong>{{ dashboard.portfolio.position_count }}</strong><span class="muted">{{ t("invested") }} {{ dashboard.portfolio.invested_nok }} NOK</span></div>
+        <div class="overview-stat"><small>{{ t("total_return") }}</small><strong class="{% if dashboard.portfolio.return_percent >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.return_percent >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent }}%</strong><span class="muted">{{ t("total_pl") }} {{ dashboard.portfolio.total_pnl_nok }} NOK</span></div>
     </section>
 
     <section class="overview-card overview-pulse">
-        <header><div><h2>Market Pulse</h2><small>Current dashboard universe · click any asset for the Market Terminal</small></div><a class="overview-button" href="/markets">Full market view</a></header>
+        <header><div><h2>{{ t("market_pulse") }}</h2><small>{{ t("dashboard_universe") }}</small></div><a class="overview-button" href="/markets">{{ t("full_market_view") }}</a></header>
         <div class="overview-pulse-grid">
             {% for item in dashboard.market[:6] %}
             <a class="overview-pulse-item" href="/market/{{ item.symbol }}">
                 <div class="overview-pulse-top"><strong>{{ item.symbol }}</strong><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></div>
                 <div class="overview-pulse-price">{{ item.price_nok }} NOK</div>
-                <div class="overview-pulse-bottom"><span class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</span><span>{{ item.confidence }}% confidence</span></div>
+                <div class="overview-pulse-bottom"><span class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</span><span>{{ item.confidence }}% {{ t("confidence_lower") }}</span></div>
             </a>
-            {% else %}<p>No market data is available yet.</p>{% endfor %}
+            {% else %}<p>{{ t("no_market_data") }}</p>{% endfor %}
         </div>
     </section>
 
     <section class="overview-columns">
         <div class="overview-card table-wrap">
-            <header><div><h2>ATLAS Opportunities</h2><small>Ranked candidates from discovery and decision layers</small></div><a class="overview-button" href="/scanner">View scanner</a></header>
+            <header><div><h2>{{ t("opportunities") }}</h2><small>{{ t("ranked_candidates") }}</small></div><a class="overview-button" href="/scanner">{{ t("view_scanner") }}</a></header>
             {% if dashboard.market_scan %}
             <table class="overview-table">
-                <thead><tr><th>Asset</th><th>Signal</th><th>Confidence</th><th>Discovery</th><th>Why it matters</th></tr></thead>
+                <thead><tr><th>{{ t("asset") }}</th><th>{{ t("signal") }}</th><th>{{ t("confidence") }}</th><th>{{ t("discovery") }}</th><th>{{ t("why_it_matters") }}</th></tr></thead>
                 <tbody>
                 {% for item in dashboard.market_scan %}
                 <tr>
-                    <td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a><span class="overview-sub">{% if item.selected %}Top ranked candidate{% else %}Market candidate{% endif %}</span></td>
+                    <td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a><span class="overview-sub">{% if item.selected %}{{ t("top_ranked_candidate") }}{% else %}{{ t("market_candidate") }}{% endif %}</span></td>
                     <td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></td>
                     <td><span class="overview-score">{{ item.confidence }}%</span></td>
                     <td>{{ item.discovery_score }}</td>
-                    <td class="overview-why">{% if item.selected %}Highest current ATLAS ranking{% elif item.decision == "BUY" %}Positive decision signal{% elif item.decision == "SELL" %}Downside signal detected{% else %}Mixed evidence / watch{% endif %}</td>
+                    <td class="overview-why">{% if item.selected %}{{ t("highest_current_ranking") }}{% elif item.decision == "BUY" %}{{ t("positive_decision_signal") }}{% elif item.decision == "SELL" %}{{ t("downside_signal") }}{% else %}{{ t("mixed_evidence_watch") }}{% endif %}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
             </table>
-            {% else %}<p>No ranked candidates are available yet. Open Scanner to refresh and inspect the market universe.</p>{% endif %}
+            {% else %}<p>{{ t("no_ranked_candidates") }}</p>{% endif %}
         </div>
 
         <div class="overview-card">
-            <header><div><h2>ATLAS Intelligence</h2><small>{{ dashboard.intelligence.symbol }}</small></div>{% if primary_action == "BUY" %}<span class="overview-action buy">BUY{% elif primary_action == "SELL" %}<span class="overview-action sell">SELL{% else %}<span class="overview-action hold">HOLD{% endif %}</span></header>
+            <header><div><h2>{{ t("intelligence") }}</h2><small>{{ dashboard.intelligence.symbol }}</small></div>{% if primary_action == "BUY" %}<span class="overview-action buy">{{ t("buy") }}{% elif primary_action == "SELL" %}<span class="overview-action sell">{{ t("sell") }}{% else %}<span class="overview-action hold">{{ t("hold") }}{% endif %}</span></header>
             <div class="overview-intelligence">
-                <div><small>Confidence</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div><div><small>Evidence</small><strong>{{ dashboard.intelligence.evidence }}%</strong></div><div><small>Agreement</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
+                <div><small>{{ t("confidence") }}</small><strong>{{ dashboard.intelligence.confidence }}%</strong></div><div><small>{{ t("evidence") }}</small><strong>{{ dashboard.intelligence.evidence }}%</strong></div><div><small>{{ t("agreement") }}</small><strong>{{ dashboard.intelligence.agreement }}%</strong></div>
             </div>
             <div class="overview-intelligence overview-intelligence-secondary">
-                <div><small>Robustness</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div><div><small>Level</small><strong>{{ dashboard.decision_robustness.level }}</strong></div><div><small>Dominant influence</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div>
+                <div><small>{{ t("robustness") }}</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div><div><small>{{ t("level") }}</small><strong>{{ dashboard.decision_robustness.level }}</strong></div><div><small>{{ t("dominant_influence") }}</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div>
             </div>
-            {% if dashboard.intelligence.reasoning %}{% for reason in dashboard.intelligence.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}{% elif dashboard.decision.reasoning %}{% for reason in dashboard.decision.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}{% else %}<div class="overview-reason">ATLAS is waiting for enough evidence to explain the current decision.</div>{% endif %}
+            {% if dashboard.intelligence.reasoning %}{% for reason in dashboard.intelligence.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}{% elif dashboard.decision.reasoning %}{% for reason in dashboard.decision.reasoning[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}{% else %}<div class="overview-reason">{{ t("waiting_evidence") }}</div>{% endif %}
         </div>
     </section>
 
     <section class="overview-columns">
         <div class="overview-card table-wrap">
-            <header><div><h2>Watchlist</h2><small>Personal watchlist with live ATLAS signal context</small></div><a class="overview-button" href="/markets">Manage</a></header>
+            <header><div><h2>{{ t("watchlist") }}</h2><small>{{ t("watchlist_context") }}</small></div><a class="overview-button" href="/markets">{{ t("manage") }}</a></header>
             <table class="overview-table">
-                <thead><tr><th>Asset</th><th>Price</th><th>Change</th><th>ATLAS</th></tr></thead>
+                <thead><tr><th>{{ t("asset") }}</th><th>{{ t("price") }}</th><th>{{ t("change") }}</th><th>ATLAS</th></tr></thead>
                 <tbody>
                 {% for item in dashboard.market %}
                 <tr><td><a class="overview-symbol" href="/market/{{ item.symbol }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td><td>{{ item.price_nok }} NOK</td><td class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</td><td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }} · {{ item.confidence }}%</span></td></tr>
@@ -97,13 +97,13 @@
                 </tbody>
             </table>
         </div>
-        <div class="overview-card"><header><div><h2>News & Events</h2><small>Latest context for the selected asset</small></div></header><div class="overview-news">{% if dashboard.news %}{% for article in dashboard.news[:5] %}<div class="overview-news-item"><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a><small>{{ article.source }}</small></div>{% endfor %}{% else %}<p>No news is currently available.</p>{% endif %}</div></div>
+        <div class="overview-card"><header><div><h2>{{ t("news_events") }}</h2><small>{{ t("latest_context") }}</small></div></header><div class="overview-news">{% if dashboard.news %}{% for article in dashboard.news[:5] %}<div class="overview-news-item"><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a><small>{{ article.source }}</small></div>{% endfor %}{% else %}<p>{{ t("no_news_available") }}</p>{% endif %}</div></div>
     </section>
 
     <section class="overview-card">
-        <header><div><h2>Live Market</h2><small>BTCUSDT · 1m · read-only market view</small></div>{% if dashboard.decision.action.value == "BUY" %}<span id="atlas-chart-signal" class="overview-action buy">BUY{% elif dashboard.decision.action.value == "SELL" %}<span id="atlas-chart-signal" class="overview-action sell">SELL{% else %}<span id="atlas-chart-signal" class="overview-action hold">HOLD{% endif %}</span></header>
+        <header><div><h2>{{ t("live_market") }}</h2><small>{{ t("read_only_market_view") }}</small></div>{% if dashboard.decision.action.value == "BUY" %}<span id="atlas-chart-signal" class="overview-action buy">{{ t("buy") }}{% elif dashboard.decision.action.value == "SELL" %}<span id="atlas-chart-signal" class="overview-action sell">{{ t("sell") }}{% else %}<span id="atlas-chart-signal" class="overview-action hold">{{ t("hold") }}{% endif %}</span></header>
         <div id="atlas-candles" class="overview-chart"></div>
-        <div class="overview-chart-footer"><span>ATLAS signal is informational; paper trading remains the execution boundary.</span><span id="atlas-chart-price">—</span></div>
+        <div class="overview-chart-footer"><span>{{ t("signal_informational") }}</span><span id="atlas-chart-price">—</span></div>
     </section>
 </div>
 
