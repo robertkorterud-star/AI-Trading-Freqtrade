@@ -51,6 +51,12 @@ class NewsAdapter:
         "SOL-USD": {
             "names": ["solana", "sol"],
         },
+        "XRP": {
+            "names": ["xrp", "ripple"],
+        },
+        "XRP-USD": {
+            "names": ["xrp", "ripple"],
+        },
     }
 
     POSITIVE_WORDS = (
