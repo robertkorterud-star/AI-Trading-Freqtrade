@@ -75,6 +75,12 @@ class DecisionOrchestrator:
         signals, then delegates the final directional decision to the
         canonical :class:`atlas.decision.engine.DecisionEngine`.
 
+        When Signal Fusion is already available, its result is the canonical
+        aggregate of the raw algorithm signals. Passing both the raw signals
+        and the fusion result into the final decision would double-count the
+        same algorithm evidence, so the raw signals are retained for audit
+        and the fused result is used at the decision boundary.
+
         Explicit ``decision_core`` injection is retained only as a legacy
         compatibility seam while callers migrate to the canonical engine.
         """
@@ -86,7 +92,8 @@ class DecisionOrchestrator:
 
         if algorithm_signals is not None:
             self._validate_symbols(symbol, algorithm_signals)
-            decision_inputs.extend(algorithm_signals)
+            if fusion_result is None:
+                decision_inputs.extend(algorithm_signals)
         elif self.algorithm_pipeline is not None and market_data is not None:
             fusion_result, pipeline_signals = (
                 self.algorithm_pipeline.analyze(
@@ -101,7 +108,8 @@ class DecisionOrchestrator:
                     pipeline_signals,
                 )
 
-            decision_inputs.extend(pipeline_signals)
+            if fusion_result is None:
+                decision_inputs.extend(pipeline_signals)
 
         if fusion_result is not None:
             self._validate_fusion_symbol(symbol, fusion_result)
@@ -261,38 +269,48 @@ class DecisionOrchestrator:
             confidence=canonical.confidence / 100.0,
             risk_score=risk_score,
             score=self._compatibility_score(canonical),
-            reason=self._compatibility_reason(canonical),
+            reason=self._reason_for_action(canonical.action),
         )
 
     @staticmethod
-    def _compatibility_score(decision) -> float:
-        """Expose the legacy normalized score to existing orchestration callers."""
-        magnitude = max(0.0, min(1.0, decision.evidence / 100.0))
-        confidence = max(0.0, min(1.0, decision.confidence / 100.0))
+    def _compatibility_score(canonical) -> float:
+        magnitude = max(
+            0.0,
+            min(1.0, canonical.evidence / 100.0),
+        )
+        confidence = max(
+            0.0,
+            min(1.0, canonical.confidence / 100.0),
+        )
         score = magnitude * confidence
-        if decision.action is Action.SELL:
+
+        if canonical.action is Action.SELL:
             return -score
-        if decision.action is Action.HOLD:
+
+        if canonical.action is Action.HOLD:
             return 0.0
+
         return score
 
     @staticmethod
-    def _compatibility_reason(decision) -> str:
-        if decision.action is Action.BUY:
-            return "buy consensus passed risk gate"
-        if decision.action is Action.SELL:
-            return "sell consensus passed risk gate"
-        return "no directional consensus"
+    def _reason_for_action(action: Action) -> str:
+        return {
+            Action.BUY: "canonical decision: buy",
+            Action.SELL: "canonical decision: sell",
+            Action.HOLD: "canonical decision: hold",
+            Action.WATCH: "canonical decision: watch",
+        }[action]
 
     @staticmethod
     def _risk_score(risk: RiskContext | None) -> float:
         if risk is None:
             return 0.0
+
         values = (
-            max(0.0, min(1.0, risk.risk_score)),
-            max(0.0, min(1.0, risk.volatility_score)),
-            max(0.0, min(1.0, risk.drawdown_score)),
-            max(0.0, min(1.0, risk.position_score)),
+            risk.risk_score,
+            risk.volatility_score,
+            risk.drawdown_score,
+            risk.position_score,
         )
         return sum(values) / len(values)
 
@@ -301,13 +319,13 @@ class DecisionOrchestrator:
         symbol: str,
         signals: list[AlgorithmSignal],
     ) -> None:
-        for signal in signals:
-            if signal.symbol != symbol:
-                raise ValueError(
-                    "all algorithm signals must match symbol"
-                )
+        if any(signal.symbol != symbol for signal in signals):
+            raise ValueError("all signals must use the requested symbol")
 
     @staticmethod
-    def _validate_fusion_symbol(symbol: str, fusion_result: object) -> None:
-        if getattr(fusion_result, "symbol", symbol) != symbol:
-            raise ValueError("fusion result symbol must match symbol")
+    def _validate_fusion_symbol(
+        symbol: str,
+        fusion_result,
+    ) -> None:
+        if fusion_result.symbol != symbol:
+            raise ValueError("fusion result must use the requested symbol")
