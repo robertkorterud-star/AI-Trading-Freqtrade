@@ -1,131 +1,82 @@
-# AI-Trading-Freqtrade
+# ATLAS — AI Investment & Trading Platform
 
-> An open-source AI-powered trading framework built on Freqtrade.
+ATLAS is a **standalone, modular AI investment and trading platform**.
 
-## Overview
+It is designed to be **broker- and execution-engine-independent**. ATLAS can analyze markets, combine specialized intelligence, make explainable decisions, apply risk and portfolio constraints, learn from outcomes, and hand approved decisions to an external execution adapter.
 
-AI-Trading-Freqtrade is a long-term project focused on building a robust, transparent, and data-driven cryptocurrency trading framework.
+## Architecture
 
-The project is built on top of Freqtrade and is designed to combine:
-
-- Technical Analysis
-- Risk Management
-- Machine Learning (FreqAI)
-- Portfolio Management
-- Backtesting
-- Hyperparameter Optimization
-
-The goal is not to create a "magic trading bot", but to build a professional framework that can be improved continuously using measurable results.
-
----
-
-## Project Goals
-
-- Clean and maintainable code
-- Professional Git workflow
-- Robust risk management
-- Explainable AI decisions
-- High-quality documentation
-- Continuous testing
-- Long-term development
-
----
-
-## Planned Features
-
-- Trend filtering
-- Market regime detection
-- ATR based position sizing
-- Dynamic stoploss
-- AI trade scoring
-- Hyperopt integration
-- FreqAI models
-- Performance analytics
-- Telegram notifications
-- Paper trading
-- Live trading
-
----
-
-## Technology Stack
-
-| Component | Version |
-|----------|---------|
-| Python | 3.13 |
-| Freqtrade | 2026.2 |
-| Docker | Latest |
-| Exchange | Binance Spot |
-| AI | FreqAI |
-| Version Control | Git + GitHub |
-
----
-
-## Repository Structure
-
-```
-AI-Trading-Freqtrade/
-
-README.md
-CHANGELOG.md
-LICENSE
-.gitignore
-pyproject.toml
-requirements.txt
-
-docker/
-docs/
-scripts/
-tests/
-
-user_data/
+```text
+MARKET DATA
+     ↓
+Normalized MarketData
+     ↓
+Intelligence / Signal Layer
+     ↓
+Signal Ensemble
+     ↓
+Decision Engine
+     ↓
+Risk Management
+     ↓
+Portfolio Manager
+     ↓
+Execution Engine
+     ↓
+Broker / Exchange
 ```
 
----
+Core principles:
 
-## Development Roadmap
+- Specialized components have one clear responsibility.
+- Algorithms produce signals and evidence, not trades.
+- The Decision Engine owns the final trading decision.
+- Risk Management can veto or constrain decisions.
+- Portfolio Management controls aggregate exposure and allocation.
+- Execution is isolated behind external broker/exchange interfaces.
+- Decisions and important intelligence are explainable and testable.
+- External providers are accessed through replaceable adapters.
 
-### Foundation
-- Project structure
-- Documentation
-- Docker
-- Strategy template
+## Current platform capabilities
 
-### Strategy Core
-- Indicators
-- Trend engine
-- Entry logic
-- Exit logic
+ATLAS already contains substantial infrastructure for:
 
-### Risk Engine
-- ATR Position sizing
-- Portfolio risk
-- Daily loss protection
+- Market-data adapters and normalized market data
+- Technical, momentum, trend and price-action intelligence
+- News, company and broader intelligence analysis
+- AI/Ollama and external research adapters
+- Analyst/agent registries and analysis pipelines
+- Signal and decision processing
+- Decision Engine integration
+- Portfolio assessment and allocation constraints
+- Prediction/strategy learning components
+- Dashboard and supporting interfaces
 
-### AI Integration
-- FreqAI
-- Feature engineering
-- Trade scoring
+Development continues incrementally with a strong rule: **do not create a new module when an existing component already owns the responsibility**.
 
-### Optimization
-- Hyperopt
-- Walk-forward testing
+## Freqtrade boundary
 
-### Deployment
-- Paper trading
-- Live trading
+Historical Freqtrade code may remain in the repository as project context, but **Freqtrade is not part of the target ATLAS architecture** and is not required by the ATLAS runtime.
 
----
+ATLAS must remain independently installable, testable and runnable.
 
-## License
+## Development
 
-GNU GPL v3
+The Python package is defined in `pyproject.toml`. Run the test suite with:
 
----
+```bash
+pytest -q
+```
 
-## Disclaimer
+Before adding a capability:
 
-This software is provided for educational purposes.
+1. Search the repository for an existing implementation.
+2. Identify the current owner of the responsibility.
+3. Reuse existing models and interfaces where appropriate.
+4. Extend an existing component when the responsibility already belongs there.
+5. Create a new module only when the responsibility is genuinely independent.
+6. Add tests for every new capability.
 
-Trading cryptocurrencies involves significant financial risk.
+## Project status
 
-Use at your own risk.
+ATLAS is under active incremental development. The repository contains both the current standalone ATLAS platform and historical project material; the architecture documentation defines the intended standalone boundary.
