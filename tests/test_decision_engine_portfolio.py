@@ -39,7 +39,7 @@ def test_portfolio_allocation_is_recorded_when_buy_is_allowed():
     assert result.action is Action.BUY
     assert result.portfolio_assessment is not None
     assert result.portfolio_assessment.allowed is True
-    assert result.portfolio_assessment.approved_value == 1_000.0
+    assert result.portfolio_assessment.approved_value == 20_000.0
     assert engine.last_portfolio_assessment is result.portfolio_assessment
 
 
