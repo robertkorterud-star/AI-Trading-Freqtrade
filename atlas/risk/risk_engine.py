@@ -25,7 +25,11 @@ class RiskResult:
 
 class RiskEngine:
     """
-    Risk controls for ATLAS paper trading.
+    Compatibility gate for the legacy paper-trading path.
+
+    New ATLAS decision flows should use RiskManager and its RiskAssessment.
+    This class remains intentionally isolated so existing DryRunTrader tests
+    and behavior can be migrated incrementally without changing risk rules.
 
     v0.1 rules:
     - Maximum 20% of equity in a new position.
