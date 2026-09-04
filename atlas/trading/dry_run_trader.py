@@ -247,13 +247,6 @@ class DryRunTrader:
                 executed=False,
             )
 
-        if current is not None:
-            current_position = min(
-                1.0,
-                (current.quantity * price)
-                / self.max_position_value,
-            )
-
         context = PositionContext(
             current_position=current_position,
             entry_price=(
