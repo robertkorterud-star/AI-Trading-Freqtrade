@@ -2,6 +2,8 @@
 Decision Engine
 """
 
+from collections.abc import Iterable
+
 from atlas.decision.aggregator import EvidenceAggregator
 from atlas.decision.intelligence_layer import IntelligenceLayer
 from atlas.decision.policy import determine_action
@@ -12,21 +14,24 @@ from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.models.decision_result import DecisionResult
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.risk.manager import RiskManager, RiskAssessment
+from atlas.portfolio.manager import PortfolioManager, PortfolioAssessment, PortfolioPosition
 
 
 class DecisionEngine:
     """Creates the final investment decision."""
 
-    def __init__(self, expected_return_service=None, risk_manager=None):
+    def __init__(self, expected_return_service=None, risk_manager=None, portfolio_manager=None):
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
         self.signal_ensemble = SignalEnsemble()
         self.agent_weight_engine = None
         self.expected_return_service = expected_return_service
         self.risk_manager = risk_manager
+        self.portfolio_manager = portfolio_manager
         self.last_intelligence = None
         self.last_ensemble_signal = None
         self.last_risk_assessment = None
+        self.last_portfolio_assessment = None
 
     def _strongest_action_support(self, action: Action):
         """Return strongest learned support for an action."""
@@ -74,6 +79,7 @@ class DecisionEngine:
         equity: float | None = None,
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
+        portfolio_positions: Iterable[PortfolioPosition] = (),
     ) -> DecisionResult:
         if not results:
             raise ValueError("No analysis results provided.")
@@ -82,9 +88,6 @@ class DecisionEngine:
         if self.agent_weight_engine is not None:
             weights = self.agent_weight_engine.calculate()
 
-        # Signal Ensemble is the signal-level view. It does not replace the
-        # existing learned decision policy; it gives the Decision Core an
-        # explicit, explainable ensemble signal before policy is applied.
         ensemble_inputs = [
             SignalInput(
                 name=result.analyst,
@@ -119,9 +122,7 @@ class DecisionEngine:
 
         dominant_action = ranked_signals[0][0]
         dominant_weight = ranked_signals[0][1]
-
         action_support = self._strongest_learned_action_support()
-
         second_weight = ranked_signals[1][1] if len(ranked_signals) > 1 else 0.0
         decision_margin = dominant_weight - second_weight
 
@@ -179,6 +180,28 @@ class DecisionEngine:
             if not risk_assessment.allowed and action in {Action.BUY, Action.SELL}:
                 action = Action.HOLD
 
+        portfolio_assessment: PortfolioAssessment | None = None
+        if self.portfolio_manager is not None and action is Action.BUY:
+            if equity is None:
+                raise ValueError(
+                    "equity is required when portfolio_manager is configured"
+                )
+
+            requested_value = (
+                risk_assessment.position_value
+                if risk_assessment is not None
+                else 0.0
+            )
+            portfolio_assessment = self.portfolio_manager.assess(
+                symbol=results[0].symbol,
+                requested_value=requested_value,
+                equity=equity,
+                positions=portfolio_positions,
+            )
+            self.last_portfolio_assessment = portfolio_assessment
+            if not portfolio_assessment.allowed:
+                action = Action.HOLD
+
         raw_robustness = decision_margin * 0.7 + summary["evidence"] * 0.3
         robustness = min(100.0, raw_robustness, summary["evidence"])
 
@@ -207,12 +230,9 @@ class DecisionEngine:
             f"Analyst agreement: {intelligence.agreement:.1f}%.",
             f"Signal ensemble: {ensemble_signal.action.value} with "
             f"{ensemble_signal.confidence:.1f}% signal confidence.",
-        ]
-
-        reasoning.append(
             f"Dominant signal: {dominant_action.value} with "
-            f"{dominant_weight:.1f}% weighted influence."
-        )
+            f"{dominant_weight:.1f}% weighted influence.",
+        ]
 
         if opposing_analysts:
             reasoning.append("Opposing analysts: " + ", ".join(opposing_analysts) + ".")
@@ -263,6 +283,20 @@ class DecisionEngine:
                     "Risk management blocked the directional decision; final action is HOLD."
                 )
 
+        if portfolio_assessment is not None:
+            reasoning.append(
+                "Portfolio assessment: "
+                f"{'allowed' if portfolio_assessment.allowed else 'blocked'} "
+                f"({portfolio_assessment.approved_value:.2f} allocation)."
+            )
+            reasoning.extend(
+                f"Portfolio: {reason}" for reason in portfolio_assessment.reasons
+            )
+            if not portfolio_assessment.allowed and action is Action.HOLD:
+                reasoning.append(
+                    "Portfolio management blocked the allocation; final action is HOLD."
+                )
+
         if self.expected_return_service is not None:
             reasoning.append(
                 f"Expected gross return: {expected_return * 100:.2f}%."
@@ -290,4 +324,5 @@ class DecisionEngine:
             ensemble_action=ensemble_signal.action,
             ensemble_confidence=ensemble_signal.confidence,
             risk_assessment=risk_assessment,
+            portfolio_assessment=portfolio_assessment,
         )
