@@ -5,6 +5,7 @@ Decision Engine
 from atlas.decision.aggregator import EvidenceAggregator
 from atlas.decision.intelligence_layer import IntelligenceLayer
 from atlas.decision.policy import determine_action
+from atlas.intelligence.signal_ensemble import SignalEnsemble, SignalInput
 from atlas.models.analysis_result import AnalysisResult
 from atlas.models.action import Action
 from atlas.trading.agent_weight_engine import AgentWeightEngine
@@ -18,9 +19,11 @@ class DecisionEngine:
     def __init__(self, expected_return_service=None):
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
+        self.signal_ensemble = SignalEnsemble()
         self.agent_weight_engine = None
         self.expected_return_service = expected_return_service
         self.last_intelligence = None
+        self.last_ensemble_signal = None
 
     def _strongest_action_support(self, action: Action):
         """Return strongest learned support for an action."""
@@ -67,6 +70,25 @@ class DecisionEngine:
         weights = None
         if self.agent_weight_engine is not None:
             weights = self.agent_weight_engine.calculate()
+
+        # Signal Ensemble is the signal-level view. It does not replace the
+        # existing learned decision policy; it gives the Decision Core an
+        # explicit, explainable ensemble signal before policy is applied.
+        ensemble_inputs = [
+            SignalInput(
+                name=result.analyst,
+                action=result.action,
+                confidence=(
+                    result.signal_confidence
+                    if result.signal_confidence is not None
+                    else result.confidence
+                ),
+                reasons=tuple(result.reasoning),
+            )
+            for result in results
+        ]
+        ensemble_signal = self.signal_ensemble.combine(ensemble_inputs)
+        self.last_ensemble_signal = ensemble_signal
 
         summary = self.aggregator.summarize(results, weights=weights)
         intelligence = self.intelligence.summarize(results, weights=weights)
@@ -156,6 +178,8 @@ class DecisionEngine:
             f"Overall evidence: {summary['evidence']:.1f}/100.",
             f"Overall confidence: {summary['confidence']:.1f}/100.",
             f"Analyst agreement: {intelligence.agreement:.1f}%.",
+            f"Signal ensemble: {ensemble_signal.action.value} with "
+            f"{ensemble_signal.confidence:.1f}% signal confidence.",
         ]
 
         reasoning.append(
@@ -225,4 +249,6 @@ class DecisionEngine:
             robustness_level=robustness_level,
             reasoning=reasoning,
             expected_return=expected_return,
+            ensemble_action=ensemble_signal.action,
+            ensemble_confidence=ensemble_signal.confidence,
         )

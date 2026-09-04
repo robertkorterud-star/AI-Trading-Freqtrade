@@ -138,4 +138,6 @@ class TechnicalAnalyst(BaseAgent):
 
             reasoning=reasoning,
 
+            signal_confidence=signal.confidence,
+
         )
