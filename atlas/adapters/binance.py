@@ -19,7 +19,7 @@ from urllib.request import Request, urlopen
 class BinanceAdapter:
     """Read-only adapter for Binance Spot public REST API."""
 
-    BASE_URL = "https://api.binance.com/api/v3"
+    BASE_URL = "https://data-api.binance.vision/api/v3"
 
     def __init__(
         self,
