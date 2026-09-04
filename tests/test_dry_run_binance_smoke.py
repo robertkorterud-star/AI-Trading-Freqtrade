@@ -16,8 +16,15 @@ class FakeBinanceAdapter:
         assert interval == "1m"
         assert limit == 100
         return [
-            [1700000000000, "100", "102", "99", "101", "10"],
-            [1700000060000, "101", "103", "100", "102", "12"],
+            [
+                1700000000000 + index * 60000,
+                str(100 + index * 0.1),
+                str(101 + index * 0.1),
+                str(99 + index * 0.1),
+                str(100.5 + index * 0.1),
+                "10",
+            ]
+            for index in range(100)
         ]
 
 
@@ -34,10 +41,11 @@ def test_binance_public_market_data_reaches_atlas_dry_run():
     )
 
     assert result.symbol == "BTCUSDT"
-    assert result.price == 102.0
+    assert result.price == 110.4
     assert len(result.algorithm_signals) == 6
     assert result.execution.symbol == "BTCUSDT"
     assert result.execution.action == result.decision.action.value
+    assert result.execution.status.value == "SIMULATED"
 
 
 def test_binance_adapter_is_read_only_market_data_boundary():
