@@ -1,12 +1,9 @@
 """Market data provider boundary and Yahoo Finance implementation."""
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Protocol
 
 import yfinance as yf
-
-from atlas.models.market_candle import MarketCandle
 
 
 @dataclass
@@ -31,14 +28,6 @@ class MarketDataProvider(Protocol):
         ...
 
 
-class MarketHistoryProvider(Protocol):
-    """Interface for normalized historical market data."""
-
-    def get_history(self, symbol: str, period: str = "3mo") -> list[MarketCandle]:
-        """Return chronological OHLCV candles for ``symbol``."""
-        ...
-
-
 def oslo_symbol(symbol: str) -> str:
     """Return a Yahoo Finance symbol for an Oslo Børs ticker.
 
@@ -58,35 +47,10 @@ class YFinanceMarketDataProvider:
     def __init__(self, history_period: str = "3mo") -> None:
         self.history_period = history_period
 
-    def get_history(self, symbol: str, period: str = "3mo") -> list[MarketCandle]:
-        """Return normalized OHLCV history without calculating indicators."""
-        history = yf.Ticker(symbol).history(period=period)
-        required = {"Open", "High", "Low", "Close", "Volume"}
-        if not required.issubset(history.columns):
-            missing = ", ".join(sorted(required - set(history.columns)))
-            raise ValueError(f"Missing market history columns for {symbol}: {missing}")
-
-        candles: list[MarketCandle] = []
-        for timestamp, row in history.dropna(subset=list(required)).iterrows():
-            if hasattr(timestamp, "to_pydatetime"):
-                timestamp = timestamp.to_pydatetime()
-            if not isinstance(timestamp, datetime):
-                raise ValueError("Market history contains an invalid timestamp")
-            candles.append(
-                MarketCandle(
-                    timestamp=timestamp,
-                    open=float(row["Open"]),
-                    high=float(row["High"]),
-                    low=float(row["Low"]),
-                    close=float(row["Close"]),
-                    volume=float(row["Volume"]),
-                )
-            )
-        return candles
-
     def get(self, symbol: str) -> MarketData:
-        history = self.get_history(symbol, self.history_period)
-        close = [candle.close for candle in history]
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(period=self.history_period)
+        close = history["Close"].dropna()
 
         if len(close) < 50:
             raise ValueError(
@@ -94,14 +58,25 @@ class YFinanceMarketDataProvider:
                 f"need at least 50 valid closes, got {len(close)}."
             )
 
-        ma20 = sum(close[-20:]) / 20
-        ma50 = sum(close[-50:]) / 50
-        volumes = [candle.volume for candle in history]
-        average_volume = sum(volumes[-20:]) / 20
-        volume = volumes[-1]
-        volume_ratio = volume / average_volume if average_volume > 0 else 1.0
+        ma20 = close.rolling(20).mean().iloc[-1]
+        ma50 = close.rolling(50).mean().iloc[-1]
 
-        info = yf.Ticker(symbol).fast_info
+        if "Volume" not in history.columns:
+            volume = average_volume = 0.0
+            volume_ratio = 1.0
+        else:
+            volume_series = history["Volume"].dropna()
+            if len(volume_series) < 20:
+                volume = average_volume = 0.0
+                volume_ratio = 1.0
+            else:
+                volume = float(volume_series.iloc[-1])
+                average_volume = float(volume_series.tail(20).mean())
+                volume_ratio = (
+                    volume / average_volume if average_volume > 0 else 1.0
+                )
+
+        info = ticker.fast_info
         price = float(info["lastPrice"])
         previous = float(info["previousClose"])
         currency = str(info.get("currency") or "USD").upper()
