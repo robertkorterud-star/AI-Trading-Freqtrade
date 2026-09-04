@@ -10,7 +10,8 @@ def test_buy_persist_reload_sell_closes_position_and_realizes_pnl(tmp_path):
     portfolio = PaperPortfolio(initial_cash=5000.0)
     trader = DryRunTrader(
         portfolio=portfolio,
-        max_position_value=5000.0,
+        # RiskEngine limits a new position to 20% of equity (= 1000 NOK).
+        max_position_value=1000.0,
     )
 
     buy = trader.process_signal(
@@ -38,7 +39,7 @@ def test_buy_persist_reload_sell_closes_position_and_realizes_pnl(tmp_path):
 
     resumed = DryRunTrader(
         portfolio=restored,
-        max_position_value=5000.0,
+        max_position_value=1000.0,
     )
 
     sell = resumed.process_signal(
