@@ -26,3 +26,7 @@ class AnalysisResult:
     evidence: float
 
     reasoning: list[str] = field(default_factory=list)
+
+    # Optional confidence emitted by the underlying signal engine.
+    # This preserves the existing analyst confidence contract.
+    signal_confidence: float | None = None
