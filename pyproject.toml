@@ -5,6 +5,7 @@ description = "ATLAS AI Investment Platform"
 requires-python = ">=3.12"
 dependencies = [
     "python-multipart>=0.0.32",
+    "yfinance>=0.2.66",
 ]
 
 [tool.black]
