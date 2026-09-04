@@ -1,3 +1,5 @@
+import pytest
+
 from atlas.algorithms.base import AlgorithmSignal
 from atlas.algorithms.fusion import FusionResult
 from atlas.algorithms.orchestrator import DecisionOrchestrator
