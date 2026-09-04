@@ -74,4 +74,4 @@ def test_orchestrator_delegates_final_decision_to_canonical_engine():
     assert engine.received_signals == [signal]
     assert result.decision.action.value == "buy"
     assert result.decision.confidence == 0.90
-    assert result.decision.score == 0.72
+    assert result.decision.score == pytest.approx(0.72)
