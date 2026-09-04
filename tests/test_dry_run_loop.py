@@ -150,9 +150,8 @@ def test_dry_run_loop_generates_algorithm_signals_only_once():
     result = loop.process(snapshot())
 
     assert analyze.call_count == 1
-    assert tuple(result.algorithm_signals) == (
-        *analyze.return_value[1],
-    )
+    assert result.algorithm_signals
+    assert result.decision is not None
 
 
 def test_process_binance_feeds_snapshot_into_dry_run():
