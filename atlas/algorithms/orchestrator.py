@@ -58,16 +58,26 @@ class DecisionOrchestrator:
         risk: RiskContext | None = None,
         observations: list[object] | None = None,
         market_data: dict | None = None,
+        algorithm_signals: list[AlgorithmSignal] | None = None,
+        fusion_result: object | None = None,
     ) -> OrchestrationResult:
-        """Run the complete decision chain without executing a trade."""
+        """Run the complete decision chain without executing a trade.
+
+        When precomputed algorithm signals/fusion are supplied, consume
+        them directly so callers can keep one signal-generation pass per
+        cycle. The legacy pipeline+market_data path remains available for
+        callers that do not provide precomputed results.
+        """
 
         self._validate_symbols(symbol, signals)
 
         horizon_result = None
-        fusion_result = None
         decision_inputs = list(signals)
 
-        if self.algorithm_pipeline is not None and market_data is not None:
+        if algorithm_signals is not None:
+            self._validate_symbols(symbol, algorithm_signals)
+            decision_inputs.extend(algorithm_signals)
+        elif self.algorithm_pipeline is not None and market_data is not None:
             fusion_result, pipeline_signals = (
                 self.algorithm_pipeline.analyze(
                     symbol,
@@ -81,22 +91,25 @@ class DecisionOrchestrator:
                     pipeline_signals,
                 )
 
-            if fusion_result is not None:
-                decision_inputs.append(
-                    AlgorithmSignal(
-                        algorithm="signal_fusion",
-                        symbol=symbol,
-                        timeframe=fusion_result.timeframe,
-                        action=fusion_result.action,
-                        score=fusion_result.score,
-                        confidence=(
-                            fusion_result.confidence / 100.0
-                        ),
-                        reasoning=list(
-                            fusion_result.reasoning
-                        ),
-                    )
+            decision_inputs.extend(pipeline_signals)
+
+        if fusion_result is not None:
+            self._validate_fusion_symbol(symbol, fusion_result)
+            decision_inputs.append(
+                AlgorithmSignal(
+                    algorithm="signal_fusion",
+                    symbol=symbol,
+                    timeframe=fusion_result.timeframe,
+                    action=fusion_result.action,
+                    score=fusion_result.score,
+                    confidence=(
+                        fusion_result.confidence / 100.0
+                    ),
+                    reasoning=list(
+                        fusion_result.reasoning
+                    ),
                 )
+            )
 
         if horizons:
             horizon_result = self.horizon_engine.decide(
@@ -211,3 +224,8 @@ class DecisionOrchestrator:
                 raise ValueError(
                     "all algorithm signals must match symbol"
                 )
+
+    @staticmethod
+    def _validate_fusion_symbol(symbol: str, fusion_result: object) -> None:
+        if getattr(fusion_result, "symbol", symbol) != symbol:
+            raise ValueError("fusion result symbol must match symbol")
