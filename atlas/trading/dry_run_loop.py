@@ -113,7 +113,7 @@ class DryRunLoop:
             ],
         }
 
-        algorithm_signals = self.algorithm_pipeline.generate_signals(
+        fusion_result, algorithm_signals = self.algorithm_pipeline.analyze(
             snapshot.symbol,
             market_data,
         )
@@ -127,7 +127,8 @@ class DryRunLoop:
             snapshot.symbol,
             intelligence_signal,
             observations=list(observations),
-            market_data=market_data,
+            algorithm_signals=algorithm_signals,
+            fusion_result=fusion_result,
         )
 
         decision = orchestration.decision
