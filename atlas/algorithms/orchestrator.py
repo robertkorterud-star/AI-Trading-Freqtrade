@@ -103,10 +103,7 @@ class DecisionOrchestrator:
             )
 
             if pipeline_signals:
-                self._validate_symbols(
-                    symbol,
-                    pipeline_signals,
-                )
+                self._validate_symbols(symbol, pipeline_signals)
 
             if fusion_result is None:
                 decision_inputs.extend(pipeline_signals)
@@ -120,21 +117,13 @@ class DecisionOrchestrator:
                     timeframe=fusion_result.timeframe,
                     action=fusion_result.action,
                     score=fusion_result.score,
-                    confidence=(
-                        fusion_result.confidence / 100.0
-                    ),
-                    reasoning=list(
-                        fusion_result.reasoning
-                    ),
+                    confidence=fusion_result.confidence / 100.0,
+                    reasoning=list(fusion_result.reasoning),
                 )
             )
 
         if horizons:
-            horizon_result = self.horizon_engine.decide(
-                symbol,
-                horizons,
-            )
-
+            horizon_result = self.horizon_engine.decide(symbol, horizons)
             decision_inputs.append(
                 AlgorithmSignal(
                     algorithm="multi_horizon",
@@ -146,28 +135,14 @@ class DecisionOrchestrator:
                 )
             )
 
-        # Agent observations are converted into auditable algorithm
-        # signals so agent intelligence reaches the canonical DecisionEngine.
+        # Agent observations are converted into auditable signals so agent
+        # intelligence reaches the canonical DecisionEngine.
         for observation in observations or []:
-            observation_symbol = getattr(
-                observation,
-                "symbol",
-                symbol,
-            )
-
+            observation_symbol = getattr(observation, "symbol", symbol)
             if observation_symbol != symbol:
-                raise ValueError(
-                    "all agent observations must match symbol"
-                )
+                raise ValueError("all agent observations must match symbol")
 
-            direction = str(
-                getattr(
-                    observation,
-                    "direction",
-                    "neutral",
-                )
-            ).lower()
-
+            direction = str(getattr(observation, "direction", "neutral")).lower()
             if direction == "bullish":
                 action = Action.BUY
             elif direction == "bearish":
@@ -181,36 +156,13 @@ class DecisionOrchestrator:
                     symbol=symbol,
                     timeframe="agent",
                     action=action,
-                    score=float(
-                        getattr(
-                            observation,
-                            "score",
-                            0.0,
-                        )
-                    ),
-                    confidence=float(
-                        getattr(
-                            observation,
-                            "confidence",
-                            0.0,
-                        )
-                    ),
-                    reasoning=[
-                        str(
-                            getattr(
-                                observation,
-                                "reason",
-                                "",
-                            )
-                        )
-                    ],
+                    score=float(getattr(observation, "score", 0.0)),
+                    confidence=float(getattr(observation, "confidence", 0.0)),
+                    reasoning=[str(getattr(observation, "reason", ""))],
                 )
             )
 
-        decision = self._final_decision(
-            decision_inputs,
-            risk,
-        )
+        decision = self._final_decision(decision_inputs, risk)
 
         reasoning = (
             "ATLAS orchestration completed.",
@@ -250,10 +202,7 @@ class DecisionOrchestrator:
                 reason="no signals",
             )
 
-        canonical = self.decision_engine.evaluate_algorithm_signals(
-            decision_inputs,
-        )
-
+        canonical = self.decision_engine.evaluate_algorithm_signals(decision_inputs)
         risk_score = self._risk_score(risk)
         if risk_score > 0.70 and canonical.action in {Action.BUY, Action.SELL}:
             return DecisionResult(
@@ -274,22 +223,13 @@ class DecisionOrchestrator:
 
     @staticmethod
     def _compatibility_score(canonical) -> float:
-        magnitude = max(
-            0.0,
-            min(1.0, canonical.evidence / 100.0),
-        )
-        confidence = max(
-            0.0,
-            min(1.0, canonical.confidence / 100.0),
-        )
+        magnitude = max(0.0, min(1.0, canonical.evidence / 100.0))
+        confidence = max(0.0, min(1.0, canonical.confidence / 100.0))
         score = magnitude * confidence
-
         if canonical.action is Action.SELL:
             return -score
-
         if canonical.action is Action.HOLD:
             return 0.0
-
         return score
 
     @staticmethod
@@ -305,7 +245,6 @@ class DecisionOrchestrator:
     def _risk_score(risk: RiskContext | None) -> float:
         if risk is None:
             return 0.0
-
         values = (
             risk.risk_score,
             risk.volatility_score,
@@ -315,17 +254,11 @@ class DecisionOrchestrator:
         return sum(values) / len(values)
 
     @staticmethod
-    def _validate_symbols(
-        symbol: str,
-        signals: list[AlgorithmSignal],
-    ) -> None:
+    def _validate_symbols(symbol: str, signals: list[AlgorithmSignal]) -> None:
         if any(signal.symbol != symbol for signal in signals):
-            raise ValueError("all signals must use the requested symbol")
+            raise ValueError("all signals must match symbol")
 
     @staticmethod
-    def _validate_fusion_symbol(
-        symbol: str,
-        fusion_result,
-    ) -> None:
+    def _validate_fusion_symbol(symbol: str, fusion_result) -> None:
         if fusion_result.symbol != symbol:
-            raise ValueError("fusion result must use the requested symbol")
+            raise ValueError("fusion result must match symbol")
