@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 from atlas.agents.base import AgentObservation
 from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.trading.market_data import Candle, MarketSnapshot
@@ -138,6 +140,19 @@ def test_dry_run_loop_connects_algorithm_pipeline_to_orchestrator():
     result = loop.process(snapshot())
 
     assert result.algorithm_signals
+
+
+def test_dry_run_loop_generates_algorithm_signals_only_once():
+    loop = DryRunLoop(agents=[BullishAgent()])
+    analyze = Mock(wraps=loop.algorithm_pipeline.analyze)
+    loop.algorithm_pipeline.analyze = analyze
+
+    result = loop.process(snapshot())
+
+    assert analyze.call_count == 1
+    assert tuple(result.algorithm_signals) == (
+        *analyze.return_value[1],
+    )
 
 
 def test_process_binance_feeds_snapshot_into_dry_run():
