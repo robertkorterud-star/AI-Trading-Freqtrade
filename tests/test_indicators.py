@@ -101,8 +101,8 @@ def test_ema_uses_sma_seed():
     assert result[-1] == 3.0
 
 
-def test_macd_is_positive_in_sustained_uptrend():
-    closes = [float(value) for value in range(1, 70)]
+def test_macd_is_positive_when_uptrend_is_accelerating():
+    closes = [100.0 + index * index * 0.1 for index in range(70)]
     line, signal, histogram = calculate_macd(closes)
     assert line[-1] is not None
     assert signal[-1] is not None
