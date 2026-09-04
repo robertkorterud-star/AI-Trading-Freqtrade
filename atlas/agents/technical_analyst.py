@@ -5,6 +5,7 @@ Technical Analyst
 from atlas.agents.base_agent import BaseAgent
 
 from atlas.adapters.market_data import MarketDataAdapter
+from atlas.intelligence.technical_signal import generate_technical_signal
 from atlas.intelligence.volume import (
     VolumeIntelligence,
     analyze_volume,
@@ -15,12 +16,11 @@ from atlas.intelligence.volume_confirmation import (
     confirm_volume,
 )
 
-from atlas.models.action import Action
 from atlas.models.analysis_result import AnalysisResult
 
 
 class TechnicalAnalyst(BaseAgent):
-    """Technical trend analyst using moving averages."""
+    """Technical analyst backed by ATLAS's deterministic signal engine."""
 
     def __init__(self, config=None):
 
@@ -37,57 +37,41 @@ class TechnicalAnalyst(BaseAgent):
 
         data = self.market.get(symbol)
 
-        if data.price > data.ma20 > data.ma50:
+        # The signal engine owns technical direction. The analyst remains
+        # responsible for translating that signal into the existing
+        # AnalysisResult contract used by ATLAS's decision layer.
+        signal = generate_technical_signal(data)
+        action = signal.action
 
-            action = Action.BUY
-
+        if action.value == "BUY":
             confidence = 88
-
             evidence = 85
-
             reasoning = [
-
                 self.t("price_above_ma20"),
-
                 self.t("ma20_above_ma50"),
-
                 self.t("overall_trend_bullish"),
-
             ]
-
-        elif data.price < data.ma20 < data.ma50:
-
-            action = Action.SELL
-
+        elif action.value == "SELL":
             confidence = 88
-
             evidence = 85
-
             reasoning = [
-
                 self.t("price_below_ma20"),
-
                 self.t("ma20_below_ma50"),
-
                 self.t("overall_trend_bearish"),
-
             ]
-
         else:
-
-            action = Action.HOLD
-
             confidence = 65
-
             evidence = 65
-
             reasoning = [
-
                 self.t("mixed_market_trend"),
-
                 self.t("waiting_confirmation"),
-
             ]
+
+        reasoning.append(
+            f"Technical signal engine confidence: {signal.confidence}/100."
+        )
+
+        reasoning.extend(signal.reasons)
 
         # -------------------------------------------------
         # Volume Intelligence
