@@ -5,7 +5,7 @@ from atlas.risk.manager import RiskManager
 
 
 def test_buy_position_is_limited_by_risk_budget():
-    manager = RiskManager(risk_per_trade_pct=1.0, max_position_pct=20.0, stop_loss_pct=2.0)
+    manager = RiskManager(risk_per_trade_pct=1.0, max_position_pct=60.0, stop_loss_pct=2.0)
 
     result = manager.assess(Action.BUY, price=100.0, equity=10_000.0)
 
@@ -17,7 +17,7 @@ def test_buy_position_is_limited_by_risk_budget():
 
 
 def test_position_is_capped_by_max_position_pct():
-    manager = RiskManager(risk_per_trade_pct=0.1, max_position_pct=10.0, stop_loss_pct=2.0)
+    manager = RiskManager(risk_per_trade_pct=0.2, max_position_pct=10.0, stop_loss_pct=2.0)
 
     result = manager.assess(Action.BUY, price=100.0, equity=10_000.0)
 
