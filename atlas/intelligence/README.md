@@ -1,0 +1,1 @@
+ATLAS intelligence components produce analysis and signals. They do not execute trades.
