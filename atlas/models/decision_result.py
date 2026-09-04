@@ -25,9 +25,7 @@ class DecisionResult:
 
     analysts: list[str] = field(default_factory=list)
 
-    agent_weights: dict[str, float] = field(
-        default_factory=dict
-    )
+    agent_weights: dict[str, float] = field(default_factory=dict)
 
     dominant_action: Action | None = None
 
@@ -39,9 +37,7 @@ class DecisionResult:
 
     action_support_weight: float = 0.0
 
-    opposing_analysts: list[str] = field(
-        default_factory=list
-    )
+    opposing_analysts: list[str] = field(default_factory=list)
 
     adaptive_override: bool = False
 
@@ -54,3 +50,8 @@ class DecisionResult:
     reasoning: list[str] = field(default_factory=list)
 
     expected_return: float = 0.0
+
+    # Signal-level view produced before the final decision policy.
+    ensemble_action: Action | None = None
+
+    ensemble_confidence: float = 0.0
