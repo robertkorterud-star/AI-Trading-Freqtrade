@@ -154,6 +154,23 @@ def test_dry_run_loop_generates_algorithm_signals_only_once():
     assert result.decision is not None
 
 
+def test_dry_run_loop_passes_precomputed_signals_and_fusion_to_orchestrator():
+    loop = DryRunLoop(agents=[BullishAgent()])
+    decide = Mock(wraps=loop.orchestrator.decide)
+    loop.orchestrator.decide = decide
+
+    result = loop.process(snapshot())
+
+    call = decide.call_args
+    assert call is not None
+    assert call.kwargs["algorithm_signals"] == list(result.algorithm_signals)
+    assert call.kwargs["fusion_result"] is not None
+
+    # The orchestrator consumes the already-generated package instead
+    # of receiving market data and regenerating the algorithm signals.
+    assert call.kwargs.get("market_data") is None
+
+
 def test_process_binance_feeds_snapshot_into_dry_run():
     class FakeBinance:
         def get_klines(self, **kwargs):
