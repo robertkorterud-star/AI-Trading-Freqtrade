@@ -45,7 +45,7 @@ def test_binance_public_market_data_reaches_atlas_dry_run():
     assert len(result.algorithm_signals) == 6
     assert result.execution.symbol == "BTCUSDT"
     assert result.execution.action == result.decision.action.value
-    assert result.execution.status.value == "SIMULATED"
+    assert result.execution.executed is False
 
 
 def test_binance_adapter_is_read_only_market_data_boundary():
@@ -78,4 +78,4 @@ def test_live_binance_public_data_reaches_atlas_dry_run():
     assert len(result.algorithm_signals) == 6
     assert result.execution.symbol == "BTCUSDT"
     assert result.execution.action == result.decision.action.value
-    assert result.execution.status.value == "SIMULATED"
+    assert result.execution.executed is False
