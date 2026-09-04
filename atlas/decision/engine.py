@@ -11,19 +11,22 @@ from atlas.models.action import Action
 from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.models.decision_result import DecisionResult
 from atlas.trading.expected_return_service import ExpectedReturnService
+from atlas.risk.manager import RiskManager, RiskAssessment
 
 
 class DecisionEngine:
     """Creates the final investment decision."""
 
-    def __init__(self, expected_return_service=None):
+    def __init__(self, expected_return_service=None, risk_manager=None):
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
         self.signal_ensemble = SignalEnsemble()
         self.agent_weight_engine = None
         self.expected_return_service = expected_return_service
+        self.risk_manager = risk_manager
         self.last_intelligence = None
         self.last_ensemble_signal = None
+        self.last_risk_assessment = None
 
     def _strongest_action_support(self, action: Action):
         """Return strongest learned support for an action."""
@@ -63,7 +66,15 @@ class DecisionEngine:
 
         return max(supports, key=lambda item: item["weight"])
 
-    def evaluate(self, results: list[AnalysisResult]) -> DecisionResult:
+    def evaluate(
+        self,
+        results: list[AnalysisResult],
+        *,
+        price: float | None = None,
+        equity: float | None = None,
+        current_exposure_pct: float = 0.0,
+        drawdown_pct: float = 0.0,
+    ) -> DecisionResult:
         if not results:
             raise ValueError("No analysis results provided.")
 
@@ -108,7 +119,6 @@ class DecisionEngine:
 
         dominant_action = ranked_signals[0][0]
         dominant_weight = ranked_signals[0][1]
-        initial_dominant_action = dominant_action
 
         action_support = self._strongest_learned_action_support()
 
@@ -151,6 +161,23 @@ class DecisionEngine:
         ):
             action = dominant_action
             adaptive_override = True
+
+        risk_assessment: RiskAssessment | None = None
+        if self.risk_manager is not None:
+            if price is None or equity is None:
+                raise ValueError(
+                    "price and equity are required when risk_manager is configured"
+                )
+            risk_assessment = self.risk_manager.assess(
+                action=action,
+                price=price,
+                equity=equity,
+                current_exposure_pct=current_exposure_pct,
+                drawdown_pct=drawdown_pct,
+            )
+            self.last_risk_assessment = risk_assessment
+            if not risk_assessment.allowed and action in {Action.BUY, Action.SELL}:
+                action = Action.HOLD
 
         raw_robustness = decision_margin * 0.7 + summary["evidence"] * 0.3
         robustness = min(100.0, raw_robustness, summary["evidence"])
@@ -225,6 +252,17 @@ class DecisionEngine:
             f"Decision robustness: {robustness:.1f}% ({robustness_level})."
         )
 
+        if risk_assessment is not None:
+            reasoning.append(
+                f"Risk assessment: {risk_assessment.risk_level} "
+                f"({'allowed' if risk_assessment.allowed else 'blocked'})."
+            )
+            reasoning.extend(f"Risk: {reason}" for reason in risk_assessment.reasons)
+            if not risk_assessment.allowed and action is Action.HOLD:
+                reasoning.append(
+                    "Risk management blocked the directional decision; final action is HOLD."
+                )
+
         if self.expected_return_service is not None:
             reasoning.append(
                 f"Expected gross return: {expected_return * 100:.2f}%."
@@ -251,4 +289,5 @@ class DecisionEngine:
             expected_return=expected_return,
             ensemble_action=ensemble_signal.action,
             ensemble_confidence=ensemble_signal.confidence,
+            risk_assessment=risk_assessment,
         )
