@@ -31,6 +31,15 @@ class RecordingOpener:
         return FakeResponse(self.payload)
 
 
+def test_default_endpoint_is_binance_public_market_data_only():
+    adapter = BinanceAdapter(
+        opener=RecordingOpener({"symbol": "BTCUSDT", "price": "100000.00"})
+    )
+
+    assert adapter.BASE_URL == "https://data-api.binance.vision/api/v3"
+    assert adapter.base_url == adapter.BASE_URL
+
+
 def test_get_price_builds_public_request():
     opener = RecordingOpener({"symbol": "BTCUSDT", "price": "100000.00"})
     adapter = BinanceAdapter(
