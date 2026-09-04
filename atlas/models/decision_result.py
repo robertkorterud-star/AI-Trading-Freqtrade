@@ -36,3 +36,4 @@ class DecisionResult:
     ensemble_action: Action | None = None
     ensemble_confidence: float = 0.0
     risk_assessment: object | None = None
+    portfolio_assessment: object | None = None
