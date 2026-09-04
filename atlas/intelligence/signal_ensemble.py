@@ -27,11 +27,7 @@ class SignalInput:
 
 
 class SignalEnsemble:
-    """Combines independent signals without executing trades.
-
-    Each signal contributes according to its confidence. The ensemble only
-    produces an ATLAS signal; execution remains outside this component.
-    """
+    """Combines independent signals without executing trades."""
 
     def combine(self, signals: Iterable[SignalInput]) -> EnsembleSignal:
         signals = tuple(signals)
@@ -46,20 +42,16 @@ class SignalEnsemble:
         for signal in signals:
             scores[signal.action] += signal.confidence
 
-        ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-        action, dominant_score = ranked[0]
+        action, dominant_score = max(scores.items(), key=lambda item: item[1])
         total_score = sum(scores.values())
-        confidence = (dominant_score / total_score * 100.0) if total_score else 0.0
-
-        contributors = tuple(signal.name for signal in signals)
-        reasons = tuple(
-            f"{signal.name}: {signal.action.value} ({signal.confidence:.1f}/100)."
-            for signal in signals
-        )
+        confidence = dominant_score / total_score * 100.0 if total_score else 0.0
 
         return EnsembleSignal(
             action=action,
             confidence=confidence,
-            contributors=contributors,
-            reasons=reasons,
+            contributors=tuple(signal.name for signal in signals),
+            reasons=tuple(
+                f"{signal.name}: {signal.action.value} ({signal.confidence:.1f}/100)."
+                for signal in signals
+            ),
         )
