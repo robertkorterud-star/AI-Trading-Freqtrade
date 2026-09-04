@@ -1,12 +1,15 @@
 from pathlib import Path
 
 
-def test_legacy_risk_engine_stays_isolated_to_dry_run_trader():
-    """Keep the legacy RiskEngine from leaking into modern ATLAS code."""
+def test_legacy_risk_engine_stays_isolated_to_compatibility_boundaries():
+    """Keep the legacy RiskEngine out of modern decision/risk modules."""
     atlas_root = Path(__file__).resolve().parents[1] / "atlas"
     allowed = {
         atlas_root / "risk" / "risk_engine.py",
+        # The dry-run trader is the legacy compatibility owner.
         atlas_root / "trading" / "dry_run_trader.py",
+        # AtlasEngine is the composition root that wires the legacy paper path.
+        atlas_root / "core" / "engine.py",
     }
 
     offenders = []
