@@ -4,8 +4,8 @@ ATLAS Decision Orchestrator.
 Combines algorithm signals, multi-horizon intelligence and agent
 observations into one auditable, risk-gated trading decision.
 
-This layer decides.
-It does not execute orders.
+This layer assembles intelligence.
+It does not execute orders or own the canonical final decision.
 """
 
 from dataclasses import dataclass
@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from atlas.algorithms.base import AlgorithmSignal
 from atlas.algorithms.pipeline import AlgorithmPipeline
 from atlas.algorithms.decision_core import (
+    DecisionAction,
     DecisionCore,
     DecisionResult,
     RiskContext,
@@ -21,6 +22,8 @@ from atlas.algorithms.multi_horizon import (
     HorizonSignal,
     MultiHorizonDecisionEngine,
 )
+from atlas.decision.engine import DecisionEngine
+from atlas.models.action import Action
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,15 +39,20 @@ class OrchestrationResult:
 
 
 class DecisionOrchestrator:
-    """Coordinate intelligence, horizons and the final risk gate."""
+    """Coordinate intelligence and delegate the final decision canonically."""
 
     def __init__(
         self,
         decision_core: DecisionCore | None = None,
+        decision_engine: DecisionEngine | None = None,
         horizon_engine: MultiHorizonDecisionEngine | None = None,
         algorithm_pipeline: AlgorithmPipeline | None = None,
     ):
-        self.decision_core = decision_core or DecisionCore()
+        # Explicit DecisionCore injection remains a compatibility seam for
+        # legacy callers/tests. Normal ATLAS operation uses the canonical
+        # DecisionEngine as the sole final-decision owner.
+        self.decision_core = decision_core
+        self.decision_engine = decision_engine or DecisionEngine()
         self.horizon_engine = (
             horizon_engine or MultiHorizonDecisionEngine()
         )
@@ -63,10 +71,12 @@ class DecisionOrchestrator:
     ) -> OrchestrationResult:
         """Run the complete decision chain without executing a trade.
 
-        When precomputed algorithm signals/fusion are supplied, consume
-        them directly so callers can keep one signal-generation pass per
-        cycle. The legacy pipeline+market_data path remains available for
-        callers that do not provide precomputed results.
+        The orchestrator assembles raw algorithm, fusion, horizon and agent
+        signals, then delegates the final directional decision to the
+        canonical :class:`atlas.decision.engine.DecisionEngine`.
+
+        Explicit ``decision_core`` injection is retained only as a legacy
+        compatibility seam while callers migrate to the canonical engine.
         """
 
         self._validate_symbols(symbol, signals)
@@ -129,7 +139,7 @@ class DecisionOrchestrator:
             )
 
         # Agent observations are converted into auditable algorithm
-        # signals so agent intelligence participates in DecisionCore.
+        # signals so agent intelligence reaches the canonical DecisionEngine.
         for observation in observations or []:
             observation_symbol = getattr(
                 observation,
@@ -151,11 +161,11 @@ class DecisionOrchestrator:
             ).lower()
 
             if direction == "bullish":
-                action = "BUY"
+                action = Action.BUY
             elif direction == "bearish":
-                action = "SELL"
+                action = Action.SELL
             else:
-                action = "HOLD"
+                action = Action.HOLD
 
             decision_inputs.append(
                 AlgorithmSignal(
@@ -189,7 +199,7 @@ class DecisionOrchestrator:
                 )
             )
 
-        decision = self.decision_core.decide(
+        decision = self._final_decision(
             decision_inputs,
             risk,
         )
@@ -213,6 +223,78 @@ class DecisionOrchestrator:
             reasoning=reasoning,
             fusion_result=fusion_result,
         )
+
+    def _final_decision(
+        self,
+        decision_inputs: list[AlgorithmSignal],
+        risk: RiskContext | None,
+    ) -> DecisionResult:
+        """Return the canonical decision, with a legacy compatibility seam."""
+        if self.decision_core is not None:
+            return self.decision_core.decide(decision_inputs, risk)
+
+        if not decision_inputs:
+            return DecisionResult(
+                action=DecisionAction.HOLD,
+                confidence=0.0,
+                risk_score=0.0,
+                score=0.0,
+                reason="no signals",
+            )
+
+        canonical = self.decision_engine.evaluate_algorithm_signals(
+            decision_inputs,
+        )
+
+        risk_score = self._risk_score(risk)
+        if risk_score > 0.70 and canonical.action in {Action.BUY, Action.SELL}:
+            return DecisionResult(
+                action=DecisionAction.HOLD,
+                confidence=canonical.confidence / 100.0,
+                risk_score=risk_score,
+                score=self._compatibility_score(canonical),
+                reason="risk gate blocked decision",
+            )
+
+        return DecisionResult(
+            action=DecisionAction(canonical.action.value.lower()),
+            confidence=canonical.confidence / 100.0,
+            risk_score=risk_score,
+            score=self._compatibility_score(canonical),
+            reason=self._compatibility_reason(canonical),
+        )
+
+    @staticmethod
+    def _compatibility_score(decision) -> float:
+        """Expose the legacy normalized score to existing orchestration callers."""
+        magnitude = max(0.0, min(1.0, decision.evidence / 100.0))
+        confidence = max(0.0, min(1.0, decision.confidence / 100.0))
+        score = magnitude * confidence
+        if decision.action is Action.SELL:
+            return -score
+        if decision.action is Action.HOLD:
+            return 0.0
+        return score
+
+    @staticmethod
+    def _compatibility_reason(decision) -> str:
+        if decision.action is Action.BUY:
+            return "buy consensus passed risk gate"
+        if decision.action is Action.SELL:
+            return "sell consensus passed risk gate"
+        return "no directional consensus"
+
+    @staticmethod
+    def _risk_score(risk: RiskContext | None) -> float:
+        if risk is None:
+            return 0.0
+        values = (
+            max(0.0, min(1.0, risk.risk_score)),
+            max(0.0, min(1.0, risk.volatility_score)),
+            max(0.0, min(1.0, risk.drawdown_score)),
+            max(0.0, min(1.0, risk.position_score)),
+        )
+        return sum(values) / len(values)
 
     @staticmethod
     def _validate_symbols(
