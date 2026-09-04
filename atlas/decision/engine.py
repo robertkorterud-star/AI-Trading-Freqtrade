@@ -71,6 +71,86 @@ class DecisionEngine:
 
         return max(supports, key=lambda item: item["weight"])
 
+    def evaluate_algorithm_signals(
+        self,
+        signals: Iterable,
+        *,
+        fusion_result=None,
+        price: float | None = None,
+        equity: float | None = None,
+        current_exposure_pct: float = 0.0,
+        drawdown_pct: float = 0.0,
+        portfolio_positions: Iterable[PortfolioPosition] = (),
+    ) -> DecisionResult:
+        """Evaluate algorithm signals through the canonical DecisionEngine.
+
+        Algorithm signals remain owned by the algorithm layer. This method
+        is the explicit adapter boundary that lets Signal Fusion and raw
+        algorithm output enter the canonical analyst/evidence contract
+        without making the algorithm package a second decision owner.
+        """
+        algorithm_signals = tuple(signals)
+        if not algorithm_signals and fusion_result is None:
+            raise ValueError("No algorithm signals provided.")
+
+        converted = [self._algorithm_signal_to_analysis(signal) for signal in algorithm_signals]
+
+        if fusion_result is not None:
+            converted.append(self._fusion_result_to_analysis(fusion_result))
+
+        return self.evaluate(
+            converted,
+            price=price,
+            equity=equity,
+            current_exposure_pct=current_exposure_pct,
+            drawdown_pct=drawdown_pct,
+            portfolio_positions=portfolio_positions,
+        )
+
+    @staticmethod
+    def _algorithm_signal_to_analysis(signal) -> AnalysisResult:
+        """Adapt one AlgorithmSignal to the canonical analysis contract."""
+        score = float(getattr(signal, "score", 50.0))
+        evidence = max(0.0, min(100.0, abs(score - 50.0) * 2.0))
+        confidence = DecisionEngine._normalize_algorithm_confidence(
+            float(getattr(signal, "confidence", 0.0))
+        )
+
+        return AnalysisResult(
+            analyst=f"algorithm:{getattr(signal, 'algorithm', 'unknown')}",
+            symbol=signal.symbol,
+            action=Action(signal.action),
+            confidence=confidence,
+            evidence=evidence,
+            reasoning=list(getattr(signal, "reasoning", [])),
+            signal_confidence=confidence,
+        )
+
+    @staticmethod
+    def _fusion_result_to_analysis(fusion_result) -> AnalysisResult:
+        """Adapt Signal Fusion output to the canonical analysis contract."""
+        return AnalysisResult(
+            analyst="signal_fusion",
+            symbol=fusion_result.symbol,
+            action=Action(fusion_result.action),
+            confidence=float(fusion_result.confidence),
+            evidence=max(
+                0.0,
+                min(100.0, abs(float(fusion_result.score) - 50.0) * 2.0),
+            ),
+            reasoning=list(fusion_result.reasoning),
+            signal_confidence=float(fusion_result.confidence),
+        )
+
+    @staticmethod
+    def _normalize_algorithm_confidence(value: float) -> float:
+        """Normalize algorithm confidence to the 0-100 DecisionEngine contract."""
+        if value < 0.0:
+            return 0.0
+        if value <= 1.0:
+            return value * 100.0
+        return min(100.0, value)
+
     def evaluate(
         self,
         results: list[AnalysisResult],
