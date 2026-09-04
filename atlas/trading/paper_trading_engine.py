@@ -1,18 +1,27 @@
 """
 ATLAS Paper Trading Engine
 
-Connects DecisionEngine, RiskEngine, PortfolioService
+Connects DecisionEngine, a risk gate, PortfolioService
 and TradingService.
 
 No live orders are placed.
 """
 
+from typing import Any, Protocol
+
 from atlas.models.action import Action
 from atlas.models.decision_result import DecisionResult
-from atlas.risk.risk_engine import RiskEngine
 from atlas.services.portfolio_service import PortfolioService
 from atlas.trading.trading_cost_model import TradingCostModel
 from atlas.trading.trading_service import TradingService
+
+
+class RiskGate(Protocol):
+    """Minimal risk-gate contract required by paper trading."""
+
+    def evaluate(self, **kwargs: Any) -> Any:
+        """Evaluate a paper-trading request."""
+        ...
 
 
 class PaperTradingEngine:
@@ -25,7 +34,7 @@ class PaperTradingEngine:
             ↓
         Expected Return / Cost Gate
             ↓
-        RiskEngine
+        Risk Gate
             ↓
         PaperTradingEngine
             ├── PortfolioService
@@ -35,7 +44,7 @@ class PaperTradingEngine:
     def __init__(
         self,
         portfolio: PortfolioService,
-        risk: RiskEngine,
+        risk: RiskGate,
         trading: TradingService | None = None,
         cost_model: TradingCostModel | None = None,
     ):
