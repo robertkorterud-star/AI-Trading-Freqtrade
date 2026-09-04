@@ -27,7 +27,8 @@ class DecisionExecutionService:
 
         HOLD and WATCH decisions produce no execution request. Directional
         decisions require an allowed risk assessment with a positive position
-        size, preventing execution from bypassing risk controls.
+        size. When a portfolio assessment is present, it must also be allowed,
+        preventing a portfolio veto from being bypassed at execution.
         """
         if decision.action in {Action.HOLD, Action.WATCH}:
             return None
@@ -41,6 +42,10 @@ class DecisionExecutionService:
             raise ValueError("risk assessment action does not match decision action")
         if risk.position_size <= 0:
             raise ValueError("approved execution requires a positive position size")
+
+        portfolio = decision.portfolio_assessment
+        if portfolio is not None and not portfolio.allowed:
+            raise ValueError("directional execution requires an allowed portfolio assessment")
 
         request = ExecutionRequest(
             symbol=decision.symbol,
