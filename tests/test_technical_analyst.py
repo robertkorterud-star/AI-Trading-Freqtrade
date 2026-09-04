@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from atlas.adapters.market_data import MarketData
 from atlas.agents.technical_analyst import TechnicalAnalyst
+from atlas.intelligence.technical_signal import TechnicalSignal
 from atlas.models.action import Action
 
 
@@ -155,3 +156,42 @@ def test_technical_analyst_classifies_low_volume():
 
     assert "LOW" in reasoning
     assert "0.70x" in reasoning
+
+
+def test_technical_analyst_delegates_direction_to_signal_engine():
+
+    market_data = MarketData(
+        symbol="BTC-USD",
+        price=100.0,
+        previous_close=99.0,
+        change_percent=1.01,
+        ma20=98.0,
+        ma50=95.0,
+        volume=1_000_000.0,
+        average_volume=1_000_000.0,
+        volume_ratio=1.0,
+    )
+
+    forced_signal = TechnicalSignal(
+        symbol="BTC-USD",
+        action=Action.SELL,
+        confidence=91,
+        reasons=("test_engine_direction",),
+    )
+
+    with (
+        patch("atlas.agents.technical_analyst.MarketDataAdapter") as mock_adapter,
+        patch(
+            "atlas.agents.technical_analyst.generate_technical_signal",
+            return_value=forced_signal,
+        ) as mock_signal_engine,
+    ):
+        mock_adapter.return_value.get.return_value = market_data
+
+        result = TechnicalAnalyst().analyze("BTC-USD")
+
+    mock_signal_engine.assert_called_once_with(market_data)
+    assert result.action == Action.SELL
+    assert result.confidence == 88
+    assert "test_engine_direction" in result.reasoning
+    assert "Technical signal engine confidence: 91/100." in result.reasoning
