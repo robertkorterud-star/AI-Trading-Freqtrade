@@ -7,13 +7,13 @@ class ActionAwareWeightEngine:
     def calculate(self, action=None):
         if action == Action.BUY.value:
             return {
-                "Technical Analyst": 0.90,
-                "News Analyst": 0.10,
+                "Technical Analyst": 0.60,
+                "News Analyst": 0.40,
             }
         if action == Action.SELL.value:
             return {
-                "Technical Analyst": 0.10,
-                "News Analyst": 0.90,
+                "Technical Analyst": 0.20,
+                "News Analyst": 0.80,
             }
         return {
             "Technical Analyst": 0.50,
@@ -21,22 +21,22 @@ class ActionAwareWeightEngine:
         }
 
 
-def test_action_specific_learned_weights_drive_canonical_direction():
+def test_canonical_decision_engine_uses_action_specific_learned_support():
     results = [
         AnalysisResult(
             symbol="BTC-USD",
             analyst="Technical Analyst",
             action=Action.BUY,
-            confidence=100.0,
-            evidence=100.0,
+            confidence=90.0,
+            evidence=90.0,
             reasoning=["Technical BUY."],
         ),
         AnalysisResult(
             symbol="BTC-USD",
             analyst="News Analyst",
             action=Action.SELL,
-            confidence=100.0,
-            evidence=100.0,
+            confidence=90.0,
+            evidence=90.0,
             reasoning=["News SELL."],
         ),
     ]
@@ -46,11 +46,10 @@ def test_action_specific_learned_weights_drive_canonical_direction():
 
     decision = engine.evaluate(results)
 
-    assert decision.action == Action.BUY
-    assert decision.dominant_action == Action.BUY
-    assert decision.dominant_weight == 90.0
-    assert decision.agent_weights == {
-        "Technical Analyst": 0.90,
-        "News Analyst": 0.10,
-    }
-    assert decision.evidence == 100.0
+    assert decision.action_support_analyst == "News Analyst"
+    assert decision.action_support_action == Action.SELL
+    assert decision.action_support_weight == 0.80
+    assert any(
+        "News Analyst supports SELL with 80.0% learned weight" in reason
+        for reason in decision.reasoning
+    )
