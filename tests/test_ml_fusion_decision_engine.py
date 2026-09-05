@@ -4,6 +4,7 @@ from atlas.algorithms.base import AlgorithmSignal
 from atlas.algorithms.fusion import SignalFusion
 from atlas.decision.engine import DecisionEngine
 from atlas.models.action import Action
+from atlas.portfolio.manager import PortfolioManager, PortfolioPosition
 from atlas.risk.manager import RiskManager
 
 
@@ -52,3 +53,30 @@ def test_risk_gate_can_veto_fused_ml_buy():
     assert decision.risk_assessment.allowed is False
     assert any("drawdown" in reason.lower() for reason in decision.risk_assessment.reasons)
     assert any("final action is HOLD" in reason for reason in decision.reasoning)
+
+
+def test_portfolio_gate_can_veto_fused_ml_buy():
+    ml = _signal("ml_baseline", Action.BUY, 90.0)
+    technical = _signal("technical", Action.BUY, 80.0)
+    fused = SignalFusion().combine([ml, technical])
+
+    engine = DecisionEngine(
+        risk_manager=RiskManager(),
+        portfolio_manager=PortfolioManager(
+            max_exposure_pct=100.0,
+            max_single_position_pct=10.0,
+        ),
+    )
+    decision = engine.evaluate_algorithm_signals(
+        [],
+        fusion_result=fused,
+        price=100_000.0,
+        equity=10_000.0,
+        portfolio_positions=[PortfolioPosition("BTC-USD", 900.0)],
+    )
+
+    assert decision.action == Action.HOLD
+    assert decision.portfolio_assessment is not None
+    assert decision.portfolio_assessment.allowed is False
+    assert any("single-position" in reason for reason in decision.portfolio_assessment.reasons)
+    assert any("portfolio" in reason.lower() for reason in decision.reasoning)
