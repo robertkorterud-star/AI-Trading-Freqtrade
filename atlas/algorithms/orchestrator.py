@@ -24,6 +24,8 @@ from atlas.algorithms.multi_horizon import (
 )
 from atlas.decision.engine import DecisionEngine
 from atlas.models.action import Action
+from atlas.portfolio.manager import PortfolioPosition
+from atlas.risk.manager import RiskManager
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,12 +49,16 @@ class DecisionOrchestrator:
         decision_engine: DecisionEngine | None = None,
         horizon_engine: MultiHorizonDecisionEngine | None = None,
         algorithm_pipeline: AlgorithmPipeline | None = None,
+        risk_manager: RiskManager | None = None,
     ):
         # Explicit DecisionCore injection remains a compatibility seam for
         # legacy callers/tests. Normal ATLAS operation uses the canonical
         # DecisionEngine as the sole final-decision owner.
         self.decision_core = decision_core
-        self.decision_engine = decision_engine or DecisionEngine()
+        self.risk_manager = risk_manager
+        self.decision_engine = decision_engine or DecisionEngine(
+            risk_manager=risk_manager,
+        )
         self.horizon_engine = (
             horizon_engine or MultiHorizonDecisionEngine()
         )
@@ -68,6 +74,11 @@ class DecisionOrchestrator:
         market_data: dict | None = None,
         algorithm_signals: list[AlgorithmSignal] | None = None,
         fusion_result: object | None = None,
+        price: float | None = None,
+        equity: float | None = None,
+        current_exposure_pct: float = 0.0,
+        drawdown_pct: float = 0.0,
+        portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...] = (),
     ) -> OrchestrationResult:
         """Run the complete decision chain without executing a trade.
 
@@ -162,7 +173,15 @@ class DecisionOrchestrator:
                 )
             )
 
-        decision = self._final_decision(decision_inputs, risk)
+        decision = self._final_decision(
+            decision_inputs,
+            risk,
+            price=price,
+            equity=equity,
+            current_exposure_pct=current_exposure_pct,
+            drawdown_pct=drawdown_pct,
+            portfolio_positions=portfolio_positions,
+        )
 
         reasoning = (
             "ATLAS orchestration completed.",
@@ -188,6 +207,12 @@ class DecisionOrchestrator:
         self,
         decision_inputs: list[AlgorithmSignal],
         risk: RiskContext | None,
+        *,
+        price: float | None = None,
+        equity: float | None = None,
+        current_exposure_pct: float = 0.0,
+        drawdown_pct: float = 0.0,
+        portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...] = (),
     ) -> DecisionResult:
         """Return the canonical decision, with a legacy compatibility seam."""
         if self.decision_core is not None:
@@ -202,9 +227,23 @@ class DecisionOrchestrator:
                 reason="no signals",
             )
 
-        canonical = self.decision_engine.evaluate_algorithm_signals(decision_inputs)
+        canonical = self.decision_engine.evaluate_algorithm_signals(
+            decision_inputs,
+            price=price,
+            equity=equity,
+            current_exposure_pct=current_exposure_pct,
+            drawdown_pct=drawdown_pct,
+            portfolio_positions=portfolio_positions,
+        )
+
+        # Legacy RiskContext is retained only for callers that have not yet
+        # migrated to the canonical RiskManager boundary. Once a RiskManager
+        # is configured, all risk gating belongs to DecisionEngine.
         risk_score = self._risk_score(risk)
-        if risk_score > 0.70 and canonical.action in {Action.BUY, Action.SELL}:
+        if self.risk_manager is None and risk_score > 0.70 and canonical.action in {
+            Action.BUY,
+            Action.SELL,
+        }:
             return DecisionResult(
                 action=DecisionAction.HOLD,
                 confidence=canonical.confidence / 100.0,
@@ -216,7 +255,11 @@ class DecisionOrchestrator:
         return DecisionResult(
             action=DecisionAction(canonical.action.value.lower()),
             confidence=canonical.confidence / 100.0,
-            risk_score=risk_score,
+            risk_score=(
+                canonical.risk_assessment.risk_level == "BLOCKED"
+                if canonical.risk_assessment is not None
+                else risk_score
+            ),
             score=self._compatibility_score(canonical),
             reason=self._reason_for_action(canonical.action),
         )
