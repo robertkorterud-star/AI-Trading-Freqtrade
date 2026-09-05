@@ -13,7 +13,7 @@ class FakeBinanceAdapter:
 
     def get_klines(self, symbol, interval="1m", limit=100):
         assert symbol == "BTCUSDT"
-        assert interval == "1m"
+        assert interval in {"4h", "1h", "15m", "5m", "1m"}
         assert limit == 100
         return [
             [
