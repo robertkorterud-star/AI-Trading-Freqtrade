@@ -8,10 +8,17 @@ This module does NOT generate trading decisions.
 """
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from atlas.trading.prediction_training_dataset import (
     PredictionTrainingExample,
 )
+
+
+class PredictionFeatureExample(Protocol):
+    """Minimal feature contract required for ML inference."""
+
+    features: dict[str, float]
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,7 +138,7 @@ class LogisticRegressionBaseline:
 
     def predict_probability(
         self,
-        example: PredictionTrainingExample,
+        example: PredictionFeatureExample,
     ) -> float:
 
         if not self.weights:
@@ -162,7 +169,7 @@ class LogisticRegressionBaseline:
 
     def predict(
         self,
-        example: PredictionTrainingExample,
+        example: PredictionFeatureExample,
     ) -> float:
 
         return (
