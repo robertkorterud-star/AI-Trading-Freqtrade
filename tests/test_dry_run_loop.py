@@ -141,3 +141,15 @@ def test_process_binance_feeds_snapshot_into_dry_run():
     assert result.price == 104.9
     assert result.execution.symbol == "BTCUSDT"
     assert len(result.observations) == 1
+
+
+def test_dry_run_loop_uses_canonical_risk_and_portfolio_managers():
+    loop = DryRunLoop(agents=[BullishAgent()])
+    result = loop.process(snapshot())
+
+    engine = loop.orchestrator.decision_engine
+    assert engine.risk_manager is loop.risk_manager
+    assert engine.portfolio_manager is loop.portfolio_manager
+    assert engine.last_risk_assessment is not None
+    assert engine.last_portfolio_assessment is not None
+    assert result.execution.equity > 0
