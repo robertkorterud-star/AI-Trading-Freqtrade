@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from atlas.models.algorithm_signal import AlgorithmSignal
+from atlas.algorithms.base import AlgorithmSignal
+from atlas.models.action import Action
 from atlas.trading.ml_baseline import LogisticRegressionBaseline
 from atlas.trading.ml_signal import MLPredictionSignal
 from atlas.trading.prediction_training_dataset import PredictionTrainingExample
@@ -42,7 +43,7 @@ def test_ml_signal_produces_algorithm_signal():
     assert isinstance(signal, AlgorithmSignal)
     assert signal.symbol == "BTC-USD"
     assert signal.algorithm == "ml_baseline"
-    assert signal.action in {"BUY", "SELL"}
+    assert signal.action in {Action.BUY, Action.SELL}
     assert 0.0 <= signal.confidence <= 1.0
     assert 0.0 <= signal.score <= 1.0
     assert signal.reasoning
