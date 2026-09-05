@@ -22,6 +22,9 @@ from atlas.algorithms import (
 )
 from atlas.agents.base import AgentObservation
 from atlas.agents.intelligence import MarketIntelligence
+from atlas.decision.engine import DecisionEngine
+from atlas.portfolio.manager import PortfolioManager, PortfolioPosition
+from atlas.risk.manager import RiskManager
 from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.trading.indicator_engine import IndicatorEngine
@@ -63,6 +66,8 @@ class DryRunLoop:
         indicator_engine: IndicatorEngine | None = None,
         signal_evidence_analyzer: SignalEvidenceAnalyzer | None = None,
         multi_timeframe_analyzer: MultiTimeframeAnalyzer | None = None,
+        risk_manager: RiskManager | None = None,
+        portfolio_manager: PortfolioManager | None = None,
     ):
         self.agents = tuple(agents)
         self.intelligence = intelligence or MarketIntelligence()
@@ -73,8 +78,19 @@ class DryRunLoop:
         self.signal_evidence_analyzer = signal_evidence_analyzer or SignalEvidenceAnalyzer()
         self.multi_timeframe_analyzer = multi_timeframe_analyzer or MultiTimeframeAnalyzer()
         self.algorithm_pipeline = algorithm_pipeline or self._default_algorithm_pipeline()
+        self.risk_manager = risk_manager or RiskManager()
+        self.portfolio_manager = portfolio_manager or PortfolioManager(
+            max_exposure_pct=self.risk_manager.max_exposure_pct,
+            max_single_position_pct=self.risk_manager.max_position_pct,
+        )
+        self._peak_equity: float | None = None
         self.orchestrator = orchestrator or DecisionOrchestrator(
+            decision_engine=DecisionEngine(
+                risk_manager=self.risk_manager,
+                portfolio_manager=self.portfolio_manager,
+            ),
             algorithm_pipeline=self.algorithm_pipeline,
+            risk_manager=self.risk_manager,
         )
 
     @staticmethod
@@ -123,12 +139,20 @@ class DryRunLoop:
             fusion_result = self.algorithm_pipeline.fusion.combine(algorithm_signals)
 
         intelligence_signal = self._signals_from_intelligence(snapshot, intelligence)
+        equity, current_exposure_pct, drawdown_pct, positions = self._portfolio_context(
+            snapshot
+        )
         orchestration = self.orchestrator.decide(
             snapshot.symbol,
             intelligence_signal,
             observations=list(observations),
             algorithm_signals=algorithm_signals,
             fusion_result=fusion_result,
+            price=snapshot.price,
+            equity=equity,
+            current_exposure_pct=current_exposure_pct,
+            drawdown_pct=drawdown_pct,
+            portfolio_positions=positions,
         )
 
         decision = orchestration.decision
@@ -154,6 +178,41 @@ class DryRunLoop:
             expected_return=expected_return,
             execution=execution,
         )
+
+    def _portfolio_context(
+        self,
+        snapshot: MarketSnapshot,
+    ) -> tuple[float, float, float, tuple[PortfolioPosition, ...]]:
+        """Build the canonical risk/portfolio context before a dry-run decision."""
+        prices = {symbol: snapshot.price for symbol in self.trader.portfolio.positions}
+        prices[snapshot.symbol] = snapshot.price
+        equity = self.trader.portfolio.equity(prices)
+        if self._peak_equity is None:
+            self._peak_equity = equity
+        else:
+            self._peak_equity = max(self._peak_equity, equity)
+
+        exposure_value = sum(
+            position.quantity * prices.get(symbol, position.average_price)
+            for symbol, position in self.trader.portfolio.positions.items()
+        )
+        exposure_pct = (exposure_value / equity * 100.0) if equity > 0.0 else 0.0
+        drawdown_pct = (
+            max(0.0, (self._peak_equity - equity) / self._peak_equity * 100.0)
+            if self._peak_equity > 0.0
+            else 0.0
+        )
+        positions = tuple(
+            PortfolioPosition(
+                symbol=symbol,
+                market_value=position.quantity * prices.get(
+                    symbol,
+                    position.average_price,
+                ),
+            )
+            for symbol, position in self.trader.portfolio.positions.items()
+        )
+        return equity, exposure_pct, drawdown_pct, positions
 
     def _prediction_signal(self, snapshot: MarketSnapshot, *, timeframe: str | None = None):
         if self.prediction_signal_service is None:
