@@ -205,6 +205,8 @@ def test_dry_run_loop_adds_optional_ml_prediction_signal():
         agents=[BullishAgent()],
         prediction_signal_service=service,
     )
+    decide = Mock(wraps=loop.orchestrator.decide)
+    loop.orchestrator.decide = decide
 
     result = loop.process(snapshot())
 
@@ -218,9 +220,10 @@ def test_dry_run_loop_adds_optional_ml_prediction_signal():
         for signal in result.algorithm_signals
     )
 
+    fusion_result = decide.call_args.kwargs["fusion_result"]
     fused_algorithms = {
         signal.algorithm
-        for signal in loop.orchestrator.last_fusion_result.signals
+        for signal in fusion_result.signals
     }
     assert "ml_baseline" in fused_algorithms
 
