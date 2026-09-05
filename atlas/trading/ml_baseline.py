@@ -8,10 +8,17 @@ This module does NOT generate trading decisions.
 """
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from atlas.trading.prediction_training_dataset import (
     PredictionTrainingExample,
 )
+
+
+class PredictionFeatureExample(Protocol):
+    """Minimal feature contract required for ML inference."""
+
+    features: dict[str, float]
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,7 +138,7 @@ class LogisticRegressionBaseline:
 
     def predict_probability(
         self,
-        example: PredictionTrainingExample,
+        example: PredictionFeatureExample,
     ) -> float:
 
         if not self.weights:
@@ -162,7 +169,7 @@ class LogisticRegressionBaseline:
 
     def predict(
         self,
-        example: PredictionTrainingExample,
+        example: PredictionFeatureExample,
     ) -> float:
 
         return (
@@ -218,13 +225,8 @@ def time_split(
 def evaluate_baseline(
     examples: list[PredictionTrainingExample],
     train_ratio: float = 0.8,
-) -> MLEvaluationResult:
-
-    train, test = time_split(
-        examples,
-        train_ratio=train_ratio,
-    )
-
+    ):
+    train, test = time_split(examples, train_ratio)
     model = LogisticRegressionBaseline()
     model.fit(train)
 
@@ -233,40 +235,32 @@ def evaluate_baseline(
         for example in test
     )
 
-    actual = tuple(
-        float(example.outcome)
+    correct = sum(
+        prediction == example.outcome
+        for prediction, example in zip(
+            predictions,
+            test,
+        )
+    )
+
+    accuracy = correct / len(test)
+
+    positives = sum(
+        example.outcome >= 0.5
+        for example in train
+    )
+    baseline_class = (
+        1.0
+        if positives >= len(train) / 2
+        else 0.0
+    )
+
+    baseline_correct = sum(
+        example.outcome == baseline_class
         for example in test
     )
-
-    correct = sum(
-        prediction == target
-        for prediction, target in zip(
-            predictions,
-            actual,
-        )
-    )
-
-    accuracy = (
-        correct / len(test) * 100.0
-    )
-
-    positive = sum(
-        target > 0
-        for target in (
-            example.outcome
-            for example in train
-        )
-    )
-
-    negative = len(train) - positive
-
-    majority = max(
-        positive,
-        negative,
-    )
-
     baseline_accuracy = (
-        majority / len(train) * 100.0
+        baseline_correct / len(test)
     )
 
     return MLEvaluationResult(
@@ -274,22 +268,15 @@ def evaluate_baseline(
         test_examples=len(test),
         accuracy=accuracy,
         baseline_accuracy=baseline_accuracy,
-        improvement=(
-            accuracy - baseline_accuracy
-        ),
+        improvement=accuracy - baseline_accuracy,
         predictions=predictions,
     )
 
 
 def _safe_exp(value: float) -> float:
-    """
-    Stable enough exponential helper for the baseline.
-    """
-
-    if value > 700:
-        return float("inf")
-
-    if value < -700:
+    if value > 60:
+        return 1e26
+    if value < -60:
         return 0.0
 
     import math
