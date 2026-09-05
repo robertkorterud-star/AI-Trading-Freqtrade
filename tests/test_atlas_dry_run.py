@@ -28,6 +28,29 @@ def test_runner_is_public_data_only_and_completes_one_dry_run(monkeypatch):
     assert isinstance(summary["paper_execution"]["executed"], bool)
 
 
+def test_runner_summary_exposes_decision_diagnostics(monkeypatch):
+    monkeypatch.setattr(atlas_dry_run, "BinanceAdapter", lambda: FakeBinance())
+
+    result = atlas_dry_run.run_dry_run(limit=23)
+    summary = atlas_dry_run._summary(result)
+
+    assert "evidence" in summary
+    assert "dominant_action" in summary
+    assert "dominant_weight" in summary
+    assert "decision_margin" in summary
+    assert "robustness" in summary
+    assert "ensemble" in summary
+    assert "intelligence" in summary
+    assert "algorithm_signals" in summary
+    assert summary["algorithm_signals"]
+    assert all("algorithm" in signal for signal in summary["algorithm_signals"])
+    assert all("action" in signal for signal in summary["algorithm_signals"])
+    assert all("score" in signal for signal in summary["algorithm_signals"])
+    assert all("confidence" in signal for signal in summary["algorithm_signals"])
+    assert isinstance(summary["reasoning"], list)
+    assert summary["risk"] is not None
+
+
 def test_runner_supports_multiple_symbols(monkeypatch):
     monkeypatch.setattr(atlas_dry_run, "BinanceAdapter", lambda: FakeBinance())
 
