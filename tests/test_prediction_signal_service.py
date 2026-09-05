@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from atlas.algorithms.base import AlgorithmSignal
 from atlas.models.action import Action
 from atlas.trading.ml_baseline import LogisticRegressionBaseline
+from atlas.trading.ml_signal import MLPredictionSignal
 from atlas.trading.prediction_signal_service import PredictionSignalService
 from atlas.trading.prediction_training_dataset import PredictionTrainingExample
 from atlas.trading.signal_evidence import SignalEvidence
@@ -53,10 +54,7 @@ def _evidence() -> SignalEvidence:
 
 def test_prediction_signal_service_bridges_evidence_to_ml_signal():
     service = PredictionSignalService(
-        signal=__import__(
-            "atlas.trading.ml_signal",
-            fromlist=["MLPredictionSignal"],
-        ).MLPredictionSignal(_model())
+        signal=MLPredictionSignal(_model()),
     )
 
     result = service.predict(
@@ -75,10 +73,7 @@ def test_prediction_signal_service_bridges_evidence_to_ml_signal():
 
 def test_prediction_signal_service_does_not_change_signal_contract():
     service = PredictionSignalService(
-        signal=__import__(
-            "atlas.trading.ml_signal",
-            fromlist=["MLPredictionSignal"],
-        ).MLPredictionSignal(_model())
+        signal=MLPredictionSignal(_model()),
     )
 
     result = service.predict(
