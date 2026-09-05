@@ -135,7 +135,10 @@ class DryRunLoop:
             market_data,
         )
 
-        prediction_signal = self._prediction_signal(snapshot)
+        prediction_signal = self._prediction_signal(
+            snapshot,
+            timeframe=(algorithm_signals[0].timeframe if algorithm_signals else None),
+        )
         if prediction_signal is not None:
             algorithm_signals = [
                 *algorithm_signals,
@@ -189,6 +192,8 @@ class DryRunLoop:
     def _prediction_signal(
         self,
         snapshot: MarketSnapshot,
+        *,
+        timeframe: str | None = None,
     ) -> AlgorithmSignal | None:
         """Build an optional ML signal from the same live market snapshot."""
         if self.prediction_signal_service is None:
@@ -221,6 +226,7 @@ class DryRunLoop:
                 snapshot.timestamp,
                 tz=timezone.utc,
             ),
+            timeframe=timeframe,
         )
 
     def process_binance(
