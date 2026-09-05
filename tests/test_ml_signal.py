@@ -52,9 +52,13 @@ def test_ml_signal_produces_algorithm_signal():
 
 def test_ml_signal_score_matches_canonical_fusion_scale():
     signal = MLPredictionSignal(_model()).predict(_example(-1.0))
-    probability = float(signal.reasoning[0].split("=")[1])
 
-    assert signal.score == 50.0 + (probability - 0.5) * 100.0
+    expected_score = 50.0 + (
+        (signal.confidence if signal.action is Action.BUY else -signal.confidence)
+        * 50.0
+    )
+
+    assert signal.score == expected_score
 
 
 def test_ml_signal_can_enter_signal_fusion_without_scale_distortion():
