@@ -33,16 +33,21 @@ class DecisionEngine:
         self.last_risk_assessment = None
         self.last_portfolio_assessment = None
 
-    def _strongest_action_support(self, action: Action):
-        """Return strongest learned support for an action."""
+    def _calculate_learned_weights(self, action: Action | None = None):
+        """Return learned weights, preferring action-specific learning when supported."""
         if self.agent_weight_engine is None:
             return None
 
         try:
-            weights = self.agent_weight_engine.calculate(action=action.value)
+            if action is not None:
+                return self.agent_weight_engine.calculate(action=action.value)
+            return self.agent_weight_engine.calculate()
         except TypeError:
-            weights = self.agent_weight_engine.calculate()
+            return self.agent_weight_engine.calculate()
 
+    def _strongest_action_support(self, action: Action):
+        """Return strongest learned support for an action."""
+        weights = self._calculate_learned_weights(action)
         if not weights:
             return None
 
@@ -164,9 +169,7 @@ class DecisionEngine:
         if not results:
             raise ValueError("No analysis results provided.")
 
-        weights = None
-        if self.agent_weight_engine is not None:
-            weights = self.agent_weight_engine.calculate()
+        weights = self._calculate_learned_weights()
 
         ensemble_inputs = [
             SignalInput(
@@ -199,6 +202,25 @@ class DecisionEngine:
             key=lambda item: item[1],
             reverse=True,
         )
+
+        provisional_action = ranked_signals[0][0]
+        action_specific_weights = self._calculate_learned_weights(provisional_action)
+        if action_specific_weights and action_specific_weights != weights:
+            weights = action_specific_weights
+            summary = self.aggregator.summarize(results, weights=weights)
+            intelligence = self.intelligence.summarize(results, weights=weights)
+            self.last_intelligence = intelligence
+
+            weighted_signals = {
+                Action.BUY: intelligence.weighted_buy,
+                Action.HOLD: intelligence.weighted_hold,
+                Action.SELL: intelligence.weighted_sell,
+            }
+            ranked_signals = sorted(
+                weighted_signals.items(),
+                key=lambda item: item[1],
+                reverse=True,
+            )
 
         dominant_action = ranked_signals[0][0]
         dominant_weight = ranked_signals[0][1]
