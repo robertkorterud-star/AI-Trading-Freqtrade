@@ -38,6 +38,7 @@ class OrchestrationResult:
     observations: tuple[object, ...]
     reasoning: tuple[str, ...]
     fusion_result: object | None = None
+    canonical_decision: object | None = None
 
 
 class DecisionOrchestrator:
@@ -173,7 +174,7 @@ class DecisionOrchestrator:
                 )
             )
 
-        decision = self._final_decision(
+        decision, canonical_decision = self._final_decision(
             decision_inputs,
             risk,
             price=price,
@@ -201,6 +202,7 @@ class DecisionOrchestrator:
             observations=tuple(observations or []),
             reasoning=reasoning,
             fusion_result=fusion_result,
+            canonical_decision=canonical_decision,
         )
 
     def _final_decision(
@@ -213,18 +215,21 @@ class DecisionOrchestrator:
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
         portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...] = (),
-    ) -> DecisionResult:
-        """Return the canonical decision, with a legacy compatibility seam."""
+    ) -> tuple[DecisionResult, object | None]:
+        """Return compatibility and canonical decisions without duplicating logic."""
         if self.decision_core is not None:
-            return self.decision_core.decide(decision_inputs, risk)
+            return self.decision_core.decide(decision_inputs, risk), None
 
         if not decision_inputs:
-            return DecisionResult(
-                action=DecisionAction.HOLD,
-                confidence=0.0,
-                risk_score=0.0,
-                score=0.0,
-                reason="no signals",
+            return (
+                DecisionResult(
+                    action=DecisionAction.HOLD,
+                    confidence=0.0,
+                    risk_score=0.0,
+                    score=0.0,
+                    reason="no signals",
+                ),
+                None,
             )
 
         canonical = self._evaluate_canonical_engine(
@@ -244,20 +249,26 @@ class DecisionOrchestrator:
             Action.BUY,
             Action.SELL,
         }:
-            return DecisionResult(
-                action=DecisionAction.HOLD,
+            return (
+                DecisionResult(
+                    action=DecisionAction.HOLD,
+                    confidence=canonical.confidence / 100.0,
+                    risk_score=risk_score,
+                    score=self._compatibility_score(canonical),
+                    reason="risk gate blocked decision",
+                ),
+                canonical,
+            )
+
+        return (
+            DecisionResult(
+                action=DecisionAction(canonical.action.value.lower()),
                 confidence=canonical.confidence / 100.0,
                 risk_score=risk_score,
                 score=self._compatibility_score(canonical),
-                reason="risk gate blocked decision",
-            )
-
-        return DecisionResult(
-            action=DecisionAction(canonical.action.value.lower()),
-            confidence=canonical.confidence / 100.0,
-            risk_score=risk_score,
-            score=self._compatibility_score(canonical),
-            reason=self._reason_for_action(canonical.action),
+                reason=self._reason_for_action(canonical.action),
+            ),
+            canonical,
         )
 
     def _evaluate_canonical_engine(
