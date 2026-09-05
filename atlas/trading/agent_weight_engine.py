@@ -25,6 +25,65 @@ class AgentWeightEngine:
     ):
         self.performance = performance
 
+    def _history_for_action(self, action: str | None = None):
+        """Return performance history for an optional action context."""
+        history = self.performance.history()
+
+        if action is None:
+            return history
+
+        normalized_action = str(action).upper()
+        filtered_history = []
+
+        for item in history:
+            action_predictions = item.get(
+                "action_predictions",
+                {},
+            )
+
+            action_correct = item.get(
+                "action_correct",
+                {},
+            )
+
+            predictions = int(
+                action_predictions.get(
+                    normalized_action,
+                    0,
+                )
+            )
+
+            correct = int(
+                action_correct.get(
+                    normalized_action,
+                    0,
+                )
+            )
+
+            filtered_history.append(
+                {
+                    **item,
+                    "predictions": predictions,
+                    "correct": correct,
+                    "wrong": max(
+                        predictions - correct,
+                        0,
+                    ),
+                    "accuracy": (
+                        round(
+                            correct
+                            / predictions
+                            * 100,
+                            2,
+                        )
+                        if predictions
+                        else 0.0
+                    ),
+                }
+            )
+
+        return filtered_history
+
     def calculate(
         self,
         action: str | None = None,
@@ -36,61 +95,7 @@ class AgentWeightEngine:
         preserve the existing overall-performance behavior.
         """
 
-        history = self.performance.history()
-
-        if action is not None:
-            normalized_action = str(action).upper()
-
-            filtered_history = []
-
-            for item in history:
-                action_predictions = item.get(
-                    "action_predictions",
-                    {},
-                )
-
-                action_correct = item.get(
-                    "action_correct",
-                    {},
-                )
-
-                predictions = int(
-                    action_predictions.get(
-                        normalized_action,
-                        0,
-                    )
-                )
-
-                correct = int(
-                    action_correct.get(
-                        normalized_action,
-                        0,
-                    )
-                )
-
-                filtered_history.append(
-                    {
-                        **item,
-                        "predictions": predictions,
-                        "correct": correct,
-                        "wrong": max(
-                            predictions - correct,
-                            0,
-                        ),
-                        "accuracy": (
-                            round(
-                                correct
-                                / predictions
-                                * 100,
-                                2,
-                            )
-                            if predictions
-                            else 0.0
-                        ),
-                    }
-                )
-
-            history = filtered_history
+        history = self._history_for_action(action)
 
         if not history:
             return {}
@@ -257,7 +262,6 @@ class AgentWeightEngine:
 
         return rounded
 
-
     def explain(
         self,
         action: str | None = None,
@@ -269,61 +273,7 @@ class AgentWeightEngine:
         Without an action, preserve the existing overall explanation.
         """
 
-        history = self.performance.history()
-
-        if action is not None:
-            normalized_action = str(action).upper()
-
-            filtered_history = []
-
-            for item in history:
-                action_predictions = item.get(
-                    "action_predictions",
-                    {},
-                )
-
-                action_correct = item.get(
-                    "action_correct",
-                    {},
-                )
-
-                predictions = int(
-                    action_predictions.get(
-                        normalized_action,
-                        0,
-                    )
-                )
-
-                correct = int(
-                    action_correct.get(
-                        normalized_action,
-                        0,
-                    )
-                )
-
-                filtered_history.append(
-                    {
-                        **item,
-                        "predictions": predictions,
-                        "correct": correct,
-                        "wrong": max(
-                            predictions - correct,
-                            0,
-                        ),
-                        "accuracy": (
-                            round(
-                                correct
-                                / predictions
-                                * 100,
-                                2,
-                            )
-                            if predictions
-                            else 0.0
-                        ),
-                    }
-                )
-
-            history = filtered_history
+        history = self._history_for_action(action)
 
         if not history:
             return {}
@@ -479,4 +429,3 @@ class AgentWeightEngine:
             }
 
         return explanations
-
