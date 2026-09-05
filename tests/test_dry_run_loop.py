@@ -1,8 +1,13 @@
+from datetime import datetime
 from unittest.mock import Mock
 
 from atlas.agents.base import AgentObservation
 from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.trading.market_data import Candle, MarketSnapshot
+from atlas.trading.ml_baseline import LogisticRegressionBaseline
+from atlas.trading.ml_signal import MLPredictionSignal
+from atlas.trading.prediction_signal_service import PredictionSignalService
+from atlas.trading.prediction_training_dataset import PredictionTrainingExample
 
 
 class BullishAgent:
@@ -61,6 +66,27 @@ def snapshot():
         "BTC-USD",
         candles,
     )
+
+
+def _model() -> LogisticRegressionBaseline:
+    model = LogisticRegressionBaseline(learning_rate=0.1, epochs=1000)
+    model.fit([
+        PredictionTrainingExample(
+            features={"trend": -1.0},
+            outcome=1.0,
+            symbol="BTC-USD",
+            action="BUY",
+            timestamp=datetime(2026, 1, 1),
+        ),
+        PredictionTrainingExample(
+            features={"trend": 1.0},
+            outcome=0.0,
+            symbol="BTC-USD",
+            action="BUY",
+            timestamp=datetime(2026, 1, 2),
+        ),
+    ])
+    return model
 
 
 def test_dry_run_loop_connects_agents_to_execution():
@@ -169,6 +195,39 @@ def test_dry_run_loop_passes_precomputed_signals_and_fusion_to_orchestrator():
     # The orchestrator consumes the already-generated package instead
     # of receiving market data and regenerating the algorithm signals.
     assert call.kwargs.get("market_data") is None
+
+
+def test_dry_run_loop_adds_optional_ml_prediction_signal():
+    service = PredictionSignalService(
+        signal=MLPredictionSignal(_model()),
+    )
+    loop = DryRunLoop(
+        agents=[BullishAgent()],
+        prediction_signal_service=service,
+    )
+
+    result = loop.process(snapshot())
+
+    assert len(result.algorithm_signals) == 6
+    assert sum(
+        signal.algorithm == "ml_baseline"
+        for signal in result.algorithm_signals
+    ) == 1
+    assert all(
+        signal.symbol == "BTC-USD"
+        for signal in result.algorithm_signals
+    )
+
+
+def test_dry_run_loop_keeps_ml_prediction_optional():
+    loop = DryRunLoop(agents=[BullishAgent()])
+
+    result = loop.process(snapshot())
+
+    assert all(
+        signal.algorithm != "ml_baseline"
+        for signal in result.algorithm_signals
+    )
 
 
 def test_process_binance_feeds_snapshot_into_dry_run():
