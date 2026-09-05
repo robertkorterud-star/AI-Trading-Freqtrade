@@ -6,6 +6,7 @@ from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.trading.market_data import Candle, MarketSnapshot
 from atlas.trading.ml_baseline import LogisticRegressionBaseline
 from atlas.trading.ml_signal import MLPredictionSignal
+from atlas.trading.multi_timeframe_analysis import MultiTimeframeAnalyzer
 from atlas.trading.prediction_signal_service import PredictionSignalService
 from atlas.trading.prediction_training_dataset import PredictionTrainingExample
 
@@ -14,29 +15,18 @@ class BullishAgent:
     name = "bullish"
 
     def analyze(self, snapshot):
-        return AgentObservation(
-            agent=self.name, symbol=snapshot.symbol, score=0.90,
-            confidence=0.90, direction="bullish", reason="strong bullish test signal",
-        )
+        return AgentObservation(agent=self.name, symbol=snapshot.symbol, score=0.90, confidence=0.90, direction="bullish", reason="strong bullish test signal")
 
 
 class BearishAgent:
     name = "bearish"
 
     def analyze(self, snapshot):
-        return AgentObservation(
-            agent=self.name, symbol=snapshot.symbol, score=-0.90,
-            confidence=0.90, direction="bearish", reason="strong bearish test signal",
-        )
+        return AgentObservation(agent=self.name, symbol=snapshot.symbol, score=-0.90, confidence=0.90, direction="bearish", reason="strong bearish test signal")
 
 
 def snapshot():
-    candles = [
-        Candle(timestamp=i, open=100 + (i - 1) * 0.15,
-               high=101 + (i - 1) * 0.15, low=99 + (i - 1) * 0.15,
-               close=100 + (i - 1) * 0.15, volume=1000 + i * 100)
-        for i in range(1, 23)
-    ]
+    candles = [Candle(timestamp=i, open=100 + (i - 1) * 0.15, high=101 + (i - 1) * 0.15, low=99 + (i - 1) * 0.15, close=100 + (i - 1) * 0.15, volume=1000 + i * 100) for i in range(1, 23)]
     candles.append(Candle(timestamp=23, open=103, high=105, low=102, close=104, volume=3300))
     return MarketSnapshot.from_candles("BTC-USD", candles)
 
@@ -61,8 +51,7 @@ def test_dry_run_loop_connects_agents_to_execution():
 
 
 def test_conflicting_agents_reduce_intelligence():
-    loop = DryRunLoop(agents=[BullishAgent(), BearishAgent()])
-    result = loop.process(snapshot())
+    result = DryRunLoop(agents=[BullishAgent(), BearishAgent()]).process(snapshot())
     assert abs(result.intelligence_score) < 0.20
 
 
@@ -79,10 +68,7 @@ def test_dry_run_loop_uses_algorithm_pipeline():
     assert isinstance(loop.algorithm_pipeline, AlgorithmPipeline)
     result = loop.process(snapshot())
     assert len(result.algorithm_signals) == 5
-    assert {signal.algorithm for signal in result.algorithm_signals} == {
-        "intraday_momentum", "intraday_trend", "intraday_breakout",
-        "intraday_mean_reversion", "intraday_vwap",
-    }
+    assert {signal.algorithm for signal in result.algorithm_signals} == {"intraday_momentum", "intraday_trend", "intraday_breakout", "intraday_mean_reversion", "intraday_vwap"}
 
 
 def test_dry_run_loop_connects_algorithm_pipeline_to_orchestrator():
@@ -92,8 +78,7 @@ def test_dry_run_loop_connects_algorithm_pipeline_to_orchestrator():
     assert isinstance(loop.algorithm_pipeline, AlgorithmPipeline)
     assert isinstance(loop.orchestrator, DecisionOrchestrator)
     assert loop.orchestrator.algorithm_pipeline is loop.algorithm_pipeline
-    result = loop.process(snapshot())
-    assert result.algorithm_signals
+    assert loop.process(snapshot()).algorithm_signals
 
 
 def test_dry_run_loop_generates_algorithm_signals_only_once():
@@ -111,11 +96,10 @@ def test_dry_run_loop_passes_precomputed_signals_and_fusion_to_orchestrator():
     decide = Mock(wraps=loop.orchestrator.decide)
     loop.orchestrator.decide = decide
     result = loop.process(snapshot())
-    call = decide.call_args
-    assert call is not None
-    assert call.kwargs["algorithm_signals"] == list(result.algorithm_signals)
-    assert call.kwargs["fusion_result"] is not None
-    assert call.kwargs.get("market_data") is None
+    assert decide.call_args is not None
+    assert decide.call_args.kwargs["algorithm_signals"] == list(result.algorithm_signals)
+    assert decide.call_args.kwargs["fusion_result"] is not None
+    assert decide.call_args.kwargs.get("market_data") is None
 
 
 def test_dry_run_loop_adds_optional_ml_prediction_signal():
@@ -127,13 +111,11 @@ def test_dry_run_loop_adds_optional_ml_prediction_signal():
     assert len(result.algorithm_signals) == 6
     assert sum(signal.algorithm == "ml_baseline" for signal in result.algorithm_signals) == 1
     assert all(signal.symbol == "BTC-USD" for signal in result.algorithm_signals)
-    fusion_result = decide.call_args.kwargs["fusion_result"]
-    assert "ml_baseline" in {signal.algorithm for signal in fusion_result.signals}
+    assert "ml_baseline" in {signal.algorithm for signal in decide.call_args.kwargs["fusion_result"].signals}
 
 
 def test_dry_run_loop_keeps_ml_prediction_optional():
-    loop = DryRunLoop(agents=[BullishAgent()])
-    result = loop.process(snapshot())
+    result = DryRunLoop(agents=[BullishAgent()]).process(snapshot())
     assert all(signal.algorithm != "ml_baseline" for signal in result.algorithm_signals)
 
 
@@ -143,11 +125,7 @@ def test_dry_run_loop_feeds_snapshot_multi_timeframe_candles_to_ml():
     enriched = MarketSnapshot.from_candles(base.symbol, base.candles, timeframe_candles=mtf)
     service = PredictionSignalService(signal=MLPredictionSignal(_model()))
     analyzer = Mock(wraps=MultiTimeframeAnalyzer())
-    loop = DryRunLoop(
-        agents=[BullishAgent()],
-        prediction_signal_service=service,
-        multi_timeframe_analyzer=analyzer,
-    )
+    loop = DryRunLoop(agents=[BullishAgent()], prediction_signal_service=service, multi_timeframe_analyzer=analyzer)
     loop.process(enriched)
     data = analyzer.analyze.call_args.args[1]
     assert set(data) == {"4h", "1h", "15m", "5m", "1m"}
@@ -158,8 +136,7 @@ def test_process_binance_feeds_snapshot_into_dry_run():
     class FakeBinance:
         def get_klines(self, **kwargs):
             return [[1710000000000 + i * 60000, str(100 + i * 0.2), str(101 + i * 0.2), str(99 + i * 0.2), str(100.5 + i * 0.2), "10"] for i in range(23)]
-    loop = DryRunLoop(agents=[BullishAgent()])
-    result = loop.process_binance(FakeBinance(), symbol="BTCUSDT", interval="1m", limit=23)
+    result = DryRunLoop(agents=[BullishAgent()]).process_binance(FakeBinance(), symbol="BTCUSDT", interval="1m", limit=23)
     assert result.symbol == "BTCUSDT"
     assert result.price == 104.9
     assert result.execution.symbol == "BTCUSDT"
