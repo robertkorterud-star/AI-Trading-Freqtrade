@@ -21,8 +21,8 @@ class ActionAwareWeightEngine:
         }
 
 
-def test_canonical_decision_engine_uses_action_specific_learned_support():
-    results = [
+def _conflicting_results():
+    return [
         AnalysisResult(
             symbol="BTC-USD",
             analyst="Technical Analyst",
@@ -41,10 +41,12 @@ def test_canonical_decision_engine_uses_action_specific_learned_support():
         ),
     ]
 
+
+def test_canonical_decision_engine_uses_action_specific_learned_support():
     engine = DecisionEngine()
     engine.agent_weight_engine = ActionAwareWeightEngine()
 
-    decision = engine.evaluate(results)
+    decision = engine.evaluate(_conflicting_results())
 
     assert decision.action_support_analyst == "News Analyst"
     assert decision.action_support_action == Action.SELL
@@ -53,3 +55,15 @@ def test_canonical_decision_engine_uses_action_specific_learned_support():
         "News Analyst supports SELL with 80.0% learned weight" in reason
         for reason in decision.reasoning
     )
+
+
+def test_action_specific_support_does_not_replace_canonical_generic_weights():
+    engine = DecisionEngine()
+    engine.agent_weight_engine = ActionAwareWeightEngine()
+
+    decision = engine.evaluate(_conflicting_results())
+
+    assert decision.agent_weights == {
+        "Technical Analyst": 0.50,
+        "News Analyst": 0.50,
+    }
