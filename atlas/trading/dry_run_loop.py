@@ -49,6 +49,7 @@ class DryRunCycleResult:
     decision: object
     expected_return: float | None
     execution: DryRunResult
+    canonical_decision: object | None = None
 
 
 class DryRunLoop:
@@ -177,6 +178,7 @@ class DryRunLoop:
             decision=decision,
             expected_return=expected_return,
             execution=execution,
+            canonical_decision=orchestration.canonical_decision,
         )
 
     def _portfolio_context(
