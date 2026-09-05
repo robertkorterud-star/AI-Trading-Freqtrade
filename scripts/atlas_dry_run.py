@@ -1,7 +1,7 @@
-"""Run one ATLAS dry-run cycle against Binance public market data.
+"""Run ATLAS dry-run cycles against Binance public market data.
 
 This entrypoint is deliberately read-only against Binance. It fetches public
-market data only and sends the resulting decision to ATLAS's paper portfolio.
+market data only and sends the resulting decisions to ATLAS's paper portfolio.
 No Binance order endpoint, credentials, or live execution adapter is used.
 """
 
@@ -20,6 +20,8 @@ def run_dry_run(
     limit: int = 100,
 ):
     """Fetch public Binance data and process exactly one simulated cycle."""
+    if not symbol.strip():
+        raise ValueError("symbol must not be empty")
     if limit <= 0:
         raise ValueError("limit must be greater than zero")
 
@@ -33,8 +35,22 @@ def run_dry_run(
     )
 
 
+def run_dry_runs(
+    symbols: list[str],
+    interval: str = "1m",
+    limit: int = 100,
+) -> list:
+    """Run independent dry-run cycles for a list of symbols."""
+    if not symbols:
+        raise ValueError("at least one symbol is required")
+    return [
+        run_dry_run(symbol=symbol.strip().upper(), interval=interval, limit=limit)
+        for symbol in symbols
+    ]
+
+
 def _summary(result) -> dict:
-    """Convert the dry-run result into a compact CLI-safe summary."""
+    """Convert one dry-run result into a compact CLI-safe summary."""
     engine = getattr(result, "decision", None)
     return {
         "mode": "DRY_RUN",
@@ -55,19 +71,28 @@ def _summary(result) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run one safe ATLAS Binance public-data dry-run cycle."
+        description="Run safe ATLAS Binance public-data dry-run cycle(s)."
     )
-    parser.add_argument("--symbol", default="BTCUSDT")
+    parser.add_argument(
+        "--symbol",
+        action="append",
+        dest="symbols",
+        help="Symbol to test; may be supplied multiple times.",
+    )
     parser.add_argument("--interval", default="1m")
     parser.add_argument("--limit", type=int, default=100)
     args = parser.parse_args()
 
-    result = run_dry_run(
-        symbol=args.symbol,
-        interval=args.interval,
-        limit=args.limit,
+    symbols = args.symbols or ["BTCUSDT"]
+    results = run_dry_runs(symbols, interval=args.interval, limit=args.limit)
+    summaries = [_summary(result) for result in results]
+    print(
+        json.dumps(
+            summaries[0] if len(summaries) == 1 else summaries,
+            indent=2,
+            sort_keys=True,
+        )
     )
-    print(json.dumps(_summary(result), indent=2, sort_keys=True))
     return 0
 
 
