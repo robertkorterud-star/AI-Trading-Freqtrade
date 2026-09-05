@@ -32,6 +32,7 @@ class PredictionSignalService:
         *,
         symbol: str,
         timestamp: datetime,
+        timeframe: str | None = None,
     ) -> AlgorithmSignal:
         """Convert existing evidence into the model's algorithm signal."""
         example = self.inference_builder.build(
@@ -39,4 +40,7 @@ class PredictionSignalService:
             symbol=symbol,
             timestamp=timestamp,
         )
-        return self.signal.predict(example)
+        return self.signal.predict(
+            example,
+            timeframe=timeframe,
+        )
