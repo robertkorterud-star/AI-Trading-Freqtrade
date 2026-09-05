@@ -35,13 +35,18 @@ class MLPredictionSignal:
         else:
             action = Action.SELL
 
+        # AlgorithmSignal.score uses the canonical 0-100 directional
+        # scale consumed by SignalFusion. Keep the raw ML probability
+        # in reasoning rather than feeding a 0-1 value into that contract.
+        score = 50.0 + (probability - 0.5) * 100.0
+
         return AlgorithmSignal(
             symbol=example.symbol,
             algorithm=self.algorithm,
             timeframe=self.timeframe,
             action=action,
             confidence=confidence,
-            score=probability,
+            score=score,
             reasoning=[
                 f"ML probability={probability:.4f}",
             ],
