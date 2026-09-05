@@ -6,6 +6,7 @@ layers while keeping all trading strictly simulated.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from atlas.algorithms.base import Action, AlgorithmSignal
 from atlas.algorithms.orchestrator import DecisionOrchestrator
@@ -23,7 +24,11 @@ from atlas.agents.base import AgentObservation
 from atlas.agents.intelligence import MarketIntelligence
 from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
 from atlas.trading.expected_return_service import ExpectedReturnService
+from atlas.trading.indicator_engine import IndicatorEngine
 from atlas.trading.market_data import MarketSnapshot
+from atlas.trading.multi_timeframe_analysis import MultiTimeframeAnalyzer
+from atlas.trading.prediction_signal_service import PredictionSignalService
+from atlas.trading.signal_evidence import SignalEvidenceAnalyzer
 from atlas.adapters.binance_market_data import BinanceMarketData
 
 
@@ -44,8 +49,8 @@ class DryRunLoop:
     """
     One-cycle ATLAS dry-run pipeline.
 
-    Market data -> agents -> intelligence -> orchestrator -> expected
-    return -> trading cost gate -> paper execution.
+    Market data -> agents -> intelligence -> algorithms/ML ->
+    orchestrator -> expected return -> trading cost gate -> paper execution.
     """
 
     def __init__(
@@ -56,11 +61,23 @@ class DryRunLoop:
         trader: DryRunTrader | None = None,
         algorithm_pipeline: AlgorithmPipeline | None = None,
         expected_return_service: ExpectedReturnService | None = None,
+        prediction_signal_service: PredictionSignalService | None = None,
+        indicator_engine: IndicatorEngine | None = None,
+        signal_evidence_analyzer: SignalEvidenceAnalyzer | None = None,
+        multi_timeframe_analyzer: MultiTimeframeAnalyzer | None = None,
     ):
         self.agents = tuple(agents)
         self.intelligence = intelligence or MarketIntelligence()
         self.trader = trader or DryRunTrader()
         self.expected_return_service = expected_return_service
+        self.prediction_signal_service = prediction_signal_service
+        self.indicator_engine = indicator_engine or IndicatorEngine()
+        self.signal_evidence_analyzer = (
+            signal_evidence_analyzer or SignalEvidenceAnalyzer()
+        )
+        self.multi_timeframe_analyzer = (
+            multi_timeframe_analyzer or MultiTimeframeAnalyzer()
+        )
         self.algorithm_pipeline = (
             algorithm_pipeline or self._default_algorithm_pipeline()
         )
@@ -118,6 +135,13 @@ class DryRunLoop:
             market_data,
         )
 
+        prediction_signal = self._prediction_signal(snapshot)
+        if prediction_signal is not None:
+            algorithm_signals = [
+                *algorithm_signals,
+                prediction_signal,
+            ]
+
         intelligence_signal = self._signals_from_intelligence(
             snapshot,
             intelligence,
@@ -157,6 +181,43 @@ class DryRunLoop:
             decision=decision,
             expected_return=expected_return,
             execution=execution,
+        )
+
+    def _prediction_signal(
+        self,
+        snapshot: MarketSnapshot,
+    ) -> AlgorithmSignal | None:
+        """Build an optional ML signal from the same live market snapshot."""
+        if self.prediction_signal_service is None:
+            return None
+
+        indicators = self.indicator_engine.calculate([
+            {
+                "timestamp": candle.timestamp,
+                "open": candle.open,
+                "high": candle.high,
+                "low": candle.low,
+                "close": candle.close,
+                "volume": candle.volume,
+            }
+            for candle in snapshot.candles
+        ])
+        multi_timeframe = self.multi_timeframe_analyzer.analyze(
+            snapshot.symbol,
+            {},
+        )
+        evidence = self.signal_evidence_analyzer.analyze(
+            indicators,
+            multi_timeframe,
+        )
+
+        return self.prediction_signal_service.predict(
+            evidence,
+            symbol=snapshot.symbol,
+            timestamp=datetime.fromtimestamp(
+                snapshot.timestamp,
+                tz=timezone.utc,
+            ),
         )
 
     def process_binance(
