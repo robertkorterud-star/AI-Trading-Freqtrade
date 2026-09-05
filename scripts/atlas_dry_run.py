@@ -51,7 +51,8 @@ def run_dry_runs(
 
 def _summary(result) -> dict:
     """Convert one dry-run result into a diagnostic, CLI-safe summary."""
-    engine = getattr(result, "decision", None)
+    compatibility_decision = getattr(result, "decision", None)
+    engine = getattr(result, "canonical_decision", None) or compatibility_decision
     risk_assessment = getattr(engine, "risk_assessment", None)
     portfolio_assessment = getattr(engine, "portfolio_assessment", None)
 
