@@ -7,7 +7,8 @@ producer without making final trading decisions.
 
 from dataclasses import dataclass
 
-from atlas.models.algorithm_signal import AlgorithmSignal
+from atlas.algorithms.base import AlgorithmSignal
+from atlas.models.action import Action
 from atlas.trading.ml_baseline import LogisticRegressionBaseline
 from atlas.trading.prediction_training_dataset import (
     PredictionTrainingExample,
@@ -20,6 +21,7 @@ class MLPredictionSignal:
 
     model: LogisticRegressionBaseline
     algorithm: str = "ml_baseline"
+    timeframe: str = "model"
 
     def predict(
         self,
@@ -29,17 +31,18 @@ class MLPredictionSignal:
         confidence = abs(probability - 0.5) * 2.0
 
         if probability >= 0.5:
-            action = "BUY"
+            action = Action.BUY
         else:
-            action = "SELL"
+            action = Action.SELL
 
         return AlgorithmSignal(
             symbol=example.symbol,
             algorithm=self.algorithm,
+            timeframe=self.timeframe,
             action=action,
             confidence=confidence,
             score=probability,
-            reasoning=(
-                f"ML probability={probability:.4f}"
-            ),
+            reasoning=[
+                f"ML probability={probability:.4f}",
+            ],
         )
