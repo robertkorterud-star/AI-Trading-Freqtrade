@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from atlas.algorithms.base import AlgorithmSignal
 from atlas.algorithms.fusion import SignalFusion
@@ -6,7 +6,9 @@ from atlas.decision.engine import DecisionEngine
 from atlas.models.action import Action
 from atlas.trading.ml_baseline import LogisticRegressionBaseline
 from atlas.trading.ml_signal import MLPredictionSignal
+from atlas.trading.prediction_inference import PredictionInferenceBuilder
 from atlas.trading.prediction_training_dataset import PredictionTrainingExample
+from atlas.trading.signal_evidence import SignalEvidence
 
 
 def _example(trend: float) -> PredictionTrainingExample:
@@ -76,3 +78,33 @@ def test_ml_signal_enters_canonical_decision_engine_boundary():
     assert "algorithm:ml_baseline" in decision.analysts
     assert 0.0 <= decision.evidence <= 100.0
     assert 0.0 <= decision.confidence <= 100.0
+
+
+def test_ml_signal_accepts_live_prediction_inference_example():
+    evidence = SignalEvidence(
+        trend="BULLISH",
+        momentum="POSITIVE",
+        volatility="NORMAL",
+        volume="ABOVE_AVERAGE",
+        breakout="BREAKOUT_50",
+        rsi_signal="BULLISH",
+        macd_signal="BULLISH",
+        bollinger_signal="UPPER_ZONE",
+        adx_signal="STRONG_TREND",
+        technical_quality="GOOD",
+        multi_timeframe_signal="BUY",
+        multi_timeframe_alignment=0.92,
+        evidence_quality="GOOD",
+    )
+    inference = PredictionInferenceBuilder().build(
+        evidence,
+        symbol="BTC-USD",
+        timestamp=datetime(2026, 9, 5, tzinfo=timezone.utc),
+    )
+
+    signal = MLPredictionSignal(_model()).predict(inference)
+
+    assert signal.symbol == "BTC-USD"
+    assert signal.action in {Action.BUY, Action.SELL}
+    assert 0.0 <= signal.confidence <= 1.0
+    assert 0.0 <= signal.score <= 100.0
