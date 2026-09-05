@@ -5,7 +5,7 @@ Builds live ML inference inputs from existing SignalEvidence without
 reusing the supervised training example contract.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 
 from atlas.trading.prediction_features import PredictionFeatureBuilder
@@ -43,8 +43,8 @@ class PredictionInferenceBuilder:
 
         return PredictionInferenceExample(
             features={
-                name: float(value)
-                for name, value in vars(vector).items()
+                field.name: float(getattr(vector, field.name))
+                for field in fields(vector)
             },
             symbol=symbol,
             timestamp=timestamp,
