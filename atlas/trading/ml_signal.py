@@ -26,6 +26,8 @@ class MLPredictionSignal:
     def predict(
         self,
         example: PredictionFeatureExample,
+        *,
+        timeframe: str | None = None,
     ) -> AlgorithmSignal:
         probability = self.model.predict_probability(example)
         confidence = abs(probability - 0.5) * 2.0
@@ -43,7 +45,7 @@ class MLPredictionSignal:
         return AlgorithmSignal(
             symbol=example.symbol,
             algorithm=self.algorithm,
-            timeframe=self.timeframe,
+            timeframe=timeframe or self.timeframe,
             action=action,
             confidence=confidence,
             score=score,
