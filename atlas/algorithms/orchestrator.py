@@ -255,11 +255,7 @@ class DecisionOrchestrator:
         return DecisionResult(
             action=DecisionAction(canonical.action.value.lower()),
             confidence=canonical.confidence / 100.0,
-            risk_score=(
-                canonical.risk_assessment.risk_level == "BLOCKED"
-                if canonical.risk_assessment is not None
-                else risk_score
-            ),
+            risk_score=risk_score,
             score=self._compatibility_score(canonical),
             reason=self._reason_for_action(canonical.action),
         )
