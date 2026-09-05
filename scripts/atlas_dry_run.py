@@ -50,14 +50,69 @@ def run_dry_runs(
 
 
 def _summary(result) -> dict:
-    """Convert one dry-run result into a compact CLI-safe summary."""
+    """Convert one dry-run result into a diagnostic, CLI-safe summary."""
     engine = getattr(result, "decision", None)
+    risk_assessment = getattr(engine, "risk_assessment", None)
+    portfolio_assessment = getattr(engine, "portfolio_assessment", None)
+
     return {
         "mode": "DRY_RUN",
         "symbol": result.symbol,
         "price": result.price,
         "decision": getattr(engine.action, "value", str(engine.action)),
         "confidence": engine.confidence,
+        "evidence": getattr(engine, "evidence", None),
+        "dominant_action": getattr(
+            engine.dominant_action, "value", str(engine.dominant_action)
+        ),
+        "dominant_weight": getattr(engine, "dominant_weight", None),
+        "decision_margin": getattr(engine, "decision_margin", None),
+        "robustness": getattr(engine, "robustness", None),
+        "robustness_level": getattr(engine, "robustness_level", None),
+        "ensemble": {
+            "action": getattr(
+                engine.ensemble_action, "value", str(engine.ensemble_action)
+            ),
+            "confidence": getattr(engine, "ensemble_confidence", None),
+        },
+        "intelligence": {
+            "score": result.intelligence_score,
+            "confidence": result.intelligence_confidence,
+        },
+        "algorithm_signals": [
+            {
+                "algorithm": signal.algorithm,
+                "action": getattr(signal.action, "value", str(signal.action)),
+                "score": signal.score,
+                "confidence": signal.confidence,
+                "timeframe": signal.timeframe,
+                "reasoning": list(signal.reasoning),
+            }
+            for signal in result.algorithm_signals
+        ],
+        "opposing_analysts": list(getattr(engine, "opposing_analysts", [])),
+        "reasoning": list(getattr(engine, "reasoning", [])),
+        "risk": (
+            {
+                "allowed": risk_assessment.allowed,
+                "risk_level": risk_assessment.risk_level,
+                "position_size": risk_assessment.position_size,
+                "position_value": risk_assessment.position_value,
+                "reasons": list(risk_assessment.reasons),
+            }
+            if risk_assessment is not None
+            else None
+        ),
+        "portfolio": (
+            {
+                "allowed": portfolio_assessment.allowed,
+                "requested_value": portfolio_assessment.requested_value,
+                "approved_value": portfolio_assessment.approved_value,
+                "reasons": list(portfolio_assessment.reasons),
+            }
+            if portfolio_assessment is not None
+            else None
+        ),
         "risk_score": engine.risk_score,
         "expected_return": result.expected_return,
         "paper_execution": {
