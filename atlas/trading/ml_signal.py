@@ -9,9 +9,9 @@ from dataclasses import dataclass
 
 from atlas.algorithms.base import AlgorithmSignal
 from atlas.models.action import Action
-from atlas.trading.ml_baseline import LogisticRegressionBaseline
-from atlas.trading.prediction_training_dataset import (
-    PredictionTrainingExample,
+from atlas.trading.ml_baseline import (
+    LogisticRegressionBaseline,
+    PredictionFeatureExample,
 )
 
 
@@ -25,7 +25,7 @@ class MLPredictionSignal:
 
     def predict(
         self,
-        example: PredictionTrainingExample,
+        example: PredictionFeatureExample,
     ) -> AlgorithmSignal:
         probability = self.model.predict_probability(example)
         confidence = abs(probability - 0.5) * 2.0
