@@ -227,7 +227,7 @@ class DecisionOrchestrator:
                 reason="no signals",
             )
 
-        canonical = self.decision_engine.evaluate_algorithm_signals(
+        canonical = self._evaluate_canonical_engine(
             decision_inputs,
             price=price,
             equity=equity,
@@ -259,6 +259,36 @@ class DecisionOrchestrator:
             score=self._compatibility_score(canonical),
             reason=self._reason_for_action(canonical.action),
         )
+
+    def _evaluate_canonical_engine(
+        self,
+        decision_inputs: list[AlgorithmSignal],
+        *,
+        price: float | None,
+        equity: float | None,
+        current_exposure_pct: float,
+        drawdown_pct: float,
+        portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...],
+    ):
+        """Evaluate through the canonical engine while preserving old test doubles.
+
+        The canonical DecisionEngine accepts the risk/portfolio context. A few
+        legacy injected engine doubles still expose the original one-argument
+        method, so they are supported without changing the production boundary.
+        """
+        try:
+            return self.decision_engine.evaluate_algorithm_signals(
+                decision_inputs,
+                price=price,
+                equity=equity,
+                current_exposure_pct=current_exposure_pct,
+                drawdown_pct=drawdown_pct,
+                portfolio_positions=portfolio_positions,
+            )
+        except TypeError as exc:
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            return self.decision_engine.evaluate_algorithm_signals(decision_inputs)
 
     @staticmethod
     def _compatibility_score(canonical) -> float:
