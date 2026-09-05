@@ -218,6 +218,12 @@ def test_dry_run_loop_adds_optional_ml_prediction_signal():
         for signal in result.algorithm_signals
     )
 
+    fused_algorithms = {
+        signal.algorithm
+        for signal in loop.orchestrator.last_fusion_result.signals
+    }
+    assert "ml_baseline" in fused_algorithms
+
 
 def test_dry_run_loop_keeps_ml_prediction_optional():
     loop = DryRunLoop(agents=[BullishAgent()])
