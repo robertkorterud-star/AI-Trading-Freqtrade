@@ -26,7 +26,10 @@ from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.trading.indicator_engine import IndicatorEngine
 from atlas.trading.market_data import MarketSnapshot
-from atlas.trading.multi_timeframe_analysis import MultiTimeframeAnalyzer
+from atlas.trading.multi_timeframe_analysis import (
+    MultiTimeframeAnalysis,
+    MultiTimeframeAnalyzer,
+)
 from atlas.trading.prediction_signal_service import PredictionSignalService
 from atlas.trading.signal_evidence import SignalEvidenceAnalyzer
 from atlas.adapters.binance_market_data import BinanceMarketData
@@ -46,12 +49,7 @@ class DryRunCycleResult:
 
 
 class DryRunLoop:
-    """
-    One-cycle ATLAS dry-run pipeline.
-
-    Market data -> agents -> intelligence -> algorithms/ML ->
-    orchestrator -> expected return -> trading cost gate -> paper execution.
-    """
+    """One-cycle ATLAS dry-run pipeline."""
 
     def __init__(
         self,
@@ -72,26 +70,16 @@ class DryRunLoop:
         self.expected_return_service = expected_return_service
         self.prediction_signal_service = prediction_signal_service
         self.indicator_engine = indicator_engine or IndicatorEngine()
-        self.signal_evidence_analyzer = (
-            signal_evidence_analyzer or SignalEvidenceAnalyzer()
-        )
-        self.multi_timeframe_analyzer = (
-            multi_timeframe_analyzer or MultiTimeframeAnalyzer()
-        )
-        self.algorithm_pipeline = (
-            algorithm_pipeline or self._default_algorithm_pipeline()
-        )
-        self.orchestrator = (
-            orchestrator
-            or DecisionOrchestrator(
-                algorithm_pipeline=self.algorithm_pipeline,
-            )
+        self.signal_evidence_analyzer = signal_evidence_analyzer or SignalEvidenceAnalyzer()
+        self.multi_timeframe_analyzer = multi_timeframe_analyzer or MultiTimeframeAnalyzer()
+        self.algorithm_pipeline = algorithm_pipeline or self._default_algorithm_pipeline()
+        self.orchestrator = orchestrator or DecisionOrchestrator(
+            algorithm_pipeline=self.algorithm_pipeline,
         )
 
     @staticmethod
     def _default_algorithm_pipeline() -> AlgorithmPipeline:
         registry = AlgorithmRegistry()
-
         for algorithm in (
             IntradayMomentumAlgorithm(),
             IntradayTrendAlgorithm(),
@@ -101,20 +89,11 @@ class DryRunLoop:
             IntradayValueZoneAlgorithm(),
         ):
             registry.register(algorithm)
-
         return AlgorithmPipeline(registry)
 
     def process(self, snapshot: MarketSnapshot) -> DryRunCycleResult:
-        observations = tuple(
-            self._observe_agent(agent, snapshot)
-            for agent in self.agents
-        )
-
-        intelligence = self.intelligence.analyze(
-            snapshot.symbol,
-            list(observations),
-        )
-
+        observations = tuple(self._observe_agent(agent, snapshot) for agent in self.agents)
+        intelligence = self.intelligence.analyze(snapshot.symbol, list(observations))
         market_data = {
             "price": snapshot.price,
             "candles": [
@@ -140,19 +119,10 @@ class DryRunLoop:
             timeframe=(algorithm_signals[0].timeframe if algorithm_signals else None),
         )
         if prediction_signal is not None:
-            algorithm_signals = [
-                *algorithm_signals,
-                prediction_signal,
-            ]
-            fusion_result = self.algorithm_pipeline.fusion.combine(
-                algorithm_signals,
-            )
+            algorithm_signals = [*algorithm_signals, prediction_signal]
+            fusion_result = self.algorithm_pipeline.fusion.combine(algorithm_signals)
 
-        intelligence_signal = self._signals_from_intelligence(
-            snapshot,
-            intelligence,
-        )
-
+        intelligence_signal = self._signals_from_intelligence(snapshot, intelligence)
         orchestration = self.orchestrator.decide(
             snapshot.symbol,
             intelligence_signal,
@@ -162,11 +132,7 @@ class DryRunLoop:
         )
 
         decision = orchestration.decision
-        expected_return = self._estimate_expected_return(
-            snapshot.symbol,
-            decision,
-        )
-
+        expected_return = self._estimate_expected_return(snapshot.symbol, decision)
         execution = self.trader.process_signal(
             symbol=snapshot.symbol,
             action=decision.action,
@@ -189,13 +155,7 @@ class DryRunLoop:
             execution=execution,
         )
 
-    def _prediction_signal(
-        self,
-        snapshot: MarketSnapshot,
-        *,
-        timeframe: str | None = None,
-    ) -> AlgorithmSignal | None:
-        """Build an optional ML signal from the same live market snapshot."""
+    def _prediction_signal(self, snapshot: MarketSnapshot, *, timeframe: str | None = None):
         if self.prediction_signal_service is None:
             return None
 
@@ -210,95 +170,91 @@ class DryRunLoop:
             }
             for candle in snapshot.candles
         ])
+
+        timeframe_data = self._multi_timeframe_data(snapshot)
         multi_timeframe = self.multi_timeframe_analyzer.analyze(
             snapshot.symbol,
-            {},
+            timeframe_data,
         )
-        evidence = self.signal_evidence_analyzer.analyze(
-            indicators,
-            multi_timeframe,
-        )
+        evidence = self.signal_evidence_analyzer.analyze(indicators, multi_timeframe)
 
         return self.prediction_signal_service.predict(
             evidence,
             symbol=snapshot.symbol,
-            timestamp=datetime.fromtimestamp(
-                snapshot.timestamp,
-                tz=timezone.utc,
-            ),
+            timestamp=datetime.fromtimestamp(snapshot.timestamp, tz=timezone.utc),
             timeframe=timeframe,
         )
 
-    def process_binance(
-        self,
-        adapter,
-        symbol: str,
-        interval: str = "1m",
-        limit: int = 100,
-    ) -> DryRunCycleResult:
-        """Fetch a Binance snapshot and process it through dry-run."""
+    def _multi_timeframe_data(self, snapshot: MarketSnapshot) -> dict[str, dict]:
+        """Derive MTF trend/momentum from normalized snapshot candles."""
+        result = {}
+        neutral_mtf = MultiTimeframeAnalysis(
+            symbol=snapshot.symbol,
+            timeframes=[],
+            overall_signal="WAIT",
+            confidence=0.0,
+            alignment=0.0,
+            data_quality="MISSING",
+        )
+        for timeframe, candles in snapshot.timeframe_candles.items():
+            indicators = self.indicator_engine.calculate([
+                {
+                    "timestamp": candle.timestamp,
+                    "open": candle.open,
+                    "high": candle.high,
+                    "low": candle.low,
+                    "close": candle.close,
+                    "volume": candle.volume,
+                }
+                for candle in candles
+            ])
+            evidence = self.signal_evidence_analyzer.analyze(indicators, neutral_mtf)
+            result[timeframe] = {
+                "trend": evidence.trend,
+                "momentum": evidence.momentum,
+                "data_quality": indicators.data_quality,
+                "data_available": True,
+            }
+        return result
+
+    def process_binance(self, adapter, symbol: str, interval: str = "1m", limit: int = 100):
+        """Fetch a Binance snapshot with all configured MTF candles and process it."""
         market_data = BinanceMarketData(adapter)
         snapshot = market_data.snapshot(
             symbol=symbol,
             interval=interval,
             limit=limit,
+            timeframes=self.multi_timeframe_analyzer.TIMEFRAMES,
         )
         return self.process(snapshot)
 
     def _estimate_expected_return(self, symbol: str, decision) -> float | None:
-        """Estimate expected return when the historical service is configured."""
         if self.expected_return_service is None:
             return None
-
         action = Action(str(decision.action.value).upper())
-        return self.expected_return_service.estimate(
-            symbol=symbol,
-            action=action,
-        )
+        return self.expected_return_service.estimate(symbol=symbol, action=action)
 
     @staticmethod
     def _observe_agent(agent, snapshot: MarketSnapshot) -> AgentObservation:
-        """
-        Produce an observation from an ATLAS agent.
-
-        Native ATLAS agents implement observe(). Older/simple test
-        agents may implement analyze(). Support both contracts so the
-        dry-run loop remains backwards compatible.
-        """
-
         observe = getattr(agent, "observe", None)
-
         if observe is not None:
             return observe(
                 snapshot.symbol,
-                {
-                    "snapshot": snapshot,
-                    "price": snapshot.price,
-                    "candles": snapshot.candles,
-                },
+                {"snapshot": snapshot, "price": snapshot.price, "candles": snapshot.candles},
             )
-
         analyze = getattr(agent, "analyze", None)
-
         if analyze is not None:
             return analyze(snapshot)
-
-        raise TypeError(
-            f"Agent {agent!r} must implement observe() or analyze()"
-        )
+        raise TypeError(f"Agent {agent!r} must implement observe() or analyze()")
 
     @staticmethod
-    def _signals_from_intelligence(
-        snapshot,
-        intelligence,
-    ):
+    def _signals_from_intelligence(snapshot, intelligence):
         if intelligence.direction == "bullish":
             action = Action.BUY
         elif intelligence.direction == "bearish":
             action = Action.SELL
         else:
             action = Action.HOLD
-
         return [
             AlgorithmSignal(
                 algorithm="market_intelligence",
