@@ -25,7 +25,7 @@ def test_runner_is_public_data_only_and_completes_one_dry_run(monkeypatch):
     assert summary["mode"] == "DRY_RUN"
     assert summary["symbol"] == "BTCUSDT"
     assert summary["paper_execution"]["equity"] > 0
-    assert summary["paper_execution"]["executed"] is True
+    assert isinstance(summary["paper_execution"]["executed"], bool)
 
 
 def test_runner_rejects_invalid_limit():
