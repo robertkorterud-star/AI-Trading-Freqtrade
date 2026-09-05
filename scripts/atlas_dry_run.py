@@ -53,27 +53,29 @@ def _summary(result) -> dict:
     """Convert one dry-run result into a diagnostic, CLI-safe summary."""
     compatibility_decision = getattr(result, "decision", None)
     engine = getattr(result, "canonical_decision", None) or compatibility_decision
+    if engine is None:
+        raise ValueError("dry-run result has no decision")
+
     risk_assessment = getattr(engine, "risk_assessment", None)
     portfolio_assessment = getattr(engine, "portfolio_assessment", None)
+    action = getattr(engine, "action", None)
+    dominant_action = getattr(engine, "dominant_action", None)
+    ensemble_action = getattr(engine, "ensemble_action", None)
 
     return {
         "mode": "DRY_RUN",
         "symbol": result.symbol,
         "price": result.price,
-        "decision": getattr(engine.action, "value", str(engine.action)),
-        "confidence": engine.confidence,
+        "decision": getattr(action, "value", str(action)),
+        "confidence": getattr(engine, "confidence", None),
         "evidence": getattr(engine, "evidence", None),
-        "dominant_action": getattr(
-            engine.dominant_action, "value", str(engine.dominant_action)
-        ),
+        "dominant_action": getattr(dominant_action, "value", str(dominant_action)),
         "dominant_weight": getattr(engine, "dominant_weight", None),
         "decision_margin": getattr(engine, "decision_margin", None),
         "robustness": getattr(engine, "robustness", None),
         "robustness_level": getattr(engine, "robustness_level", None),
         "ensemble": {
-            "action": getattr(
-                engine.ensemble_action, "value", str(engine.ensemble_action)
-            ),
+            "action": getattr(ensemble_action, "value", str(ensemble_action)),
             "confidence": getattr(engine, "ensemble_confidence", None),
         },
         "intelligence": {
@@ -114,7 +116,7 @@ def _summary(result) -> dict:
             if portfolio_assessment is not None
             else None
         ),
-        "risk_score": engine.risk_score,
+        "risk_score": getattr(engine, "risk_score", 0.0),
         "expected_return": result.expected_return,
         "paper_execution": {
             "action": result.execution.action.value,
