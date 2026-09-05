@@ -40,6 +40,7 @@ class LogisticRegressionBaseline:
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.weights: list[float] = []
+        self.feature_names: tuple[str, ...] = ()
         self.bias = 0.0
 
     def fit(
@@ -64,13 +65,14 @@ class LogisticRegressionBaseline:
                 "Training examples contain no features."
             )
 
+        self.feature_names = tuple(names)
         self.weights = [0.0] * len(names)
         self.bias = 0.0
 
         vectors = [
             [
                 float(example.features.get(name, 0.0))
-                for name in names
+                for name in self.feature_names
             ]
             for example in examples
         ]
@@ -137,13 +139,12 @@ class LogisticRegressionBaseline:
                 "Model has not been fitted."
             )
 
-        names_count = len(self.weights)
+        values = [
+            float(example.features.get(name, 0.0))
+            for name in self.feature_names
+        ]
 
-        values = list(
-            example.features.values()
-        )
-
-        if len(values) != names_count:
+        if len(values) != len(self.weights):
             raise ValueError(
                 "Feature vector does not match "
                 "the fitted model."
