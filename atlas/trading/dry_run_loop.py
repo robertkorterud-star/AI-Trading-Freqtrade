@@ -141,6 +141,9 @@ class DryRunLoop:
                 *algorithm_signals,
                 prediction_signal,
             ]
+            fusion_result = self.algorithm_pipeline.fusion.combine(
+                algorithm_signals,
+            )
 
         intelligence_signal = self._signals_from_intelligence(
             snapshot,
