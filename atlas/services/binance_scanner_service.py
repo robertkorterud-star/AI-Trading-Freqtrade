@@ -145,7 +145,10 @@ class BinanceScannerService:
         is limited to the current Binance universe.
         """
         now = time.monotonic()
-        if now - self._catalyst_cache_at < self.catalyst_cache_ttl_seconds:
+        if (
+            self._catalyst_cache_at > 0.0
+            and now - self._catalyst_cache_at < self.catalyst_cache_ttl_seconds
+        ):
             return set(self._catalyst_symbols)
 
         universe = {
