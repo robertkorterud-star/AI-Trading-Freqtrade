@@ -94,3 +94,6 @@ atlas/data/*.db
 
 # ATLAS virtual trade history (runtime data)
 atlas/dashboard/static/virtual_trades.json
+
+# ATLAS paper portfolio runtime state
+atlas/dashboard/static/paper_portfolio.json
