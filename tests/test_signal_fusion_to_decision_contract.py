@@ -17,7 +17,7 @@ def make_signal(action, score=0.8, confidence=0.9):
     )
 
 
-def test_signal_fusion_is_handed_to_decision_core_as_one_auditable_signal():
+def test_signal_fusion_is_handed_to_canonical_decision_engine_as_one_auditable_signal():
     fusion = SignalFusion()
     fusion_result = fusion.combine(
         [
@@ -41,22 +41,21 @@ def test_signal_fusion_is_handed_to_decision_core_as_one_auditable_signal():
         ]
     )
 
-    decision_core = Mock()
-    decision_core.decide.return_value = Mock(
+    decision_engine = Mock()
+    decision_engine.evaluate_algorithm_signals.return_value = Mock(
         action=Action.HOLD,
-        score=0.0,
         confidence=0.0,
-        risk_score=0.0,
+        evidence=0.0,
     )
 
-    orchestrator = DecisionOrchestrator(decision_core=decision_core)
+    orchestrator = DecisionOrchestrator(decision_engine=decision_engine)
     orchestrator.decide(
         "BTC-USD",
         signals=[],
         fusion_result=fusion_result,
     )
 
-    call = decision_core.decide.call_args
+    call = decision_engine.evaluate_algorithm_signals.call_args
     assert call is not None
 
     decision_inputs = call.args[0]
