@@ -1,11 +1,13 @@
 """
-ATLAS Decision Core
+ATLAS Legacy Decision Core
 
-Converts multi-horizon and fused algorithm signals into an actionable
-BUY / HOLD / SELL decision while applying confidence and risk gates.
+Legacy compatibility decision gate for older ATLAS callers and tests.
 
-This layer is intentionally horizon-agnostic. ATLAS can use it for
-intraday, swing, or longer-term decisions.
+Canonical final trading decisions are owned by
+:class:`atlas.decision.engine.DecisionEngine`.
+
+This module remains temporarily available for backwards compatibility
+while callers are migrated to the canonical decision architecture.
 """
 
 from dataclasses import dataclass
@@ -47,10 +49,13 @@ class DecisionResult:
 
 class DecisionCore:
     """
-    Final decision gate for ATLAS.
+    Legacy compatibility decision gate for ATLAS.
 
-    The core deliberately separates signal strength from risk. A strong
-    signal can still become HOLD when the risk environment is unsafe.
+    Canonical final decisions are owned by
+    :class:`atlas.decision.engine.DecisionEngine`.
+
+    This class retains the historical signal-weighting, confidence,
+    and risk-gating behavior required by legacy callers and tests.
     """
 
     def __init__(
