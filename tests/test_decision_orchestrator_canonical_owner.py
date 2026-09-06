@@ -36,8 +36,8 @@ def test_orchestrator_delegates_final_decision_to_canonical_engine():
         signals=[signal],
         price=100.0,
         equity=10_000.0,
-        exposure=5.0,
-        drawdown=2.0,
+        current_exposure_pct=5.0,
+        drawdown_pct=2.0,
     )
 
     assert len(engine.calls) == 1
