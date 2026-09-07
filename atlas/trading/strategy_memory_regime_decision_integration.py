@@ -79,4 +79,9 @@ class StrategyMemoryRegimeDecisionIntegration:
             robustness=decision.robustness,
             robustness_level=decision.robustness_level,
             reasoning=reasoning,
+            expected_return=decision.expected_return,
+            ensemble_action=decision.ensemble_action,
+            ensemble_confidence=decision.ensemble_confidence,
+            risk_assessment=decision.risk_assessment,
+            portfolio_assessment=decision.portfolio_assessment,
         )
