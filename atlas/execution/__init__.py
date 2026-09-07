@@ -9,11 +9,13 @@ from atlas.execution.dryrun import DryRunExecutionAdapter
 from atlas.execution.models import ExecutionRequest, ExecutionResult, ExecutionStatus
 from atlas.execution.protocol import ExecutionAdapter, ExecutionEngine
 from atlas.execution.service import DecisionExecutionService
+from atlas.execution.paper_adapter import PaperTradingExecutionAdapter
 
 __all__ = [
     "BinanceTestnetExecutionAdapter",
     "DecisionExecutionService",
     "DryRunExecutionAdapter",
+    "PaperTradingExecutionAdapter",
     "ExecutionAdapter",
     "ExecutionEngine",
     "ExecutionRequest",

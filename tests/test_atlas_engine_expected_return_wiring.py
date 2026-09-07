@@ -48,7 +48,12 @@ def test_atlas_engine_decision_engine_uses_wired_expected_return_service():
                 evidence=90.0,
                 confidence=90.0,
             )
-        ]
+        ],
+        price=65000.0,
+        equity=100000.0,
+        current_exposure_pct=0.0,
+        drawdown_pct=0.0,
+        portfolio_positions=(),
     )
 
     assert result.expected_return == 0.0125

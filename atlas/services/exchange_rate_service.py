@@ -47,11 +47,6 @@ class ExchangeRateService:
             )
 
         except Exception as error:
-
-            print(f"Exchange rate error: {error}")
-
-            return ExchangeRate(
-                base=base,
-                target=target,
-                rate=1.0,
-            )
+            # Do not silently fallback to 1.0 — surface the error so callers
+            # can decide how to handle exchange-rate failures.
+            raise RuntimeError(f"Exchange rate error: {error}") from error

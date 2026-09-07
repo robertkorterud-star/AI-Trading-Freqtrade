@@ -23,10 +23,17 @@ from atlas.trading.paper_trading_engine import PaperTradingEngine
 from atlas.trading.trading_controller import TradingController
 from atlas.trading.trading_runtime import TradingRuntime
 from atlas.trading.trading_service import TradingService
+from atlas.risk.manager import RiskManager
+from atlas.portfolio.manager import PortfolioManager
+from atlas.portfolio.manager import PortfolioPosition
+from atlas.execution.service import DecisionExecutionService
+from atlas.execution.protocol import ExecutionEngine
+from atlas.execution.paper_adapter import PaperTradingExecutionAdapter
 from atlas.trading.prediction_tracker import PredictionTracker
 from atlas.trading.outcome_tracker import OutcomeTracker
 from pathlib import Path
 import json
+import inspect
 
 from atlas.trading.prediction_evaluator import PredictionEvaluator
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
@@ -138,15 +145,51 @@ class AtlasEngine:
         self.report = ReportBuilder()
 
         self.technical = TechnicalService()
-        self.exchange = ExchangeRateService()
 
         portfolio = PortfolioService(
             self.config.capital_limit
         )
 
+        # Expose service instances for testability and adapter wiring.
+        self.portfolio_service = portfolio
+
         risk = RiskEngine()
 
         trading = TradingService()
+
+        # Expose trading service used by the paper adapter for tests and inspection
+        self.trading_service = trading
+
+        # Modern risk and portfolio managers (do not replace legacy services)
+        portfolio_manager = PortfolioManager()
+        risk_manager = RiskManager()
+
+        # Expose modern managers on the engine for controlled usage.
+        # We intentionally do not assign them onto `DecisionEngine` here to
+        # preserve existing code paths that expect `DecisionEngine` to be
+        # usable without price/equity being supplied.
+        self.risk_manager = risk_manager
+        self.portfolio_manager = portfolio_manager
+        # Make DecisionEngine the canonical owner of the modern managers so
+        # that DecisionEngine itself will produce risk/portfolio assessments
+        # during `evaluate()` when supplied with the runtime context.
+        self.decision_engine.risk_manager = risk_manager
+        self.decision_engine.portfolio_manager = portfolio_manager
+
+
+        # Track peak equity in NOK for drawdown calculation (mirror DryRunLoop)
+        self._peak_equity_nok: float | None = None
+
+        # Modern execution wiring: pass ExchangeRateService to adapter so
+        # it fetches USD/NOK at execute-time (no frozen rate at init).
+        paper_adapter = PaperTradingExecutionAdapter(
+            portfolio=portfolio,
+            trading=trading,
+            exchange_service=self.exchange,
+        )
+
+        self.execution_engine = ExecutionEngine(paper_adapter)
+        self.decision_execution_service = DecisionExecutionService(self.execution_engine)
 
         self.prediction_tracker = PredictionTracker(
             storage_path=self.config.database_path
@@ -357,8 +400,9 @@ class AtlasEngine:
         results = []
 
         for item in analyzed:
-            decision = self.decision_engine.evaluate(
-                item["analysis"]
+            decision = self._evaluate_candidate_decision(
+                item["analysis"],
+                market_snapshot=item.get("market_snapshot"),
             )
 
             regime = getattr(
@@ -680,27 +724,99 @@ class AtlasEngine:
 
             snapshot = evaluation_snapshot
 
-            exchange = self._get_usd_nok_rate()
-
-            trade_result = self.trading_runtime.execute(
-                decision=decision,
-                price_usd=snapshot.price,
-                usd_nok=exchange.rate,
-                amount_nok=1000.0,
+            # Use the modern DecisionExecutionService as the production execution path.
+            # DecisionEngine must already have produced risk_assessment and portfolio_assessment.
+            exec_result = self.decision_execution_service.execute(
+                decision,
+                price=snapshot.price,
             )
 
             self.logger.info(
-                f"Paper trading result: "
-                f"{trade_result}"
+                f"Paper trading result: {exec_result}"
             )
 
         self.logger.info("ATLAS is ready.")
+
 
     def _get_market_snapshot(self, symbol):
         return self.technical.get_snapshot(symbol)
 
     def _get_usd_nok_rate(self):
         return self.exchange.get_rate("USD", "NOK")
+
+    @property
+    def exchange(self):
+        if not hasattr(self, "_exchange"):
+            self._exchange = ExchangeRateService()
+        return self._exchange
+
+    @exchange.setter
+    def exchange(self, value):
+        self._exchange = value
+
+    def _evaluate_candidate_decision(self, analysis, *, market_snapshot=None):
+        """Invoke `DecisionEngine.evaluate` with runtime context when supported."""
+        params = inspect.signature(self.decision_engine.evaluate).parameters
+        kwargs = {}
+        runtime_context = None
+
+        def get_runtime_context():
+            nonlocal runtime_context
+            if runtime_context is None:
+                exchange = self._get_usd_nok_rate()
+                usd_nok = float(exchange.rate)
+                if usd_nok <= 0.0:
+                    raise RuntimeError("Invalid USD/NOK rate from ExchangeRateService")
+                runtime_context = (
+                    usd_nok,
+                    self.portfolio_service.as_dict(usd_nok),
+                )
+            return runtime_context
+
+        if "price" in params:
+            kwargs["price"] = getattr(market_snapshot, "price", None)
+        if "equity" in params:
+            usd_nok, portfolio_snapshot = get_runtime_context()
+            total_equity_nok = float(portfolio_snapshot.get("total_equity_nok", 0.0))
+            kwargs["equity"] = total_equity_nok / usd_nok
+        if "current_exposure_pct" in params:
+            _, portfolio_snapshot = get_runtime_context()
+            total_equity_nok = float(portfolio_snapshot.get("total_equity_nok", 0.0))
+            positions_value_nok = float(portfolio_snapshot.get("positions_value_nok", 0.0))
+            current_exposure_pct = (
+                (positions_value_nok / total_equity_nok * 100.0)
+                if total_equity_nok and total_equity_nok > 0.0
+                else 0.0
+            )
+            kwargs["current_exposure_pct"] = current_exposure_pct
+        if "drawdown_pct" in params:
+            _, portfolio_snapshot = get_runtime_context()
+            total_equity_nok = float(portfolio_snapshot.get("total_equity_nok", 0.0))
+            if self._peak_equity_nok is None:
+                self._peak_equity_nok = total_equity_nok
+            else:
+                self._peak_equity_nok = max(self._peak_equity_nok, total_equity_nok)
+            drawdown_pct = (
+                max(0.0, (self._peak_equity_nok - total_equity_nok) / self._peak_equity_nok * 100.0)
+                if self._peak_equity_nok and self._peak_equity_nok > 0.0
+                else 0.0
+            )
+            kwargs["drawdown_pct"] = drawdown_pct
+        if "portfolio_positions" in params:
+            usd_nok, portfolio_snapshot = get_runtime_context()
+            portfolio_positions = []
+            for p in portfolio_snapshot.get("positions", []):
+                try:
+                    mv_nok = float(p.get("market_value_nok", 0.0))
+                except Exception:
+                    mv_nok = 0.0
+                market_value_usd = mv_nok / usd_nok if usd_nok else 0.0
+                portfolio_positions.append(PortfolioPosition(symbol=p.get("symbol", ""), market_value=market_value_usd))
+            kwargs["portfolio_positions"] = portfolio_positions
+
+        if kwargs:
+            return self.decision_engine.evaluate(analysis, **kwargs)
+        return self.decision_engine.evaluate(analysis)
 
 
 if __name__ == "__main__":

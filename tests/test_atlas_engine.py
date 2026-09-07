@@ -158,25 +158,28 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
 ):
 
     from atlas.models.action import Action
-    from atlas.models.decision_result import DecisionResult
+    from atlas.models.analysis_result import AnalysisResult
 
     engine = AtlasEngine()
 
     engine.config.trading_mode = "paper"
     engine.config.paper_trading = True
 
-    decision = DecisionResult(
-        symbol="BTC-USD",
-        action=Action.BUY,
-        confidence=95.0,
-        evidence=95.0,
-    )
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
 
     selected = {
         "symbol": "BTC-USD",
         "discovery_score": 100.0,
-        "analysis": [],
-        "decision": decision,
+        "analysis": analysis,
     }
 
     calls = []
@@ -185,6 +188,10 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
         limit=3,
         minimum_score=0.0,
     ):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
         return [selected]
 
     def fake_select_best_candidate(
@@ -213,17 +220,11 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
     def fake_print_decision(decision):
         pass
 
-    def fake_execute(
-        decision,
-        price_usd,
-        usd_nok,
-        amount_nok=1000.0,
-    ):
+    def fake_execute(decision, price=None, **kwargs):
         calls.append({
             "decision": decision,
-            "price_usd": price_usd,
-            "usd_nok": usd_nok,
-            "amount_nok": amount_nok,
+            "price": price,
+            **kwargs,
         })
 
         return {
@@ -268,8 +269,11 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
         fake_print_decision,
     )
 
+    # The modern execution path uses DecisionExecutionService -> ExecutionEngine
+    # -> PaperTradingExecutionAdapter. Patch the decision execution service instead
+    # of the legacy trading runtime.
     monkeypatch.setattr(
-        engine.trading_runtime,
+        engine.decision_execution_service,
         "execute",
         fake_execute,
     )
@@ -282,12 +286,13 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
 
     engine.start()
 
+    decision = selected["decision"]
     assert len(calls) == 1
     assert calls[0]["decision"] == decision
     assert calls[0]["decision"].symbol == "BTC-USD"
-    assert calls[0]["price_usd"] == 100000.0
-    assert calls[0]["usd_nok"] == 10.0
-    assert calls[0]["amount_nok"] == 1000.0
+    assert calls[0]["price"] == 100000.0
+    assert calls[0]["decision"].risk_assessment is not None
+    assert calls[0]["decision"].portfolio_assessment is not None
 
 def test_atlas_config_defaults_to_safe_advisor_mode():
 
