@@ -15,9 +15,8 @@ The goal is not to build a single AI model. The goal is to build a team of speci
 ```text
                          ATLAS
                            │
-                    ┌──────▼──────┐
-                    │ Decision Core│
-                    └──────┬──────┘
+                    Intelligence
+                    / Signal Layer
                            │
         ┌──────────────────┼──────────────────┐
         ▼                  ▼                  ▼
