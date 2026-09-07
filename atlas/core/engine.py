@@ -720,6 +720,12 @@ class AtlasEngine:
 
         self.report.print_decision(decision)
 
+        self.prediction_tracker.record(
+            decision=decision,
+            price_usd=evaluation_snapshot.price,
+            reason="ATLAS prediction.",
+        )
+
         if self.config.trading_mode == "paper":
 
             snapshot = evaluation_snapshot
