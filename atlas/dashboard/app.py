@@ -20,13 +20,15 @@ from atlas.adapters.web_research import WebResearchAdapter
 from atlas.adapters.binance_market_data import BinanceMarketDataAdapter
 from atlas.adapters.historical_market_data import HistoricalMarketDataAdapter
 from atlas.services.multi_timeframe_service import MultiTimeframeService
+from atlas.core.config import AtlasConfig
 
 app = FastAPI(title="ATLAS Dashboard")
 app.mount("/static", StaticFiles(directory="atlas/dashboard/static"), name="static")
 templates = Jinja2Templates(directory="atlas/dashboard/templates")
 
-service = DashboardService()
-settings_service = SettingsService()
+config = AtlasConfig()
+service = DashboardService(config=config)
+settings_service = SettingsService(config=config)
 market_search = MarketSearchService()
 historical_market_data = HistoricalMarketDataAdapter()
 binance_market_data = BinanceMarketDataAdapter()
