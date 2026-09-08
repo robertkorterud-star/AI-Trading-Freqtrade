@@ -95,6 +95,49 @@ class YFinanceMarketDataProvider:
             volume_ratio=float(volume_ratio),
         )
 
+    def snapshot(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        limit: int = 100,
+    ) -> "MarketSnapshot":
+        """Return normalized ATLAS market data as a MarketSnapshot."""
+        from atlas.trading.market_data import Candle, MarketSnapshot
+
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(
+            period=self.history_period,
+            interval=interval,
+        ).dropna(subset=["Open", "High", "Low", "Close"])
+
+        if history.empty:
+            raise ValueError(f"No market history available for {symbol}")
+
+        history = history.tail(limit)
+
+        candles = []
+        for timestamp, row in history.iterrows():
+            volume = row.get("Volume", 0.0)
+            if volume != volume:
+                volume = 0.0
+
+            candles.append(
+                Candle(
+                    timestamp=float(timestamp.timestamp()),
+                    open=float(row["Open"]),
+                    high=float(row["High"]),
+                    low=float(row["Low"]),
+                    close=float(row["Close"]),
+                    volume=float(volume),
+                )
+            )
+        candles = tuple(candles)
+
+        return MarketSnapshot.from_candles(
+            symbol=symbol,
+            candles=candles,
+        )
+
 
 class MarketDataAdapter:
     """Compatibility facade with dependency injection for future providers."""
