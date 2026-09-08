@@ -31,6 +31,17 @@ class Candle:
         if self.volume < 0:
             raise ValueError("volume must be non-negative")
 
+    def __getitem__(self, key: str) -> float:
+        """Expose canonical OHLCV fields to mapping-style algorithms."""
+        try:
+            return getattr(self, key)
+        except AttributeError as exc:
+            raise KeyError(key) from exc
+
+    def get(self, key: str, default=None):
+        """Provide mapping-compatible field access without changing Candle ownership."""
+        return getattr(self, key, default)
+
 
 @dataclass(frozen=True, slots=True)
 class MarketSnapshot:
