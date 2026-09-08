@@ -18,8 +18,8 @@ class DashboardService:
     # Binance request simply because the page was opened/refreshed.
     SCANNER_CACHE_TTL_SECONDS = 3600.0
 
-    def __init__(self, binance_market_data=None):
-        self.data = DashboardDataService()
+    def __init__(self, config=None, binance_market_data=None):
+        self.data = DashboardDataService(config=config)
         self.scanner = ScannerService()
         self.binance_scanner = BinanceScannerService(
             binance_market_data or BinanceMarketDataAdapter(),
