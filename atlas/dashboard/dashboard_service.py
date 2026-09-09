@@ -18,6 +18,15 @@ class DashboardService:
     # Binance request simply because the page was opened/refreshed.
     SCANNER_CACHE_TTL_SECONDS = 3600.0
 
+    @staticmethod
+    def _normalize_dashboard_symbol(symbol):
+        """Map Binance-native crypto symbols to the dashboard market symbol."""
+        value = str(symbol or "").strip().upper()
+        for quote_asset in ("USDT", "USDC"):
+            if value.endswith(quote_asset) and len(value) > len(quote_asset):
+                return f"{value[:-len(quote_asset)]}-USD"
+        return value
+
     def __init__(self, config=None, binance_market_data=None):
         self.data = DashboardDataService(config=config)
         self.scanner = ScannerService()
@@ -55,6 +64,7 @@ class DashboardService:
         return self.scanner.as_dict(self._get_scanner_result())
 
     def get_dashboard(self, selected_symbol=None):
-        dashboard = self.data.get_dashboard_data(selected_symbol=selected_symbol)
+        normalized_symbol = self._normalize_dashboard_symbol(selected_symbol)
+        dashboard = self.data.get_dashboard_data(selected_symbol=normalized_symbol)
         dashboard["scanner"] = self.get_scanner()
         return dashboard
