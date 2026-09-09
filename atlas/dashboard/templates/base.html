@@ -31,6 +31,13 @@
 <script>
 (function () {
     if (window.location.pathname === "/scanner") return;
+    const selected = new URLSearchParams(window.location.search).get("symbol");
+    if (selected) localStorage.setItem("atlas.last_market_search", selected);
+})();
+</script>
+<script>
+(function () {
+    if (window.location.pathname === "/scanner") return;
     const REFRESH_MS = 30000;
     let countdown = REFRESH_MS / 1000;
     const status = document.getElementById("atlas-refresh-status");
