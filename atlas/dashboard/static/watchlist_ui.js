@@ -38,6 +38,15 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(symbols));
     }
 
+    function removeSymbol(symbol) {
+        const normalized = normalize(symbol);
+        const next = loadSymbols().filter((item) => item !== normalized);
+        saveSymbols(next);
+        if (normalize(localStorage.getItem("atlas.last_market_search")) === normalized) {
+            localStorage.removeItem("atlas.last_market_search");
+        }
+    }
+
     function installStyles() {
         if (document.getElementById("atlas-watchlist-styles")) return;
         const style = document.createElement("style");
@@ -128,6 +137,18 @@
                 border-color: rgba(74, 222, 128, .5);
                 color: #86efac;
                 background: rgba(22, 101, 52, .2);
+            }
+            .watchlist-market-remove {
+                float: right;
+                margin-top: 6px;
+                border: 0;
+                background: transparent;
+                color: #64748b;
+                cursor: pointer;
+                font-size: 13px;
+            }
+            .watchlist-market-remove:hover {
+                color: #f87171;
             }
             @media (max-width: 600px) {
                 .watchlist-controls { flex-direction: column; }
@@ -221,8 +242,14 @@
                 <h2>${esc(market.name || symbol)}</h2>
                 <p class="market-symbol">${esc(symbol)}</p>
                 <a href="/?symbol=${encodeURIComponent(symbol)}" class="market-analyze-button">🤖 Analyser med ATLAS →</a>
+                <button type="button" class="watchlist-market-remove" data-symbol="${esc(symbol)}" title="Fjern fra Watchlist">✕ Fjern</button>
             `;
             container.appendChild(card);
+            const removeButton = card.querySelector(".watchlist-market-remove");
+            removeButton.addEventListener("click", () => {
+                removeSymbol(symbol);
+                card.remove();
+            });
         });
     }
 
@@ -289,8 +316,7 @@
 
             tbody.querySelectorAll(".watchlist-remove").forEach((button) => {
                 button.addEventListener("click", () => {
-                    const next = loadSymbols().filter((item) => item !== button.dataset.symbol);
-                    saveSymbols(next);
+                    removeSymbol(button.dataset.symbol);
                     render();
                 });
             });
