@@ -98,6 +98,7 @@ def test_dashboard_data_uses_settings_service_trading_mode(monkeypatch):
     assert dashboard["trading"]["paper_trading"] is True
     assert dashboard["trading"]["live_orders"] is False
 
+
 def test_dashboard_exposes_paper_trading_summary(
     monkeypatch,
 ):
@@ -159,12 +160,12 @@ def test_dashboard_exposes_paper_trading_summary(
         selected_symbol="BTC-USD"
     )
 
-    trading = data["trading"]
+    portfolio = data["portfolio"]
 
-    assert "cash_nok" in trading
-    assert "invested_nok" in trading
-    assert "positions_value_nok" in trading
-    assert "position_count" in trading
-    assert "unrealized_pnl_nok" in trading
-    assert "total_pnl_nok" in trading
-    assert "return_percent" in trading
+    assert "cash_nok" in portfolio
+    assert "invested_nok" in portfolio
+    assert "positions_value_nok" in portfolio
+    assert "position_count" in portfolio
+    assert "unrealized_pnl_nok" in portfolio
+    assert "total_pnl_nok" in portfolio
+    assert "return_percent" in portfolio
