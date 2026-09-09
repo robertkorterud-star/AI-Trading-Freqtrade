@@ -175,16 +175,22 @@ class DashboardDataService:
             decision = self._snapshot_decision(stored_snapshot)
             snapshot_intelligence = self._snapshot_intelligence(stored_snapshot)
             price_usd = stored_snapshot.decision.get("price_usd")
+            live_market = None
             if price_usd is None:
-                continue
+                try:
+                    live_market = self.market_data.get(symbol)
+                    price_usd = live_market.price
+                except Exception:
+                    continue
             price_usd = round(float(price_usd), 2)
+            change = round(float(live_market.change_percent), 2) if live_market is not None else None
             market.append({
                 "symbol": symbol,
                 "is_selected": symbol == selected_symbol,
                 "favorite": False,
                 "price_usd": price_usd,
                 "price_nok": round(price_usd * exchange.rate, 2),
-                "change": None,
+                "change": change,
                 "trend": None,
                 "decision": decision.action.value,
                 "confidence": round(decision.confidence, 1),
