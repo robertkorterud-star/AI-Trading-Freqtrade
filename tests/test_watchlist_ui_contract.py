@@ -34,3 +34,12 @@ def test_watchlist_ui_can_remove_markets_and_clear_last_selected_state():
     assert "localStorage.removeItem(\"atlas.last_market_search\")" in script
     assert "watchlist-market-remove" in script
     assert "card.remove()" in script
+
+
+def test_watchlist_ui_makes_default_market_cards_removable():
+    script = (ROOT / "atlas" / "dashboard" / "static" / "watchlist_ui.js").read_text()
+    assert 'if (!localStorage.getItem(STORAGE_KEY)) saveSymbols(DEFAULT_SYMBOLS);' in script
+    assert 'if (!window.location.search)' in script
+    assert 'if (!symbol || !symbols.includes(symbol)) {' in script
+    assert 'card.querySelector(".watchlist-market-remove")' in script
+    assert 'removeButton.addEventListener("click", () => {' in script
