@@ -22,6 +22,7 @@ from atlas.trading.trading_service import TradingService
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
 from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.database.connection import Database
+from atlas.database.schema import initialize_database
 from atlas.database.analysis_snapshot_repository import AnalysisSnapshotRepository
 from atlas.database.prediction_repository import PredictionRepository
 from atlas.market.asset_universe import AssetUniverse
@@ -48,6 +49,7 @@ class DashboardDataService:
         self.asset_discovery = AssetDiscoveryService(market_data=self.market_data)
         self.candidate_decision_ranker = CandidateDecisionRanker()
         database = Database(self.config.database_path)
+        initialize_database(database)
         self.snapshot_repository = AnalysisSnapshotRepository(database)
         self.prediction_repository = PredictionRepository(database)
         self.agent_performance = AgentPerformanceTracker(storage_path=self.config.agent_performance_storage)
