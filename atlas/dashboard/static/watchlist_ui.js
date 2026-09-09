@@ -187,7 +187,13 @@
                 .map((node) => normalize(node.textContent))
                 .filter(Boolean)
         );
-        const missing = loadSymbols().filter((symbol) => !existing.has(symbol));
+        const symbols = loadSymbols();
+        const lastSelected = normalize(localStorage.getItem("atlas.last_market_search"));
+        if (lastSelected && !symbols.includes(lastSelected)) {
+            symbols.push(lastSelected);
+            saveSymbols(symbols);
+        }
+        const missing = symbols.filter((symbol) => !existing.has(symbol));
         if (!missing.length) return;
 
         const results = await Promise.all(missing.map(async (symbol) => {
