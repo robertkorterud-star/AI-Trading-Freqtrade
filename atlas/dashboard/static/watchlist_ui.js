@@ -203,17 +203,44 @@
         if (!container || container.dataset.watchlistMarketsReady) return;
         container.dataset.watchlistMarketsReady = "1";
 
+        if (!localStorage.getItem(STORAGE_KEY)) saveSymbols(DEFAULT_SYMBOLS);
+        const symbols = loadSymbols();
         const existing = new Set(
             Array.from(container.querySelectorAll(".market-symbol"))
                 .map((node) => normalize(node.textContent))
                 .filter(Boolean)
         );
-        const symbols = loadSymbols();
         const lastSelected = normalize(localStorage.getItem("atlas.last_market_search"));
         if (lastSelected && !symbols.includes(lastSelected)) {
             symbols.push(lastSelected);
             saveSymbols(symbols);
         }
+
+        if (!window.location.search) {
+            Array.from(container.querySelectorAll(".market-card")).forEach((card) => {
+                const symbolNode = card.querySelector(".market-symbol");
+                const symbol = normalize(symbolNode && symbolNode.textContent);
+                if (!symbol || !symbols.includes(symbol)) {
+                    card.remove();
+                    existing.delete(symbol);
+                    return;
+                }
+
+                if (card.querySelector(".watchlist-market-remove")) return;
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.className = "watchlist-market-remove";
+                removeButton.dataset.symbol = symbol;
+                removeButton.title = "Fjern fra Watchlist";
+                removeButton.textContent = "✕ Fjern";
+                removeButton.addEventListener("click", () => {
+                    removeSymbol(symbol);
+                    card.remove();
+                });
+                card.appendChild(removeButton);
+            });
+        }
+
         const missing = symbols.filter((symbol) => !existing.has(symbol));
         if (!missing.length) return;
 
