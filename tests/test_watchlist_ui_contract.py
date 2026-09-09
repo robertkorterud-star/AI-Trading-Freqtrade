@@ -22,9 +22,7 @@ def test_watchlist_ui_syncs_watchlist_symbols_to_markets_page():
     assert '"/api/market-search?q="' in script
 
 
-def test_watchlist_ui_preserves_last_selected_market():
-    script = (ROOT / "atlas" / "dashboard" / "static" / "watchlist_ui.js").read_text()
-    assert '"atlas.last_market_search"' in script
-    assert "const lastSelected = normalize" in script
-    assert "symbols.push(lastSelected)" in script
-    assert "saveSymbols(symbols)" in script
+def test_base_persists_selected_market_for_watchlist_sync():
+    base = (ROOT / "atlas" / "dashboard" / "templates" / "base.html").read_text()
+    assert 'new URLSearchParams(window.location.search).get("symbol")' in base
+    assert 'localStorage.setItem("atlas.last_market_search", selected)' in base
