@@ -175,11 +175,57 @@
         renderButton();
     }
 
+    async function initMarketsPage() {
+        if (window.location.pathname !== "/markets") return;
+
+        const container = document.querySelector(".markets-page .markets-columns");
+        if (!container || container.dataset.watchlistMarketsReady) return;
+        container.dataset.watchlistMarketsReady = "1";
+
+        const existing = new Set(
+            Array.from(container.querySelectorAll(".market-symbol"))
+                .map((node) => normalize(node.textContent))
+                .filter(Boolean)
+        );
+        const missing = loadSymbols().filter((symbol) => !existing.has(symbol));
+        if (!missing.length) return;
+
+        const results = await Promise.all(missing.map(async (symbol) => {
+            try {
+                const response = await fetch("/api/market-search?q=" + encodeURIComponent(symbol));
+                if (!response.ok) return {symbol};
+                const data = await response.json();
+                const items = Array.isArray(data.results) ? data.results : [];
+                return items.find((item) => normalize(item.symbol) === symbol) || items[0] || {symbol};
+            } catch (_) {
+                return {symbol};
+            }
+        }));
+
+        results.forEach((market) => {
+            const symbol = normalize(market.symbol);
+            if (!symbol || existing.has(symbol)) return;
+            existing.add(symbol);
+
+            const isCrypto = market.type === "crypto" || symbol.endsWith("-USD");
+            const card = document.createElement("section");
+            card.className = "card market-card watchlist-market-card";
+            card.innerHTML = `
+                <div class="market-card-type">${isCrypto ? "🪙 KRYPTO" : "📈 AKSJE"}</div>
+                <h2>${esc(market.name || symbol)}</h2>
+                <p class="market-symbol">${esc(symbol)}</p>
+                <a href="/?symbol=${encodeURIComponent(symbol)}" class="market-analyze-button">🤖 Analyser med ATLAS →</a>
+            `;
+            container.appendChild(card);
+        });
+    }
+
     function init() {
         const heading = Array.from(document.querySelectorAll("h2"))
             .find((node) => node.textContent.includes("Watchlist"));
         if (!heading) {
             initMarketTerminal();
+            initMarketsPage();
             return;
         }
 
