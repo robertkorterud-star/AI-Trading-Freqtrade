@@ -40,9 +40,15 @@
             <span id="overview-market-type">—</span>
         </div>
         <div id="atlas-candles" class="overview-chart" style="min-height:420px;"></div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-            {% for timeframe in [("1d", "1D"), ("5d", "5D"), ("1m", "1M"), ("3m", "3M"), ("6m", "6M"), ("1y", "1Y")] %}<button type="button" class="overview-button overview-period" data-period="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
-            {% for timeframe in [("5m", "5m"), ("15m", "15m"), ("1h", "1h"), ("4h", "4h"), ("1d", "1D")] %}<button type="button" class="overview-button overview-interval" data-interval="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
+        <div class="overview-chart-controls">
+            <div class="overview-chart-control-group">
+                <span class="overview-chart-control-label">Periode</span>
+                {% for timeframe in [("1d", "1D"), ("5d", "5D"), ("1m", "1M"), ("3m", "3M"), ("6m", "6M"), ("1y", "1Y")] %}<button type="button" class="overview-button overview-period" data-period="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
+            </div>
+            <div class="overview-chart-control-group">
+                <span class="overview-chart-control-label">Intervall</span>
+                {% for timeframe in [("5m", "5m"), ("15m", "15m"), ("1h", "1h"), ("4h", "4h"), ("1d", "1D")] %}<button type="button" class="overview-button overview-interval" data-interval="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
+            </div>
         </div>
         <div class="overview-chart-footer"><span>{{ t("signal_informational") }}</span><span id="overview-chart-status">—</span></div>
     </section>
@@ -78,7 +84,18 @@
 (function () {
     const container=document.getElementById('atlas-candles'); if(!container||!window.LightweightCharts)return;
     const initialSymbol={{ dashboard.intelligence.symbol|tojson }}; const marketRows={{ dashboard.market|tojson }}; const querySymbol=new URLSearchParams(window.location.search).get('symbol'); let symbol=(querySymbol||initialSymbol||'BTC-USD').toUpperCase();
-    const storedPeriod=localStorage.getItem('atlas.chart.period'); const storedInterval=localStorage.getItem('atlas.chart.interval'); let period=storedPeriod||'3m'; let interval=storedInterval||'1h'; let chartInitialized=false;
+    const periodPresets={
+        '1d':{interval:'5m',limit:288},
+        '5d':{interval:'15m',limit:480},
+        '1m':{interval:'1h',limit:720},
+        '3m':{interval:'4h',limit:540},
+        '6m':{interval:'1d',limit:180},
+        '1y':{interval:'1d',limit:365}
+    };
+    const intervalPeriods={'5m':'1d','15m':'5d','1h':'1m','4h':'3m','1d':'1y'};
+    const storedPeriod=localStorage.getItem('atlas.chart.period'); let period=storedPeriod||'3m'; let interval=periodPresets[period].interval; let chartInitialized=false;
+    function syncIntervalToPeriod(){interval=periodPresets[period].interval;localStorage.setItem('atlas.chart.interval',interval);}
+    function syncPeriodToInterval(){period=intervalPeriods[interval]||period;localStorage.setItem('atlas.chart.period',period);}
     const chart=LightweightCharts.createChart(container,{width:container.clientWidth,height:420,layout:{background:{type:'solid',color:'#0d1117'},textColor:'#9aa4b2'},grid:{vertLines:{color:'#18202a'},horzLines:{color:'#18202a'}},rightPriceScale:{borderColor:'#263241'},timeScale:{borderColor:'#263241',timeVisible:true,secondsVisible:false}});
     const series=chart.addSeries(LightweightCharts.CandlestickSeries,{upColor:'#16c784',downColor:'#ea3943',borderVisible:false,wickUpColor:'#16c784',wickDownColor:'#ea3943'});
     const input=document.getElementById('overview-market-search-input'),button=document.getElementById('overview-market-search-button'),box=document.getElementById('overview-market-search-results'),title=document.getElementById('overview-market-title'),subtitle=document.getElementById('overview-market-subtitle'),price=document.getElementById('overview-market-price'),change=document.getElementById('overview-market-change'),type=document.getElementById('overview-market-type'),status=document.getElementById('overview-chart-status');
@@ -86,8 +103,13 @@
     function meta(){const row=marketRows.find(item=>String(item.symbol).toUpperCase()===symbol);title.textContent=symbol;if(row){price.textContent=row.price_usd==null?'—':'$'+Number(row.price_usd).toLocaleString(undefined,{maximumFractionDigits:4});change.textContent=row.change==null?'—':((Number(row.change)>=0?'+':'')+row.change+'%');change.className=Number(row.change)>=0?'positive':'negative';type.textContent=row.type||'market';subtitle.textContent=row.trend||'{{ t("read_only_market_view") }}';}}
     function show(results){box.innerHTML='';if(!results.length){box.style.display='none';return;}results.forEach(item=>{const b=document.createElement('button');b.type='button';b.style.cssText='display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid #263241;background:#111820;color:#fff;cursor:pointer;';b.textContent=item.symbol+' · '+item.name+' · '+(item.type||'market');b.onclick=()=>window.location.href='/?symbol='+encodeURIComponent(item.symbol);box.appendChild(b);});box.style.display='block';}
     async function search(){const q=input.value.trim();if(!q){box.style.display='none';return;}try{const r=await fetch('/api/market-search?q='+encodeURIComponent(q),{cache:'no-store'});const d=await r.json();show(d.results||[]);}catch(e){console.error('ATLAS market search failed:',e);}}
-    async function refresh(){status.textContent='Laster markedsdata …';try{const n=native(symbol);const url=n?'/api/binance-candles?symbol='+encodeURIComponent(n)+'&interval='+encodeURIComponent(interval)+'&limit='+(interval==='1d'?365:1000):'/api/market-candles?symbol='+encodeURIComponent(symbol)+'&period='+encodeURIComponent(period)+'&interval='+encodeURIComponent(interval);const r=await fetch(url,{cache:'no-store'});const d=await r.json();if(!r.ok||!d.candles||!d.candles.length)throw new Error(d.error||'No candle data');const cs=d.candles.map(c=>({time:Math.floor(Number(c.timestamp)),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)}));series.setData(cs);if(!chartInitialized){chart.timeScale().fitContent();chartInitialized=true;}price.textContent='$'+cs[cs.length-1].close.toLocaleString(undefined,{maximumFractionDigits:4});status.textContent=symbol+' · '+interval;}catch(e){console.error('ATLAS overview chart refresh failed:',e);status.textContent='Kunne ikke hente markedsdata';}}
-    button.onclick=search;input.oninput=search;input.onkeydown=e=>{if(e.key==='Enter')search();if(e.key==='Escape')box.style.display='none';};document.addEventListener('click',e=>{if(!box.contains(e.target)&&e.target!==input)box.style.display='none';});document.querySelectorAll('.overview-period').forEach(b=>{if(b.dataset.period===period)b.classList.add('primary');b.onclick=()=>{period=b.dataset.period;localStorage.setItem('atlas.chart.period',period);refresh();};});document.querySelectorAll('.overview-interval').forEach(b=>{if(b.dataset.interval===interval)b.classList.add('primary');b.onclick=()=>{interval=b.dataset.interval;localStorage.setItem('atlas.chart.interval',interval);refresh();};});meta();refresh();setInterval(refresh,30000);new ResizeObserver(()=>chart.applyOptions({width:container.clientWidth})).observe(container);
+    async function refresh(){status.textContent='Laster markedsdata …';try{const n=native(symbol);const preset=periodPresets[period];const url=n?'/api/binance-candles?symbol='+encodeURIComponent(n)+'&interval='+encodeURIComponent(interval)+'&limit='+encodeURIComponent(preset.limit):'/api/market-candles?symbol='+encodeURIComponent(symbol)+'&period='+encodeURIComponent(period)+'&interval='+encodeURIComponent(interval);const r=await fetch(url,{cache:'no-store'});const d=await r.json();if(!r.ok||!d.candles||!d.candles.length)throw new Error(d.error||'No candle data');const cs=d.candles.map(c=>({time:Math.floor(Number(c.timestamp)),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)}));series.setData(cs);if(!chartInitialized){chart.timeScale().fitContent();chartInitialized=true;}price.textContent='$'+cs[cs.length-1].close.toLocaleString(undefined,{maximumFractionDigits:4});status.textContent=symbol+' · '+period.toUpperCase()+' · '+interval;updateButtons();}catch(e){console.error('ATLAS overview chart refresh failed:',e);status.textContent='Kunne ikke hente markedsdata';}}
+    function updateButtons(){document.querySelectorAll('.overview-period').forEach(b=>{b.classList.toggle('primary',b.dataset.period===period);});document.querySelectorAll('.overview-interval').forEach(b=>{b.classList.toggle('primary',b.dataset.interval===interval);});}
+    button.onclick=search;input.oninput=search;input.onkeydown=e=>{if(e.key==='Enter')search();if(e.key==='Escape')box.style.display='none';};document.addEventListener('click',e=>{if(!box.contains(e.target)&&e.target!==input)box.style.display='none';});
+    document.querySelectorAll('.overview-period').forEach(b=>{b.onclick=()=>{period=b.dataset.period;syncIntervalToPeriod();updateButtons();refresh();};});
+    document.querySelectorAll('.overview-interval').forEach(b=>{b.onclick=()=>{interval=b.dataset.interval;syncPeriodToInterval();updateButtons();refresh();};});
+    window.addEventListener('resize',()=>chart.applyOptions({width:container.clientWidth}));
+    updateButtons();meta();refresh();setInterval(refresh,30000);
 })();
 </script>
 {% endblock %}
