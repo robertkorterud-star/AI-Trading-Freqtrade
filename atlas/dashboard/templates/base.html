@@ -37,7 +37,7 @@
 </script>
 <script>
 (function () {
-    if (window.location.pathname === "/scanner") return;
+    if (window.location.pathname === "/scanner" || window.location.pathname === "/") return;
     const REFRESH_MS = 30000;
     let countdown = REFRESH_MS / 1000;
     const status = document.getElementById("atlas-refresh-status");
