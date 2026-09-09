@@ -26,3 +26,11 @@ def test_base_persists_selected_market_for_watchlist_sync():
     base = (ROOT / "atlas" / "dashboard" / "templates" / "base.html").read_text()
     assert 'new URLSearchParams(window.location.search).get("symbol")' in base
     assert 'localStorage.setItem("atlas.last_market_search", selected)' in base
+
+
+def test_watchlist_ui_can_remove_markets_and_clear_last_selected_state():
+    script = (ROOT / "atlas" / "dashboard" / "static" / "watchlist_ui.js").read_text()
+    assert "function removeSymbol(symbol)" in script
+    assert "localStorage.removeItem(\"atlas.last_market_search\")" in script
+    assert "watchlist-market-remove" in script
+    assert "card.remove()" in script
