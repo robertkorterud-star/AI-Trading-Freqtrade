@@ -20,3 +20,11 @@ def test_watchlist_ui_syncs_watchlist_symbols_to_markets_page():
     assert "watchlist-market-card" in script
     assert "loadSymbols()" in script
     assert '"/api/market-search?q="' in script
+
+
+def test_watchlist_ui_preserves_last_selected_market():
+    script = (ROOT / "atlas" / "dashboard" / "static" / "watchlist_ui.js").read_text()
+    assert '"atlas.last_market_search"' in script
+    assert "const lastSelected = normalize" in script
+    assert "symbols.push(lastSelected)" in script
+    assert "saveSymbols(symbols)" in script
