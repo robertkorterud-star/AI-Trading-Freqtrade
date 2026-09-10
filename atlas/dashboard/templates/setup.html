@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="max-width: 460px; margin: 60px auto;">
+    <h2>🛡️ Første gangs oppsett</h2>
+    <p>Opprett ATLAS-administratoren. Dette skjemaet er kun tilgjengelig før første bruker er opprettet.</p>
+    {% if error %}<p><strong>{{ error }}</strong></p>{% endif %}
+    <form action="/setup" method="post">
+        <p>
+            <label>Brukernavn<br>
+                <input type="text" name="username" autocomplete="username" required>
+            </label>
+        </p>
+        <p>
+            <label>Passord (minst 12 tegn)<br>
+                <input type="password" name="password" autocomplete="new-password" minlength="12" required>
+            </label>
+        </p>
+        <p>
+            <label>Bekreft passord<br>
+                <input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required>
+            </label>
+        </p>
+        <button type="submit">Opprett ADMIN</button>
+    </form>
+</div>
+{% endblock %}
