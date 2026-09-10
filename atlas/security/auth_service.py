@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
+import sqlite3
 
 from pwdlib import PasswordHash
 
@@ -12,6 +13,7 @@ from atlas.database.connection import Database
 
 PASSWORD_HASHER = PasswordHash.recommended()
 SESSION_TTL = timedelta(hours=12)
+VALID_ROLES = {"ADMIN", "TRADER", "VIEWER"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +45,7 @@ class AuthService:
         role = role.upper().strip()
         if not username:
             raise ValueError("Username cannot be empty.")
-        if role not in {"ADMIN", "TRADER", "VIEWER"}:
+        if role not in VALID_ROLES:
             raise ValueError("Unsupported role.")
 
         now = datetime.now(timezone.utc).isoformat()
@@ -56,12 +58,40 @@ class AuthService:
                     """,
                     (username, self.hash_password(password), role, now),
                 )
-            except Exception as exc:
-                if "UNIQUE constraint failed" in str(exc):
-                    raise ValueError("Username already exists.") from exc
-                raise
+            except sqlite3.IntegrityError as exc:
+                raise ValueError("Username already exists.") from exc
             connection.commit()
             return User(cursor.lastrowid, username, role, True)
+
+    def list_users(self) -> list[User]:
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT id, username, role, enabled FROM users ORDER BY username"
+            ).fetchall()
+        return [
+            User(row["id"], row["username"], row["role"], bool(row["enabled"]))
+            for row in rows
+        ]
+
+    def set_user_role(self, user_id: int, role: str) -> None:
+        role = role.upper().strip()
+        if role not in VALID_ROLES:
+            raise ValueError("Unsupported role.")
+        with self.database.connect() as connection:
+            connection.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+            connection.commit()
+
+    def set_user_enabled(self, user_id: int, enabled: bool) -> None:
+        with self.database.connect() as connection:
+            connection.execute(
+                "UPDATE users SET enabled = ? WHERE id = ?", (int(enabled), user_id)
+            )
+            if not enabled:
+                connection.execute(
+                    "UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+                    (datetime.now(timezone.utc).isoformat(), user_id),
+                )
+            connection.commit()
 
     def authenticate(self, username: str, password: str) -> User | None:
         with self.database.connect() as connection:
@@ -99,6 +129,7 @@ class AuthService:
         if not token:
             return None
         now = datetime.now(timezone.utc)
+        token_hash = self._token_hash(token)
         with self.database.connect() as connection:
             row = connection.execute(
                 """
@@ -109,13 +140,13 @@ class AuthService:
                   AND s.revoked_at IS NULL
                   AND s.expires_at > ?
                 """,
-                (self._token_hash(token), now.isoformat()),
+                (token_hash, now.isoformat()),
             ).fetchone()
             if row is None or not row["enabled"]:
                 return None
             connection.execute(
                 "UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?",
-                (now.isoformat(), self._token_hash(token)),
+                (now.isoformat(), token_hash),
             )
             connection.commit()
             return User(row["id"], row["username"], row["role"], True)
