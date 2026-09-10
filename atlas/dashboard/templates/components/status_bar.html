@@ -1,5 +1,8 @@
 <div class="status-bar">
 
+    {# Public/auth pages may render the shared base template without a dashboard context. #}
+    {% set dashboard = dashboard | default({}) %}
+
     {% if dashboard.trading is defined and dashboard.trading.mode == "paper" and dashboard.trading.paper_trading %}
 
         <div class="status paper-status">
