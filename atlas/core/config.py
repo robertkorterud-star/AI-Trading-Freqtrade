@@ -36,3 +36,5 @@ class AtlasConfig:
     database_path: str = (
         "atlas/data/atlas.db"
     )
+
+    load_persisted_settings: bool = False
