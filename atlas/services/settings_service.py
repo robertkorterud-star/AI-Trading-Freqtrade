@@ -7,7 +7,7 @@ from atlas.database.connection import Database
 
 
 class SettingsService:
-    """Manage safe ATLAS trading settings with database persistence."""
+    """Manage safe ATLAS trading settings with optional database persistence."""
 
     _PERSISTED_KEYS = (
         "trading_mode",
@@ -20,7 +20,8 @@ class SettingsService:
         self.config = config or AtlasConfig()
         self.database = Database(self.config.database_path)
         self._ensure_storage()
-        self._load_persisted_settings()
+        if self.config.load_persisted_settings:
+            self._load_persisted_settings()
 
     def _ensure_storage(self):
         with self.database.connect() as connection:
@@ -53,6 +54,8 @@ class SettingsService:
     def _persist(self, key, value):
         if key not in self._PERSISTED_KEYS:
             raise ValueError(f"Unsupported setting: {key}")
+        if not self.config.load_persisted_settings:
+            return
 
         with self.database.connect() as connection:
             connection.execute(
@@ -91,7 +94,7 @@ class SettingsService:
         return getattr(
             self.config,
             "ai_provider",
-            "openai",
+            "ollama",
         )
 
     def set_ai_provider(self, provider):
