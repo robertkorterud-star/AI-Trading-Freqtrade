@@ -41,7 +41,6 @@ ON analysis_snapshots(symbol);
 CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_timestamp
 ON analysis_snapshots(timestamp);
 
-
 CREATE TABLE IF NOT EXISTS paper_trades (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
@@ -62,7 +61,6 @@ ON predictions(symbol);
 
 CREATE INDEX IF NOT EXISTS idx_predictions_timestamp
 ON predictions(timestamp);
-
 
 CREATE TABLE IF NOT EXISTS outcomes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +88,6 @@ ON outcomes(timestamp);
 CREATE INDEX IF NOT EXISTS idx_predictions_evaluated
 ON predictions(evaluated);
 
-
 CREATE TABLE IF NOT EXISTS strategy_memory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
@@ -116,7 +113,6 @@ ON strategy_memory(symbol, regime);
 
 CREATE INDEX IF NOT EXISTS idx_strategy_memory_updated_at
 ON strategy_memory(updated_at);
-
 
 CREATE TABLE IF NOT EXISTS strategy_memory_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,6 +141,33 @@ ON strategy_memory_history(
 
 CREATE INDEX IF NOT EXISTS idx_strategy_memory_history_recorded_at
 ON strategy_memory_history(recorded_at);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    last_login_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    last_seen_at TEXT,
+    revoked_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user
+ON sessions(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_expires
+ON sessions(expires_at);
 """
 
 
