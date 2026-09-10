@@ -4,6 +4,8 @@ Dashboard Data Service
 Collects all data required by the dashboard from canonical ATLAS state.
 """
 
+import time
+
 from atlas.config.settings import settings
 from atlas.core.config import AtlasConfig
 from atlas.core.registry import AgentRegistry
@@ -203,20 +205,21 @@ class DashboardDataService:
                 latest_explanation = explain_decision(decision, agreement=snapshot_intelligence.agreement)
                 latest_snapshot = stored_snapshot
 
+        trading_status = self.settings.get_trading_status()
         if latest_decision is None or latest_intelligence is None or latest_snapshot is None:
             return {
                 "status": "Waiting for ATLAS runtime",
                 "version": "0.8.1",
                 "capital": self.config.capital_limit,
                 "trading": {
-                    "mode": self.settings.get_trading_status()["mode"],
+                    "mode": trading_status["mode"],
                     "language": self.settings.get_language(),
                     "ai_provider": self.settings.get_ai_provider(),
-                    "paper_trading": self.settings.get_trading_status()["paper_trading"],
-                    "live_orders": self.settings.get_trading_status()["live_orders"],
+                    "paper_trading": trading_status["paper_trading"],
+                    "live_orders": trading_status["live_orders"],
                     "virtual_capital_nok": self.config.capital_limit,
                 },
-                "portfolio": {},
+                "portfolio": self.portfolio.as_dict(exchange.rate),
                 "trade_history": [],
                 "agent_performance": {
                     "history": self.agent_performance.history(),
@@ -227,10 +230,10 @@ class DashboardDataService:
                 "decision": None,
                 "decision_explanation": None,
                 "news_explanation": None,
-                "decision_robustness": None,
-                "decision_influence": None,
-                "intelligence": None,
-                "analysts": None,
+                "decision_robustness": {"margin": 0.0, "robustness": 0.0, "level": "WAITING"},
+                "decision_influence": {"dominant_action": None, "dominant_weight": 0.0, "action_support_analyst": None, "action_support_action": None, "action_support_weight": 0.0, "opposing_analysts": [], "adaptive_override": False},
+                "intelligence": {"symbol": selected_symbol, "action": "HOLD", "evidence": 0.0, "confidence": 0.0, "buy_count": 0, "hold_count": 0, "sell_count": 0, "agreement": 0.0, "conflict": False, "weighted_buy": 0.0, "weighted_hold": 0.0, "weighted_sell": 0.0, "weighted_agreement": 0.0, "weighted_conflict": False, "analysts": [], "reasoning": ["Venter på en kanonisk ATLAS-analyse for dette markedet."]},
+                "analysts": [],
                 "market": market,
                 "market_scan": self.market_scan(),
                 "news": [],
@@ -241,7 +244,7 @@ class DashboardDataService:
             "status": "Running",
             "version": "0.8.1",
             "capital": self.config.capital_limit,
-            "trading": {"mode": self.settings.get_trading_status()["mode"], "language": self.settings.get_language(), "ai_provider": self.settings.get_ai_provider(), "paper_trading": self.settings.get_trading_status()["paper_trading"], "live_orders": self.settings.get_trading_status()["live_orders"], "virtual_capital_nok": self.config.capital_limit},
+            "trading": {"mode": trading_status["mode"], "language": self.settings.get_language(), "ai_provider": self.settings.get_ai_provider(), "paper_trading": trading_status["paper_trading"], "live_orders": trading_status["live_orders"], "virtual_capital_nok": self.config.capital_limit},
             "portfolio": self.portfolio.as_dict(exchange.rate),
             "trade_history": self.trading.history(),
             "agent_performance": {"history": self.agent_performance.history(), "weights": self.agent_weight_engine.calculate(), "weight_explanations": self.agent_weight_engine.explain()},
