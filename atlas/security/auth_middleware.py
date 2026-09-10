@@ -6,7 +6,7 @@ from starlette.responses import JSONResponse, RedirectResponse
 from atlas.security.auth_service import AuthService
 
 
-PUBLIC_PATHS = {"/login"}
+PUBLIC_PATHS = {"/login", "/setup"}
 
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
@@ -35,7 +35,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
 
 def require_role(request, *roles):
-    """Raise HTTP 403 unless the authenticated user has an allowed role."""
+    """Return a 403 response unless the authenticated user has an allowed role."""
     user = request.state.user
     if user.role not in roles:
         return JSONResponse({"detail": "Insufficient permissions."}, status_code=403)
