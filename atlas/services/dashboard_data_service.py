@@ -30,13 +30,14 @@ from atlas.database.prediction_repository import PredictionRepository
 from atlas.market.asset_universe import AssetUniverse
 from atlas.market.asset_discovery import AssetDiscoveryService
 from atlas.adapters.market_data import MarketDataAdapter
+from atlas.adapters.intelligence_sources import IntelligenceSourceAdapter
 from atlas.market.candidate_decision_ranker import CandidateDecisionRanker
 
 
 class DashboardDataService:
     """Collect dashboard data without creating a second decision path."""
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, intelligence_sources=None):
         self.config = config or AtlasConfig()
         self.settings = SettingsService(config=self.config)
         self.registry = AgentRegistry()
@@ -48,6 +49,9 @@ class DashboardDataService:
         self.trading = TradingService()
         self.asset_universe = AssetUniverse()
         self.market_data = MarketDataAdapter()
+        self.intelligence_sources = intelligence_sources
+        self._news_cache = {}
+        self._news_cache_ttl_seconds = 300.0
         self.asset_discovery = AssetDiscoveryService(market_data=self.market_data)
         self.candidate_decision_ranker = CandidateDecisionRanker()
         database = Database(self.config.database_path)
@@ -154,6 +158,29 @@ class DashboardDataService:
             for decision in ranked
         ]
 
+    def _get_latest_news(self, symbol):
+        """Return cached external intelligence for dashboard news context."""
+        now = time.monotonic()
+        cached = self._news_cache.get(symbol)
+
+        if cached is not None:
+            created_at, result = cached
+            if now - created_at < self._news_cache_ttl_seconds:
+                return result
+
+        try:
+            if self.intelligence_sources is None:
+                self.intelligence_sources = IntelligenceSourceAdapter()
+            result = self.intelligence_sources.get(symbol)
+        except Exception:
+            result = []
+
+        if not isinstance(result, list):
+            result = []
+
+        self._news_cache[symbol] = (now, result)
+        return result
+
     def get_dashboard_data(self, selected_symbol=None):
         default_watchlist = ["BTC-USD", "ETH-USD", "SOL-USD", "NVDA"]
         selected_symbol = (selected_symbol or settings.default_symbol).strip().upper()
@@ -166,7 +193,7 @@ class DashboardDataService:
         latest_intelligence = None
         latest_explanation = None
         latest_news_explanation = None
-        latest_news = []
+        latest_news = self._get_latest_news(selected_symbol)
         latest_snapshot = None
 
         for symbol in watchlist:
@@ -232,7 +259,7 @@ class DashboardDataService:
                 "news_explanation": None,
                 "decision_robustness": {"margin": 0.0, "robustness": 0.0, "level": "WAITING"},
                 "decision_influence": {"dominant_action": None, "dominant_weight": 0.0, "action_support_analyst": None, "action_support_action": None, "action_support_weight": 0.0, "opposing_analysts": [], "adaptive_override": False},
-                "intelligence": {"symbol": selected_symbol, "action": "HOLD", "evidence": 0.0, "confidence": 0.0, "buy_count": 0, "hold_count": 0, "sell_count": 0, "agreement": 0.0, "conflict": False, "weighted_buy": 0.0, "weighted_hold": 0.0, "weighted_sell": 0.0, "weighted_agreement": 0.0, "weighted_conflict": False, "analysts": [], "reasoning": ["Venter på en kanonisk ATLAS-analyse for dette markedet."]},
+                "intelligence": None,
                 "analysts": [],
                 "market": market,
                 "market_scan": self.market_scan(),

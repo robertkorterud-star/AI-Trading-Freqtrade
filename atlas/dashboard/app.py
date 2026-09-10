@@ -281,11 +281,11 @@ async def dashboard_api(request: Request):
             "analysts": dashboard["analysts"],
             "news": [
                 {
-                    "title": article.title,
-                    "source": article.source,
-                    "summary": article.summary,
-                    "url": article.url,
-                    "sentiment": article.sentiment,
+                    "title": article.get("title") if isinstance(article, dict) else article.title,
+                    "source": article.get("source") if isinstance(article, dict) else article.source,
+                    "summary": article.get("summary") if isinstance(article, dict) else article.summary,
+                    "url": article.get("url") if isinstance(article, dict) else article.url,
+                    "sentiment": article.get("sentiment") if isinstance(article, dict) else article.sentiment,
                 }
                 for article in dashboard["news"]
             ],

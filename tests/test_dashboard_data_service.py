@@ -5,12 +5,23 @@ from atlas.services.dashboard_data_service import DashboardDataService
 from atlas.core.config import AtlasConfig
 
 
+class _FakeIntelligenceSources:
+    def __init__(self, items=None):
+        self.items = items or []
+
+    def get(self, symbol, **kwargs):
+        return list(self.items)
+
+
 def _service_with_snapshot(tmp_path, symbol="BTC-USD"):
     config = AtlasConfig(
         database_path=str(tmp_path / "atlas.db"),
         agent_performance_storage=str(tmp_path / "agent_performance.json"),
     )
-    service = DashboardDataService(config=config)
+    service = DashboardDataService(
+        config=config,
+        intelligence_sources=_FakeIntelligenceSources(),
+    )
     repository = AnalysisSnapshotRepository(Database(config.database_path))
     repository.save(
         AnalysisSnapshot(
@@ -100,7 +111,10 @@ def test_dashboard_waits_for_canonical_runtime_snapshot(tmp_path):
         database_path=str(tmp_path / "atlas.db"),
         agent_performance_storage=str(tmp_path / "agent_performance.json"),
     )
-    service = DashboardDataService(config=config)
+    service = DashboardDataService(
+        config=config,
+        intelligence_sources=_FakeIntelligenceSources(),
+    )
 
     data = service.get_dashboard_data(selected_symbol="BTC-USD")
 
