@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="max-width: 460px; margin: 60px auto;">
+    <h2>🔐 Logg inn på ATLAS</h2>
+    {% if error %}<p><strong>{{ error }}</strong></p>{% endif %}
+    <form action="/login" method="post">
+        <p>
+            <label>Brukernavn<br>
+                <input type="text" name="username" autocomplete="username" required>
+            </label>
+        </p>
+        <p>
+            <label>Passord<br>
+                <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+        </p>
+        <button type="submit">Logg inn</button>
+    </form>
+    <p><a href="/setup">Første gangs oppsett</a></p>
+</div>
+{% endblock %}
