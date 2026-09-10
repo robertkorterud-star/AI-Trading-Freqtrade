@@ -4034,3 +4034,13 @@ main .dashboard-layout > .dashboard-right {
 .research-publishers span {
     color: #94a3b8;
 }
+
+/* =====================================================
+   PORTFOLIO - SUMMARY SPACING
+   ===================================================== */
+
+.portfolio-page > .portfolio-summary-grid {
+    margin-top: 0;
+    padding-top: 30px;
+}
+
