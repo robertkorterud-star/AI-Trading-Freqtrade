@@ -57,6 +57,7 @@ from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
 from atlas.database.outcome_repository import OutcomeRepository
 from atlas.database.prediction_repository import PredictionRepository
+from atlas.database.trade_repository import TradeRepository
 from atlas.database.strategy_memory_repository import (
     StrategyMemoryRepository,
 )
@@ -150,12 +151,25 @@ class AtlasEngine:
             self.config.capital_limit
         )
 
+        self.database = Database(
+            self.config.database_path
+        )
+
+        initialize_database(
+            self.database
+        )
+
         # Expose service instances for testability and adapter wiring.
         self.portfolio_service = portfolio
 
         risk = RiskEngine()
 
-        trading = TradingService()
+        trade_repository = TradeRepository(
+            self.database
+        )
+        trading = TradingService(
+            repository=trade_repository
+        )
 
         # Expose trading service used by the paper adapter for tests and inspection
         self.trading_service = trading
@@ -193,14 +207,6 @@ class AtlasEngine:
 
         self.prediction_tracker = PredictionTracker(
             storage_path=self.config.database_path
-        )
-
-        self.database = Database(
-            self.config.database_path
-        )
-
-        initialize_database(
-            self.database
         )
 
         self.prediction_repository = PredictionRepository(

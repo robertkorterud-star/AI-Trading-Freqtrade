@@ -42,6 +42,21 @@ CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_timestamp
 ON analysis_snapshots(timestamp);
 
 
+CREATE TABLE IF NOT EXISTS paper_trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    action TEXT NOT NULL,
+    quantity REAL NOT NULL,
+    price_usd REAL NOT NULL,
+    amount_nok REAL NOT NULL,
+    realized_pnl_nok REAL NOT NULL,
+    timestamp TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_paper_trades_timestamp
+ON paper_trades(timestamp);
+
 CREATE INDEX IF NOT EXISTS idx_predictions_symbol
 ON predictions(symbol);
 

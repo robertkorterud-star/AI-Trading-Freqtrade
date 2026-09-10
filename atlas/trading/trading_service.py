@@ -13,8 +13,13 @@ from atlas.trading.trade_record import TradeRecord
 class TradingService:
     """Stores and manages paper-trading history."""
 
-    def __init__(self):
-        self._history = []
+    def __init__(self, repository=None):
+        self._repository = repository
+        self._history = (
+            repository.load()
+            if repository is not None
+            else []
+        )
 
     def record_buy(
         self,
@@ -36,6 +41,9 @@ class TradingService:
         )
 
         self._history.append(trade)
+
+        if self._repository is not None:
+            self._repository.save(trade)
 
         return trade
 
@@ -61,6 +69,9 @@ class TradingService:
 
         self._history.append(trade)
 
+        if self._repository is not None:
+            self._repository.save(trade)
+
         return trade
 
     def history(self):
@@ -74,3 +85,6 @@ class TradingService:
 
     def clear(self):
         self._history.clear()
+
+        if self._repository is not None:
+            self._repository.clear()

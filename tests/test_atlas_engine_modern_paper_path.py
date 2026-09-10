@@ -62,3 +62,35 @@ def test_atlas_engine_modern_paper_execution_chain():
     portfolio_snapshot = engine.portfolio_service.as_dict(engine.exchange.get_rate("USD", "NOK").rate)
     assert portfolio_snapshot["position_count"] >= 1
     assert engine.trading_service.count() >= 1
+
+
+def test_atlas_engine_persists_trade_history_across_instances(tmp_path):
+    """Modern AtlasEngine instances share persisted paper-trade history."""
+    config = AtlasConfig(
+        trading_mode="paper",
+        capital_limit=1_000_000.0,
+        database_path=str(tmp_path / "atlas.db"),
+    )
+
+    first = AtlasEngine(config=config)
+
+    first.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=0.001,
+        price_usd=65000.0,
+        amount_nok=1000.0,
+        reason="Persistence test.",
+    )
+
+    assert first.trading_service.count() == 1
+
+    second = AtlasEngine(config=config)
+
+    assert second.trading_service.count() == 1
+
+    history = second.trading_service.history()
+
+    assert history[0]["symbol"] == "BTC-USD"
+    assert history[0]["action"] == "BUY"
+    assert history[0]["amount_nok"] == 1000.0
+    assert history[0]["reason"] == "Persistence test."
