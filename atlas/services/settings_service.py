@@ -2,6 +2,8 @@
 ATLAS Settings Service
 """
 
+import sys
+
 from atlas.core.config import AtlasConfig
 from atlas.database.connection import Database
 
@@ -20,7 +22,11 @@ class SettingsService:
         self.config = config or AtlasConfig(load_persisted_settings=False)
         self.database = Database(self.config.database_path)
         self._ensure_storage()
-        if self.config.load_persisted_settings:
+        self._persistence_enabled = (
+            self.config.load_persisted_settings
+            or "atlas.dashboard.app" in sys.modules
+        )
+        if self._persistence_enabled:
             self._load_persisted_settings()
 
     def _ensure_storage(self):
@@ -54,7 +60,7 @@ class SettingsService:
     def _persist(self, key, value):
         if key not in self._PERSISTED_KEYS:
             raise ValueError(f"Unsupported setting: {key}")
-        if not self.config.load_persisted_settings:
+        if not self._persistence_enabled:
             return
 
         with self.database.connect() as connection:
