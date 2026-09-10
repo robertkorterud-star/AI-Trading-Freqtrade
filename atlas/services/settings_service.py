@@ -2,8 +2,6 @@
 ATLAS Settings Service
 """
 
-import sys
-
 from atlas.core.config import AtlasConfig
 from atlas.database.connection import Database
 
@@ -22,10 +20,7 @@ class SettingsService:
         self.config = config or AtlasConfig(load_persisted_settings=False)
         self.database = Database(self.config.database_path)
         self._ensure_storage()
-        self._persistence_enabled = (
-            self.config.load_persisted_settings
-            or "atlas.dashboard.app" in sys.modules
-        )
+        self._persistence_enabled = self.config.load_persisted_settings
         if self._persistence_enabled:
             self._load_persisted_settings()
 
