@@ -87,8 +87,8 @@ def test_admin_can_manage_users_when_another_admin_exists(tmp_path):
     first = auth.create_user("admin1", "a-very-secure-password", "ADMIN")
     second = auth.create_user("admin2", "a-very-secure-password", "ADMIN")
 
-    auth.set_user_enabled(second.id, False)
     auth.set_user_role(first.id, "TRADER")
+    auth.set_user_enabled(second.id, False)
 
     users = {user.username: user for user in auth.list_users()}
     assert users["admin1"].role == "TRADER"
