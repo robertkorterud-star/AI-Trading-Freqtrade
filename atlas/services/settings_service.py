@@ -17,7 +17,7 @@ class SettingsService:
     )
 
     def __init__(self, config=None):
-        self.config = config or AtlasConfig()
+        self.config = config or AtlasConfig(load_persisted_settings=False)
         self.database = Database(self.config.database_path)
         self._ensure_storage()
         if self.config.load_persisted_settings:
