@@ -77,18 +77,54 @@ class AuthService:
         role = role.upper().strip()
         if role not in VALID_ROLES:
             raise ValueError("Unsupported role.")
+
         with self.database.connect() as connection:
-            connection.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+            row = connection.execute(
+                "SELECT role, enabled FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("User not found.")
+
+            if row["role"] == "ADMIN" and row["enabled"] and role != "ADMIN":
+                admin_count = connection.execute(
+                    "SELECT COUNT(*) AS count FROM users "
+                    "WHERE role = 'ADMIN' AND enabled = 1"
+                ).fetchone()["count"]
+                if admin_count <= 1:
+                    raise ValueError("Cannot remove the last enabled ADMIN.")
+
+            connection.execute(
+                "UPDATE users SET role = ? WHERE id = ?",
+                (role, user_id),
+            )
             connection.commit()
 
     def set_user_enabled(self, user_id: int, enabled: bool) -> None:
         with self.database.connect() as connection:
+            row = connection.execute(
+                "SELECT role, enabled FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("User not found.")
+
+            if row["role"] == "ADMIN" and row["enabled"] and not enabled:
+                admin_count = connection.execute(
+                    "SELECT COUNT(*) AS count FROM users "
+                    "WHERE role = 'ADMIN' AND enabled = 1"
+                ).fetchone()["count"]
+                if admin_count <= 1:
+                    raise ValueError("Cannot disable the last enabled ADMIN.")
+
             connection.execute(
-                "UPDATE users SET enabled = ? WHERE id = ?", (int(enabled), user_id)
+                "UPDATE users SET enabled = ? WHERE id = ?",
+                (int(enabled), user_id),
             )
             if not enabled:
                 connection.execute(
-                    "UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+                    "UPDATE sessions SET revoked_at = ? "
+                    "WHERE user_id = ? AND revoked_at IS NULL",
                     (datetime.now(timezone.utc).isoformat(), user_id),
                 )
             connection.commit()
