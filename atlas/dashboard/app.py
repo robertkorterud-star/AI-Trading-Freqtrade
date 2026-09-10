@@ -21,10 +21,20 @@ from atlas.adapters.binance_market_data import BinanceMarketDataAdapter
 from atlas.adapters.historical_market_data import HistoricalMarketDataAdapter
 from atlas.services.multi_timeframe_service import MultiTimeframeService
 from atlas.core.config import AtlasConfig
+from atlas.database.connection import Database
+from atlas.database.schema import initialize_database
+from atlas.security.auth_middleware import AuthenticationMiddleware
+from atlas.security.auth_service import AuthService
 
 app = FastAPI(title="ATLAS Dashboard")
 app.mount("/static", StaticFiles(directory="atlas/dashboard/static"), name="static")
 templates = Jinja2Templates(directory="atlas/dashboard/templates")
+
+config = AtlasConfig()
+database = Database(config.database_path)
+initialize_database(database)
+auth_service = AuthService(database)
+app.add_middleware(AuthenticationMiddleware, auth_service=auth_service)
 
 config = AtlasConfig()
 service = DashboardService(config=config)
@@ -119,6 +129,102 @@ def _normalize_market_candles(candles: list[dict]) -> list[dict]:
         }
         for candle in candles
     ]
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    if auth_service.get_user_by_session(request.cookies.get("atlas_session")):
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "error": None},
+    )
+
+
+@app.post("/login", response_class=HTMLResponse)
+async def login(request: Request):
+    form = await request.form()
+    username = str(form.get("username", ""))
+    password = str(form.get("password", ""))
+    user = auth_service.authenticate(username, password)
+    if user is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"request": request, "error": "Feil brukernavn eller passord."},
+            status_code=401,
+        )
+
+    token = auth_service.create_session(user.id)
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        "atlas_session",
+        token,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        max_age=12 * 60 * 60,
+    )
+    return response
+
+
+@app.post("/logout")
+async def logout(request: Request):
+    token = request.cookies.get("atlas_session")
+    auth_service.revoke_session(token)
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("atlas_session")
+    return response
+
+
+@app.get("/setup", response_class=HTMLResponse)
+async def setup_page(request: Request):
+    with database.connect() as connection:
+        count = connection.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
+    if count:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(
+        request=request,
+        name="setup.html",
+        context={"request": request, "error": None},
+    )
+
+
+@app.post("/setup", response_class=HTMLResponse)
+async def setup(request: Request):
+    with database.connect() as connection:
+        count = connection.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
+    if count:
+        return RedirectResponse(url="/login", status_code=303)
+
+    form = await request.form()
+    username = str(form.get("username", ""))
+    password = str(form.get("password", ""))
+    confirm = str(form.get("confirm_password", ""))
+    if not username.strip() or len(password) < 12 or password != confirm:
+        return templates.TemplateResponse(
+            request=request,
+            name="setup.html",
+            context={
+                "request": request,
+                "error": "Brukernavn må fylles ut. Passord må være minst 12 tegn og matche.",
+            },
+            status_code=400,
+        )
+
+    user = auth_service.create_user(username, password, role="ADMIN")
+    token = auth_service.create_session(user.id)
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        "atlas_session",
+        token,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        max_age=12 * 60 * 60,
+    )
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
