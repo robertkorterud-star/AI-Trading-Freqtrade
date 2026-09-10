@@ -168,6 +168,11 @@ ON sessions(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_sessions_expires
 ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS atlas_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
