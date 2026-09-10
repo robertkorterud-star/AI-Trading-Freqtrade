@@ -37,4 +37,4 @@ class AtlasConfig:
         "atlas/data/atlas.db"
     )
 
-    load_persisted_settings: bool = True
+    load_persisted_settings: bool = False
