@@ -30,7 +30,8 @@ class TradeRepository:
                     amount_nok,
                     realized_pnl_nok,
                     timestamp,
-                    reason
+                    reason,
+                    analysis_snapshot_id
                 FROM paper_trades
                 ORDER BY id
                 """
@@ -46,6 +47,7 @@ class TradeRepository:
                 realized_pnl_nok=float(row["realized_pnl_nok"]),
                 timestamp=datetime.fromisoformat(row["timestamp"]),
                 reason=row["reason"],
+                analysis_snapshot_id=row["analysis_snapshot_id"],
             )
             for row in rows
         ]
@@ -64,9 +66,10 @@ class TradeRepository:
                     amount_nok,
                     realized_pnl_nok,
                     timestamp,
-                    reason
+                    reason,
+                    analysis_snapshot_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     trade.symbol,
@@ -77,6 +80,7 @@ class TradeRepository:
                     float(trade.realized_pnl_nok),
                     trade.timestamp.isoformat(),
                     trade.reason,
+                    trade.analysis_snapshot_id,
                 ),
             )
             connection.commit()
