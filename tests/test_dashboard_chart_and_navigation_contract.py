@@ -13,17 +13,18 @@ def test_dashboard_navigation_places_logo_and_menu_on_one_row():
 
 def test_dashboard_chart_controls_keep_period_and_interval_consistent():
     template = (ROOT / "atlas" / "dashboard" / "templates" / "index.html").read_text()
-    assert "const periodPresets=" in template
-    assert "'1d':{interval:'5m',limit:288}" in template
-    assert "'5d':{interval:'15m',limit:480}" in template
-    assert "'1m':{interval:'1h',limit:720}" in template
-    assert "'3m':{interval:'4h',limit:540}" in template
-    assert "'6m':{interval:'1d',limit:180}" in template
-    assert "'1y':{interval:'1d',limit:365}" in template
-    assert "syncIntervalToPeriod" in template
-    assert "syncPeriodToInterval" in template
-    assert "&limit='+encodeURIComponent(preset.limit)" in template
-    assert "status.textContent=symbol+' · '+period.toUpperCase()+' · '+interval" in template
+
+    assert "const periodConfig=" in template
+    assert "'1d':{period:'1d',interval:'5m'}" in template
+    assert "'1w':{period:'5d',interval:'15m'}" in template
+    assert "'1m':{period:'1m',interval:'1h'}" in template
+    assert "'all':{period:'5y',interval:'1d'}" in template
+    assert "const initialPeriod=" in template
+    assert "trade_history_period" in template
+    assert "encodeURIComponent(cfg.period)" in template
+    assert "encodeURIComponent(cfg.interval)" in template
+    assert "status.textContent=symbol+' · '+period.toUpperCase()" in template
+    assert "BUY/SELL-markører viser faktiske ATLAS-handler" in template
 
 
 def test_dashboard_styles_add_nav_spacing_and_paragraph_air():
