@@ -38,10 +38,10 @@ def test_overview_market_workspace_supports_trade_history_chart_selection():
         "series.setMarkers(markerData)",
         "'/api/market-candles?symbol=",
         "overview-period",
-        'data-period="1d"',
-        'data-period="1w"',
-        'data-period="1m"',
-        'data-period="all"',
+        "data-period=\"1d\"" if 'data-period="1d"' in text else "data-period='1d'",
+        "data-period=\"1w\"" if 'data-period="1w"' in text else "data-period='1w'",
+        "data-period=\"1m\"" if 'data-period="1m"' in text else "data-period='1m'",
+        "data-period=\"all\"" if 'data-period="all"' in text else "data-period='all'",
     ):
         assert marker in text
 
