@@ -58,6 +58,7 @@ from atlas.database.schema import initialize_database
 from atlas.database.outcome_repository import OutcomeRepository
 from atlas.database.prediction_repository import PredictionRepository
 from atlas.database.trade_repository import TradeRepository
+from atlas.database.event_repository import AtlasEventRepository
 from atlas.database.strategy_memory_repository import (
     StrategyMemoryRepository,
 )
@@ -173,6 +174,12 @@ class AtlasEngine:
 
         # Expose trading service used by the paper adapter for tests and inspection
         self.trading_service = trading
+
+        # State-change events are persisted in the same SQLite database so the
+        # dashboard can observe ATLAS even when it runs in another process.
+        self.event_repository = AtlasEventRepository(
+            self.database
+        )
 
         # Modern risk and portfolio managers (do not replace legacy services)
         portfolio_manager = PortfolioManager()
@@ -651,6 +658,10 @@ class AtlasEngine:
                 f"{len(evaluation_results)} "
                 f"previous prediction(s)."
             )
+            self.event_repository.publish(
+                "LEARNING_UPDATED",
+                {"evaluated_predictions": len(evaluation_results)},
+            )
 
         candidate_decisions = (
             self.decide_candidates(
@@ -724,6 +735,16 @@ class AtlasEngine:
             snapshot
         )
 
+        self.event_repository.publish(
+            "DECISION_READY",
+            {
+                "symbol": symbol,
+                "action": str(getattr(decision.action, "value", decision.action)),
+                "confidence": getattr(decision, "confidence", None),
+                "analysis_snapshot_id": snapshot.database_id,
+            },
+        )
+
         self.report.print_decision(decision)
 
         self.prediction_tracker.record(
@@ -742,6 +763,17 @@ class AtlasEngine:
                 decision,
                 price=snapshot.price,
             )
+
+            if exec_result is not None:
+                self.event_repository.publish(
+                    "TRADE_EXECUTED",
+                    {
+                        "symbol": symbol,
+                        "action": str(getattr(decision.action, "value", decision.action)),
+                        "quantity": exec_result.quantity,
+                        "analysis_snapshot_id": decision.analysis_snapshot_id,
+                    },
+                )
 
             self.logger.info(
                 f"Paper trading result: {exec_result}"
