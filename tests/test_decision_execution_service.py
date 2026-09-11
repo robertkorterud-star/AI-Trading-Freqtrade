@@ -44,6 +44,32 @@ def test_approved_decision_is_translated_to_dryrun_execution() -> None:
     assert adapter.requests[0].price == 100_000.0
 
 
+def test_decision_snapshot_id_is_carried_into_execution_request() -> None:
+    adapter = DryRunExecutionAdapter()
+    service = DecisionExecutionService(ExecutionEngine(adapter))
+    decision = approved_decision()
+    decision.analysis_snapshot_id = 123
+
+    service.execute(decision, price=100_000.0)
+
+    assert adapter.requests[0].analysis_snapshot_id == 123
+
+
+def test_explicit_snapshot_id_overrides_decision_link() -> None:
+    adapter = DryRunExecutionAdapter()
+    service = DecisionExecutionService(ExecutionEngine(adapter))
+    decision = approved_decision()
+    decision.analysis_snapshot_id = 123
+
+    service.execute(
+        decision,
+        price=100_000.0,
+        analysis_snapshot_id=456,
+    )
+
+    assert adapter.requests[0].analysis_snapshot_id == 456
+
+
 def test_hold_decision_does_not_create_execution_request() -> None:
     adapter = DryRunExecutionAdapter()
     service = DecisionExecutionService(ExecutionEngine(adapter))
