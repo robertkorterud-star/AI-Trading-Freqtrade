@@ -62,6 +62,7 @@ class PaperTradingExecutionAdapter:
                 price_usd=price_usd,
                 amount_nok=amount_nok,
                 reason="ExecutionAdapter: paper BUY",
+                analysis_snapshot_id=request.analysis_snapshot_id,
             )
             return ExecutionResult(
                 status=ExecutionStatus.SIMULATED,
@@ -87,6 +88,7 @@ class PaperTradingExecutionAdapter:
                 amount_nok=result["sale_value_nok"],
                 realized_pnl_nok=result["realized_pnl_nok"],
                 reason="ExecutionAdapter: paper SELL",
+                analysis_snapshot_id=request.analysis_snapshot_id,
             )
 
             return ExecutionResult(
