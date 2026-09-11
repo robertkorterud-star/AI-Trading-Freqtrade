@@ -367,7 +367,15 @@ async def market_candles_api(request: Request):
     symbol = request.query_params.get("symbol", "NVDA").strip().upper()
     period = request.query_params.get("period", "3m").strip().lower()
     interval = request.query_params.get("interval", "1h").strip().lower()
-    valid_periods = {"1d": "1d", "5d": "5d", "1m": "1mo", "3m": "3mo", "6m": "6mo", "1y": "1y"}
+    valid_periods = {
+        "1d": "1d",
+        "5d": "5d",
+        "1m": "1mo",
+        "3m": "3mo",
+        "6m": "6mo",
+        "1y": "1y",
+        "5y": "5y",
+    }
     valid_intervals = {"5m": "5m", "15m": "15m", "1h": "1h", "4h": "4h", "1d": "1d"}
     if not symbol:
         return JSONResponse(content={"error": "Symbol is required."}, status_code=400)
