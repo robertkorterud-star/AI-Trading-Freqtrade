@@ -28,6 +28,7 @@ class TradingService:
         price_usd,
         amount_nok,
         reason="",
+        analysis_snapshot_id=None,
     ):
         trade = TradeRecord(
             symbol=symbol,
@@ -38,6 +39,7 @@ class TradingService:
             realized_pnl_nok=0.0,
             timestamp=datetime.now(),
             reason=reason,
+            analysis_snapshot_id=analysis_snapshot_id,
         )
 
         self._history.append(trade)
@@ -55,6 +57,7 @@ class TradingService:
         amount_nok,
         realized_pnl_nok,
         reason="",
+        analysis_snapshot_id=None,
     ):
         trade = TradeRecord(
             symbol=symbol,
@@ -65,6 +68,7 @@ class TradingService:
             realized_pnl_nok=realized_pnl_nok,
             timestamp=datetime.now(),
             reason=reason,
+            analysis_snapshot_id=analysis_snapshot_id,
         )
 
         self._history.append(trade)
