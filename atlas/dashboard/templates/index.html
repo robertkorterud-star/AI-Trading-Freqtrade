@@ -76,7 +76,9 @@
         <div><strong id="atlas-trade-detail-title">ATLAS trade history</strong><small id="atlas-trade-detail-meta" style="display:block; margin-top:4px; opacity:.7;"></small></div>
         <button id="atlas-trade-detail-close" type="button" class="overview-button">Lukk</button>
     </div>
-    <div id="atlas-trade-detail-chart" style="height:calc(100% - 60px);"></div>
+    <div id="atlas-trade-detail-context" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:0 0 12px;"></div>
+    <div id="atlas-trade-detail-reasoning" style="margin:0 0 12px; opacity:.9;"></div>
+    <div id="atlas-trade-detail-chart" style="height:calc(100% - 145px);"></div>
 </div>
 <div id="atlas-trade-detail-backdrop" hidden style="position:fixed; inset:0; z-index:999; background:rgba(0,0,0,.55);"></div>
 
@@ -112,6 +114,8 @@
     const detailClose=document.getElementById('atlas-trade-detail-close');
     const detailTitle=document.getElementById('atlas-trade-detail-title');
     const detailMeta=document.getElementById('atlas-trade-detail-meta');
+    const detailContext=document.getElementById('atlas-trade-detail-context');
+    const detailReasoning=document.getElementById('atlas-trade-detail-reasoning');
     const detailContainer=document.getElementById('atlas-trade-detail-chart');
 
     function createMainChart(){
@@ -136,6 +140,36 @@
         series.setMarkers(markerData);
     }
 
+    function formatTradeDetail(trade){
+        const snapshot=trade&&trade.analysis_snapshot;
+        const decision=snapshot&&snapshot.decision?snapshot.decision:{};
+        const intelligence=snapshot&&snapshot.intelligence?snapshot.intelligence:{};
+        const escapeHtml=value=>String(value??'—').replace(/[&<>\"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\':'&#92;','"':'&quot;'}[char]));
+        detailContext.innerHTML='';
+        const fields=[
+            ['Handling',trade&&trade.action],
+            ['Pris',trade&&('$'+Number(trade.price_usd).toLocaleString(undefined,{maximumFractionDigits:4}))],
+            ['Beløp',trade&&Number(trade.amount_nok).toLocaleString(undefined,{maximumFractionDigits:2})+' NOK'],
+            ['Resultat',trade&&Number(trade.realized_pnl_nok).toLocaleString(undefined,{maximumFractionDigits:2})+' NOK'],
+            ['Snapshot',snapshot&&snapshot.database_id!=null?'#'+snapshot.database_id:'Ikke koblet'],
+            ['Confidence',decision.confidence!=null?decision.confidence+'%':'—'],
+            ['Evidence',decision.evidence!=null?decision.evidence+'%':'—'],
+            ['Robustness',decision.robustness!=null?decision.robustness:'—'],
+            ['Intelligence',intelligence.action||'—'],
+            ['Consensus',intelligence.agreement!=null?intelligence.agreement+'%':'—']
+        ];
+        fields.forEach(([label,value])=>{
+            const card=document.createElement('div');
+            card.style.cssText='padding:10px;border:1px solid #263241;border-radius:8px;background:#111821;';
+            card.innerHTML='<small style="display:block;opacity:.65;margin-bottom:4px;">'+escapeHtml(label)+'</small><strong>'+escapeHtml(value)+'</strong>';
+            detailContext.appendChild(card);
+        });
+        const reasons=[];
+        if(decision.reasoning&&decision.reasoning.length) reasons.push(...decision.reasoning);
+        if(!reasons.length&&intelligence.reasoning&&intelligence.reasoning.length) reasons.push(...intelligence.reasoning);
+        detailReasoning.innerHTML=reasons.length?'<strong>ATLAS reasoning</strong><div style="margin-top:6px;">'+reasons.slice(0,4).map(escapeHtml).join('<br>')+'</div>':'<span style="opacity:.65;">Ingen lagret reasoning i snapshotet.</span>';
+    }
+
     function renderDetail(){
         if(!detailContainer||!candleData.length)return;
         detailContainer.innerHTML='';
@@ -146,11 +180,27 @@
         detailChart.timeScale().fitContent();
     }
 
-    function openDetail(){
+    function openDetail(event){
         detail.hidden=false;
         backdrop.hidden=false;
-        detailTitle.textContent='ATLAS trade history · '+symbol;
-        detailMeta.textContent=period.toUpperCase()+' · Klikk på chartet for å åpne detaljvisning';
+        detailTitle.textContent='ATLAS trade detail · '+symbol;
+        const clickTime=chart&&chart.timeScale&&typeof chart.timeScale().coordinateToTime==='function'?chart.timeScale().coordinateToTime(event.offsetX):null;
+        const trades=seededTrades.filter(t=>String(t.symbol).toUpperCase()===symbol);
+        let selectedTrade=trades[trades.length-1]||null;
+        if(clickTime&&trades.length){
+            selectedTrade=trades.reduce((best,trade)=>{
+                const distance=Math.abs(Math.floor(new Date(trade.timestamp).getTime()/1000)-Number(clickTime));
+                const bestDistance=Math.abs(Math.floor(new Date(best.timestamp).getTime()/1000)-Number(clickTime));
+                return distance<bestDistance?trade:best;
+            },trades[0]);
+        }
+        if(selectedTrade){
+            detailMeta.textContent=new Date(selectedTrade.timestamp).toLocaleString()+' · Klikk på chartet velger nærmeste ATLAS-handel';
+            formatTradeDetail(selectedTrade);
+        }else{
+            detailMeta.textContent=period.toUpperCase()+' · Ingen ATLAS-handel i valgt område';
+            formatTradeDetail(null);
+        }
         requestAnimationFrame(renderDetail);
     }
 
