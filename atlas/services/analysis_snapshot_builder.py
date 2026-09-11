@@ -45,7 +45,7 @@ class AnalysisSnapshotBuilder:
 
     @staticmethod
     def _serialize_result(result):
-        return {
+        data = {
             "analyst": result.analyst,
             "symbol": result.symbol,
             "action": result.action.value,
@@ -53,6 +53,10 @@ class AnalysisSnapshotBuilder:
             "evidence": float(result.evidence),
             "reasoning": list(result.reasoning),
         }
+        metadata = getattr(result, "metadata", None)
+        if metadata:
+            data["metadata"] = dict(metadata)
+        return data
 
     @staticmethod
     def _serialize_decision(decision):
