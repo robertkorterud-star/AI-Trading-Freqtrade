@@ -36,6 +36,7 @@ class TradeHistoryService:
                     else datetime.fromisoformat(trade["timestamp"])
                 ),
                 reason=trade.get("reason", ""),
+                analysis_snapshot_id=trade.get("analysis_snapshot_id"),
             )
         raise TypeError(f"Unsupported trade record: {type(trade).__name__}")
 
