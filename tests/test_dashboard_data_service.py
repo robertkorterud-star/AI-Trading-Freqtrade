@@ -1,8 +1,11 @@
+from datetime import datetime, timedelta
+
 from atlas.database.analysis_snapshot_repository import AnalysisSnapshotRepository
 from atlas.database.connection import Database
 from atlas.models.analysis_snapshot import AnalysisSnapshot
 from atlas.services.dashboard_data_service import DashboardDataService
 from atlas.core.config import AtlasConfig
+from atlas.trading.trade_record import TradeRecord
 
 
 class _FakeIntelligenceSources:
@@ -243,3 +246,34 @@ def test_dashboard_reports_market_scan_candidates(monkeypatch, tmp_path):
     assert data["market_scan"][0]["selected"] is True
     assert data["market_scan"][0]["discovery_score"] == 92.5
     assert data["market_scan"][0]["decision"] == "BUY"
+
+
+def test_dashboard_exposes_filtered_trade_history_and_markers(tmp_path, monkeypatch):
+    service = _service_with_snapshot(tmp_path)
+    now = datetime(2026, 9, 11, 12, 0, 0)
+    trades = [
+        TradeRecord("XRP-USD", "BUY", 1.0, 1.34, 1.34, 0.0, now - timedelta(hours=2), "test"),
+        TradeRecord("XRP-USD", "SELL", 1.0, 1.39, 1.39, 0.05, now - timedelta(hours=1), "test"),
+        TradeRecord("BTC-USD", "BUY", 1.0, 100000, 100000, 0.0, now - timedelta(days=10), "old"),
+    ]
+    monkeypatch.setattr(service.trading, "history", lambda: [trade.as_dict() for trade in trades])
+
+    data = service.get_dashboard_data(selected_symbol="BTC-USD", trade_history_period="1d", now=now)
+
+    assert data["trade_history_period"] == "1d"
+    assert len(data["trade_history"]) == 2
+    assert [item["action"] for item in data["trade_history"]] == ["BUY", "SELL"]
+    assert data["trade_history_markers"] == [
+        {
+            "symbol": "XRP-USD",
+            "action": "BUY",
+            "price_usd": 1.34,
+            "timestamp": (now - timedelta(hours=2)).isoformat(timespec="seconds"),
+        },
+        {
+            "symbol": "XRP-USD",
+            "action": "SELL",
+            "price_usd": 1.39,
+            "timestamp": (now - timedelta(hours=1)).isoformat(timespec="seconds"),
+        },
+    ]
