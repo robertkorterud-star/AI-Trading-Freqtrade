@@ -12,6 +12,7 @@ from atlas.trading.trading_service import TradingService
 from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
 from atlas.database.trade_repository import TradeRepository
+from atlas.core.config import AtlasConfig
 
 
 class DashboardService:
@@ -32,10 +33,11 @@ class DashboardService:
         return value
 
     def __init__(self, config=None, binance_market_data=None):
-        database = Database((config.database_path if config is not None else None))
+        resolved_config = config or AtlasConfig()
+        database = Database(resolved_config.database_path)
         initialize_database(database)
         trading = TradingService(repository=TradeRepository(database))
-        self.data = DashboardDataService(config=config, trading=trading)
+        self.data = DashboardDataService(config=resolved_config, trading=trading)
         self.scanner = ScannerService()
         self.binance_scanner = BinanceScannerService(
             binance_market_data or BinanceMarketDataAdapter(),
