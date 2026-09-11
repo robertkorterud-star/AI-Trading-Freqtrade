@@ -65,6 +65,25 @@ class AnalysisSnapshotRepository:
 
             return cursor.lastrowid
 
+    def get_by_id(self, snapshot_id: int):
+        """Return one canonical snapshot by database ID."""
+
+        with self.database.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT *
+                FROM analysis_snapshots
+                WHERE id = ?
+                LIMIT 1
+                """,
+                (snapshot_id,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return self._row_to_snapshot(row)
+
     def get_latest(self, symbol: str):
         """Return the newest snapshot for a symbol."""
 
