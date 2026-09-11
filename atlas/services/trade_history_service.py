@@ -12,6 +12,9 @@ class TradeHistoryService:
         "1d": timedelta(days=1),
         "1w": timedelta(weeks=1),
         "1m": timedelta(days=30),
+        "3m": timedelta(days=90),
+        "6m": timedelta(days=180),
+        "1y": timedelta(days=365),
     }
 
     @staticmethod
