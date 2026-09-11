@@ -1,8 +1,12 @@
 from datetime import datetime
 
+from atlas.database.analysis_snapshot_repository import AnalysisSnapshotRepository
 from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
 from atlas.database.trade_repository import TradeRepository
+from atlas.models.action import Action
+from atlas.models.decision_result import DecisionResult
+from atlas.services.analysis_snapshot_builder import AnalysisSnapshotBuilder
 from atlas.trading.trade_record import TradeRecord
 
 
@@ -117,6 +121,28 @@ def test_trade_repository_migrates_existing_paper_trades(tmp_path):
 
     assert len(restored) == 1
     assert restored[0].analysis_snapshot_id is None
+
+
+def test_snapshot_repository_assigns_id_to_original_decision(tmp_path):
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=85.0,
+    )
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=[],
+        decision=decision,
+    )
+
+    snapshot_id = AnalysisSnapshotRepository(database).save(snapshot)
+
+    assert snapshot.database_id == snapshot_id
+    assert decision.analysis_snapshot_id == snapshot_id
 
 
 def test_trade_repository_preserves_chronological_order(tmp_path):
