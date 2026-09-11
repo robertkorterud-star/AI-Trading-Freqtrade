@@ -23,7 +23,7 @@
             {% if request and request.url.path == "/scanner" %}
                 · {{ t("manual_refresh") }}
             {% else %}
-                · {{ t("live_events") }}
+                · LIVE · ATLAS state changes
             {% endif %}
         </span>
     </footer>
@@ -44,7 +44,7 @@
     const source = new EventSource("/api/atlas-events");
 
     source.onopen = function () {
-        if (status) status.textContent = " · {{ t('live_events') }}: connected";
+        if (status) status.textContent = " · LIVE · connected";
     };
 
     source.onmessage = function () {
@@ -58,7 +58,7 @@
     });
 
     source.onerror = function () {
-        if (status) status.textContent = " · {{ t('live_events') }}: reconnecting";
+        if (status) status.textContent = " · LIVE · reconnecting";
     };
 })();
 </script>
