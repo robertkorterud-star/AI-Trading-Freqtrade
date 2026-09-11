@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta
 
+from atlas.trading.trade_record import TradeRecord
+
 
 class TradeHistoryService:
     """Filter persisted trades and expose chart entry/exit markers."""
@@ -12,9 +14,31 @@ class TradeHistoryService:
         "1m": timedelta(days=30),
     }
 
+    @staticmethod
+    def _normalize_trade(trade):
+        """Return a TradeRecord for repository or service history output."""
+        if isinstance(trade, TradeRecord):
+            return trade
+        if isinstance(trade, dict):
+            return TradeRecord(
+                symbol=trade["symbol"],
+                action=trade["action"],
+                quantity=float(trade["quantity"]),
+                price_usd=float(trade["price_usd"]),
+                amount_nok=float(trade["amount_nok"]),
+                realized_pnl_nok=float(trade["realized_pnl_nok"]),
+                timestamp=(
+                    trade["timestamp"]
+                    if isinstance(trade["timestamp"], datetime)
+                    else datetime.fromisoformat(trade["timestamp"])
+                ),
+                reason=trade.get("reason", ""),
+            )
+        raise TypeError(f"Unsupported trade record: {type(trade).__name__}")
+
     def build(self, trades, period="1d", now=None):
         """Return trades and chart markers for the requested history period."""
-        trades = list(trades)
+        trades = [self._normalize_trade(trade) for trade in trades]
         now = now or datetime.now()
 
         if period == "all":
