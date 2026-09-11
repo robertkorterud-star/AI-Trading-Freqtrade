@@ -20,6 +20,7 @@ class TradeRecord:
     realized_pnl_nok: float
     timestamp: datetime
     reason: str = ""
+    analysis_snapshot_id: int | None = None
 
     def as_dict(self):
         return {
@@ -36,4 +37,5 @@ class TradeRecord:
                 timespec="seconds"
             ),
             "reason": self.reason,
+            "analysis_snapshot_id": self.analysis_snapshot_id,
         }
