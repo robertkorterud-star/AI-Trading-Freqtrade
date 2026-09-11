@@ -30,3 +30,8 @@ class AnalysisResult:
     # Optional confidence emitted by the underlying signal engine.
     # This preserves the existing analyst confidence contract.
     signal_confidence: float | None = None
+
+    # Optional structured analyst metadata persisted in canonical snapshots.
+    # Analysts may use this for source/context data that materially informed
+    # their result without changing the common reasoning contract.
+    metadata: dict = field(default_factory=dict)
