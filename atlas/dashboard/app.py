@@ -2,11 +2,13 @@
 ATLAS Dashboard
 """
 
+import asyncio
 from datetime import datetime
+import json
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -24,6 +26,7 @@ from atlas.services.multi_timeframe_service import MultiTimeframeService
 from atlas.core.config import AtlasConfig
 from atlas.database.connection import Database
 from atlas.database.schema import initialize_database
+from atlas.database.event_repository import AtlasEventRepository
 from atlas.security.auth_middleware import AuthenticationMiddleware
 from atlas.security.auth_service import AuthService
 
@@ -37,6 +40,7 @@ initialize_database(database)
 auth_service = AuthService(database)
 app.add_middleware(AuthenticationMiddleware, auth_service=auth_service)
 
+event_repository = AtlasEventRepository(database)
 service = DashboardService(config=config)
 settings_service = SettingsService(config=config)
 market_search = MarketSearchService()
@@ -273,6 +277,44 @@ async def dashboard_api(request: Request):
         trade_history_period=trade_history_period,
     )
     return JSONResponse(content=build_dashboard_api_payload(dashboard))
+
+
+@app.get("/api/atlas-events")
+async def atlas_events(request: Request):
+    """Stream ATLAS state changes without rebuilding the dashboard repeatedly."""
+    try:
+        last_event_id = int(request.headers.get("Last-Event-ID", "0"))
+    except ValueError:
+        last_event_id = 0
+
+    async def event_stream():
+        cursor = last_event_id
+        while not await request.is_disconnected():
+            events = event_repository.after(cursor)
+            if events:
+                for event in events:
+                    cursor = event["id"]
+                    yield (
+                        f"id: {event['id']}\n"
+                        f"event: {event['type']}\n"
+                        f"data: {json.dumps(event['payload'], ensure_ascii=False, sort_keys=True)}\n\n"
+                    )
+                continue
+
+            # SQLite is the cross-process event transport. This is deliberately
+            # a cheap event-log check, not a dashboard rebuild or market/API call.
+            yield ": heartbeat\n\n"
+            await asyncio.sleep(1.0)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/api/market-search")
