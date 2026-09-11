@@ -18,9 +18,6 @@ from atlas.core.config import AtlasConfig
 class DashboardService:
     """Provides dashboard data."""
 
-    # Scanner market data is intentionally refreshed only once per hour.
-    # The scanner page reads the cached snapshot and never triggers a fresh
-    # Binance request simply because the page was opened/refreshed.
     SCANNER_CACHE_TTL_SECONDS = 3600.0
 
     @staticmethod
@@ -56,12 +53,8 @@ class DashboardService:
             return self._scanner_cache
 
         try:
-            # Keep the full eligible universe so Scanner filters/search can
-            # find symbols that are outside the default top-50 ranking.
             result = self.binance_scanner.scan(limit=1000)
         except Exception:
-            # The dashboard remains available when Binance is temporarily
-            # unreachable or returns an invalid public market response.
             result = ScannerResult(0, 0, tuple())
 
         self._scanner_cache = result
@@ -72,8 +65,13 @@ class DashboardService:
         """Return the cached scanner snapshot without loading full dashboard data."""
         return self.scanner.as_dict(self._get_scanner_result())
 
-    def get_dashboard(self, selected_symbol=None):
+    def get_dashboard(self, selected_symbol=None, trade_history_period="1d", now=None):
+        """Return dashboard data, including period-filtered trade history."""
         normalized_symbol = self._normalize_dashboard_symbol(selected_symbol)
-        dashboard = self.data.get_dashboard_data(selected_symbol=normalized_symbol)
+        dashboard = self.data.get_dashboard_data(
+            selected_symbol=normalized_symbol,
+            trade_history_period=trade_history_period,
+            now=now,
+        )
         dashboard["scanner"] = self.get_scanner()
         return dashboard
