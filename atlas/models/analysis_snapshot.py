@@ -18,6 +18,7 @@ class AnalysisSnapshot:
     results: list[dict]
     decision: dict
     intelligence: dict
+    decision_ref: object | None = None
 
     def as_dict(self):
         return {
