@@ -183,15 +183,15 @@ def test_dashboard_reports_canonical_intelligence_summary(tmp_path):
     data = service.get_dashboard_data(selected_symbol="NVDA")
     intelligence = data["intelligence"]
 
-    assert intelligence["symbol"] == "NVDA"
-    assert intelligence["action"] == "BUY"
-    assert intelligence["agreement"] == 100.0
-    assert intelligence["buy_count"] == 2
-    assert intelligence["hold_count"] == 0
-    assert intelligence["sell_count"] == 0
-    assert intelligence["conflict"] is False
-    assert intelligence["analysts"]
-    assert intelligence["reasoning"]
+    assert intelligence.symbol == "NVDA"
+    assert intelligence.action.value == "BUY"
+    assert intelligence.agreement == 100.0
+    assert intelligence.buy_count == 2
+    assert intelligence.hold_count == 0
+    assert intelligence.sell_count == 0
+    assert intelligence.conflict is False
+    assert intelligence.analysts
+    assert intelligence.reasoning
 
 
 def test_dashboard_decision_and_explanation_come_from_snapshot(tmp_path):
