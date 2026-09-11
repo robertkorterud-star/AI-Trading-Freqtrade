@@ -4,6 +4,8 @@ News Analyst
 Analyzes recent financial news using the AI adapter.
 """
 
+from dataclasses import asdict, is_dataclass
+
 from atlas.agents.base_agent import BaseAgent
 from atlas.adapters.news import NewsAdapter
 from atlas.models.action import Action
@@ -20,6 +22,28 @@ class NewsAnalyst(BaseAgent):
 
         self.news = NewsAdapter()
         self.news_explanation = None
+
+    @staticmethod
+    def _serialize_articles(articles: list) -> list[dict]:
+        """Convert the exact articles supplied to the analyst into snapshot-safe data."""
+        serialized = []
+        for article in articles or []:
+            if isinstance(article, dict):
+                serialized.append(dict(article))
+            elif is_dataclass(article):
+                serialized.append(asdict(article))
+            else:
+                serialized.append(
+                    {
+                        "title": getattr(article, "title", ""),
+                        "source": getattr(article, "source", ""),
+                        "summary": getattr(article, "summary", ""),
+                        "url": getattr(article, "url", ""),
+                        "sentiment": getattr(article, "sentiment", ""),
+                        "related": getattr(article, "related", ()),
+                    }
+                )
+        return serialized
 
     def analyze(self, symbol: str) -> AnalysisResult:
         """
@@ -90,6 +114,7 @@ class NewsAnalyst(BaseAgent):
                 reasoning=[
                     "No relevant news available.",
                 ],
+                metadata={"news_items": []},
             )
 
         ai = AIProviderFactory.create(
@@ -141,63 +166,33 @@ class NewsAnalyst(BaseAgent):
             )
         )
 
-        # -------------------------------------------------
-        # Convert AI's directional signal into ATLAS
-        # evidence.
-        #
-        # Relevance is deliberately NOT used directly as
-        # evidence. A highly relevant article can still
-        # support HOLD or SELL.
-        # -------------------------------------------------
-
         if action == Action.BUY:
-
             evidence = 80.0
-
             if impact == "HIGH":
                 evidence += 10.0
             elif impact == "MEDIUM":
                 evidence += 5.0
-
             if sentiment == "POSITIVE":
                 evidence += 5.0
-
-            evidence = min(
-                evidence,
-                100.0,
-            )
+            evidence = min(evidence, 100.0)
 
         elif action == Action.SELL:
-
             evidence = 40.0
-
             if impact == "HIGH":
                 evidence -= 10.0
             elif impact == "MEDIUM":
                 evidence -= 5.0
-
             if sentiment == "NEGATIVE":
                 evidence -= 5.0
-
-            evidence = max(
-                evidence,
-                0.0,
-            )
+            evidence = max(evidence, 0.0)
 
         else:
-
             evidence = 70.0
-
             if impact == "LOW":
                 evidence -= 5.0
-
             if sentiment == "MIXED":
                 evidence += 5.0
-
-            evidence = max(
-                60.0,
-                min(evidence, 79.0),
-            )
+            evidence = max(60.0, min(evidence, 79.0))
 
         reasoning = [
             f"AI news sentiment: {sentiment}.",
@@ -216,6 +211,7 @@ class NewsAnalyst(BaseAgent):
             confidence=confidence,
             evidence=evidence,
             reasoning=reasoning,
+            metadata={"news_items": self._serialize_articles(articles)},
         )
 
     def analyze_with_news(
