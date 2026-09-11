@@ -23,7 +23,7 @@
             {% if request and request.url.path == "/scanner" %}
                 · {{ t("manual_refresh") }}
             {% else %}
-                · {{ t("live_refresh") }}: 30s
+                · {{ t("live_refresh") }}: 15s
             {% endif %}
         </span>
     </footer>
@@ -37,8 +37,8 @@
 </script>
 <script>
 (function () {
-    if (window.location.pathname === "/scanner" || window.location.pathname === "/") return;
-    const REFRESH_MS = 30000;
+    if (window.location.pathname === "/scanner") return;
+    const REFRESH_MS = 15000;
     let countdown = REFRESH_MS / 1000;
     const status = document.getElementById("atlas-refresh-status");
     const timer = window.setInterval(function () {
