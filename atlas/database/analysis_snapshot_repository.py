@@ -60,6 +60,9 @@ class AnalysisSnapshotRepository:
 
             snapshot.database_id = cursor.lastrowid
 
+            if snapshot.decision_ref is not None:
+                snapshot.decision_ref.analysis_snapshot_id = cursor.lastrowid
+
             return cursor.lastrowid
 
     def get_latest(self, symbol: str):
