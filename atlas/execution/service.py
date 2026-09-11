@@ -24,16 +24,7 @@ class DecisionExecutionService:
         price: float | None = None,
         analysis_snapshot_id: int | None = None,
     ) -> ExecutionResult | None:
-        """Execute an approved directional decision through the adapter.
-
-        HOLD and WATCH decisions produce no execution request. Directional
-        decisions require an allowed risk assessment with a positive position
-        size. When a portfolio assessment is present, it must also be allowed,
-        preventing a portfolio veto from being bypassed at execution.
-
-        ``analysis_snapshot_id`` links a resulting paper trade back to the
-        exact canonical ATLAS analysis snapshot that produced the decision.
-        """
+        """Execute an approved directional decision through the adapter."""
         if decision.action in {Action.HOLD, Action.WATCH}:
             return None
 
@@ -51,11 +42,17 @@ class DecisionExecutionService:
         if portfolio is not None and not portfolio.allowed:
             raise ValueError("directional execution requires an allowed portfolio assessment")
 
+        linked_snapshot_id = (
+            analysis_snapshot_id
+            if analysis_snapshot_id is not None
+            else getattr(decision, "analysis_snapshot_id", None)
+        )
+
         request = ExecutionRequest(
             symbol=decision.symbol,
             action=decision.action,
             quantity=risk.position_size,
             price=price,
-            analysis_snapshot_id=analysis_snapshot_id,
+            analysis_snapshot_id=linked_snapshot_id,
         )
         return self.execution_engine.execute(request)
