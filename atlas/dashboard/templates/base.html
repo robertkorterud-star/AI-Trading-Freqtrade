@@ -23,7 +23,7 @@
             {% if request and request.url.path == "/scanner" %}
                 · {{ t("manual_refresh") }}
             {% else %}
-                · {{ t("live_refresh") }}: 15s
+                · {{ t("live_events") }}
             {% endif %}
         </span>
     </footer>
@@ -37,19 +37,29 @@
 </script>
 <script>
 (function () {
-    if (window.location.pathname === "/scanner") return;
-    const REFRESH_MS = 15000;
-    let countdown = REFRESH_MS / 1000;
+    if (window.location.pathname !== "/") return;
+    if (!window.EventSource) return;
+
     const status = document.getElementById("atlas-refresh-status");
-    const timer = window.setInterval(function () {
-        countdown -= 1;
-        if (status) status.textContent = " · {{ t('live_refresh') }}: " + countdown + "s";
-        if (countdown <= 0) {
-            window.clearInterval(timer);
-            if (window.location.pathname.startsWith("/market/")) return;
+    const source = new EventSource("/api/atlas-events");
+
+    source.onopen = function () {
+        if (status) status.textContent = " · {{ t('live_events') }}: connected";
+    };
+
+    source.onmessage = function () {
+        window.location.reload();
+    };
+
+    ["DECISION_READY", "TRADE_EXECUTED", "LEARNING_UPDATED"].forEach(function (eventName) {
+        source.addEventListener(eventName, function () {
             window.location.reload();
-        }
-    }, 1000);
+        });
+    });
+
+    source.onerror = function () {
+        if (status) status.textContent = " · {{ t('live_events') }}: reconnecting";
+    };
 })();
 </script>
 </body>
