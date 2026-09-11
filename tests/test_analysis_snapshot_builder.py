@@ -94,3 +94,16 @@ def test_snapshot_builder_preserves_action_support_round_trip():
     )
     assert data["action_support_action"] == "BUY"
     assert data["action_support_weight"] == 0.60
+
+
+def test_snapshot_builder_keeps_reference_to_decision_for_trade_linkage():
+    decision = make_decision()
+
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=make_results(),
+        decision=decision,
+    )
+
+    assert snapshot.decision_ref is decision
+    assert decision.analysis_snapshot_id is None
