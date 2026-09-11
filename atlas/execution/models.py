@@ -22,6 +22,7 @@ class ExecutionRequest:
     action: Action
     quantity: float
     price: float | None = None
+    analysis_snapshot_id: int | None = None
 
     def __post_init__(self) -> None:
         if not self.symbol.strip():
@@ -34,6 +35,8 @@ class ExecutionRequest:
             raise ValueError("quantity must be greater than zero")
         if self.price is not None and self.price <= 0:
             raise ValueError("price must be greater than zero when provided")
+        if self.analysis_snapshot_id is not None and self.analysis_snapshot_id <= 0:
+            raise ValueError("analysis_snapshot_id must be greater than zero when provided")
 
 
 @dataclass(frozen=True, slots=True)
