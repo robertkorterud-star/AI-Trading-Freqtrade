@@ -40,6 +40,7 @@ class AnalysisSnapshotBuilder:
                 results,
                 decision,
             ),
+            decision_ref=decision,
         )
 
     @staticmethod
