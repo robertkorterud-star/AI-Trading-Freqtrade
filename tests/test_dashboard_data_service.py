@@ -123,6 +123,37 @@ def test_dashboard_waits_for_canonical_runtime_snapshot(tmp_path):
     assert data["intelligence"] is None
 
 
+def test_dashboard_keeps_selected_market_visible_while_waiting_for_runtime(tmp_path, monkeypatch):
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+    )
+    service = DashboardDataService(
+        config=config,
+        intelligence_sources=_FakeIntelligenceSources(),
+    )
+
+    class _FakeMarket:
+        price = 1.35
+        change_percent = 2.5
+
+    monkeypatch.setattr(service.market_data, "get", lambda symbol: _FakeMarket())
+
+    data = service.get_dashboard_data(selected_symbol="XRP-USD")
+
+    selected = next(item for item in data["market"] if item["symbol"] == "XRP-USD")
+
+    assert selected["is_selected"] is True
+    assert selected["price_usd"] == 1.35
+    assert selected["change"] == 2.5
+    assert selected["decision"] == "WAITING"
+    assert selected["confidence"] is None
+    assert selected["evidence"] is None
+    assert data["status"] == "Waiting for ATLAS runtime"
+    assert data["decision"] is None
+    assert data["intelligence"] is None
+
+
 def test_dashboard_reports_agent_performance(tmp_path):
     service = _service_with_snapshot(tmp_path)
     data = service.get_dashboard_data(selected_symbol="BTC-USD")

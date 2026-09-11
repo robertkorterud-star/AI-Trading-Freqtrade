@@ -199,6 +199,27 @@ class DashboardDataService:
         for symbol in watchlist:
             stored_snapshot = self.snapshot_repository.get_latest_valid(symbol)
             if stored_snapshot is None:
+                # Keep the explicitly selected market visible while ATLAS is
+                # waiting for its first canonical runtime snapshot. This is
+                # display-only market data; it must not create a decision.
+                if symbol == selected_symbol:
+                    try:
+                        live_market = self.market_data.get(symbol)
+                        price_usd = round(float(live_market.price), 2)
+                        market.append({
+                            "symbol": symbol,
+                            "is_selected": True,
+                            "favorite": False,
+                            "price_usd": price_usd,
+                            "price_nok": round(price_usd * exchange.rate, 2),
+                            "change": round(float(live_market.change_percent), 2),
+                            "trend": None,
+                            "decision": "WAITING",
+                            "confidence": None,
+                            "evidence": None,
+                        })
+                    except Exception:
+                        pass
                 continue
             results = self._snapshot_results(stored_snapshot)
             decision = self._snapshot_decision(stored_snapshot)
