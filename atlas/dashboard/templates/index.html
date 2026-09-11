@@ -2,15 +2,16 @@
 
 {% block content %}
 {# Existing dashboard data contract: /market/{{ dashboard.intelligence.symbol }} #}
-{% set intelligence_symbol = dashboard.intelligence.symbol|default(request.query_params.get("symbol") or "BTC-USD", true) %}
+{% set intelligence_symbol = dashboard.intelligence.symbol|default("BTC-USD", true) %}
 {% set primary_action = dashboard.intelligence.action|default(dashboard.decision.action|default("HOLD", true), true) %}
+{% set trade_chart = dashboard.trade_chart|default({}, true) %}
 
 <div class="overview-page">
     <section class="overview-hero">
         <div>
             <div class="overview-kicker">ATLAS AI Trading Intelligence</div>
             <h1>{{ t("market_overview") }}</h1>
-            <p>Én kommandosentral for marked, portefølje, overvåkningsliste og ATLAS-overbevisning.</p>
+            <p>Én kommandosentral for ATLAS, portefølje, markedspuls og faktisk handelshistorikk.</p>
         </div>
         <div class="overview-hero-actions">
             <a class="overview-button primary" href="/scanner">{{ t("scanner") }}</a>
@@ -21,45 +22,33 @@
     <section class="overview-card overview-market-workspace">
         <header>
             <div>
-                <div class="overview-kicker">{{ t("live_market") }}</div>
-                <h2 id="overview-market-title">{{ dashboard.intelligence.symbol|default(request.query_params.get("symbol") or "BTC-USD", true) }}</h2>
-                <small id="overview-market-subtitle">{{ t("read_only_market_view") }}</small>
+                <div class="overview-kicker">ATLAS TRADING HISTORY</div>
+                <h2 id="overview-market-title">{{ trade_chart.symbol|default(intelligence_symbol, true) }}</h2>
+                <small id="overview-market-subtitle">Faktiske paper trades fra ATLAS</small>
             </div>
             {% if primary_action == "BUY" %}<span class="overview-action buy">{{ t("buy") }}{% elif primary_action == "SELL" %}<span class="overview-action sell">{{ t("sell") }}{% else %}<span class="overview-action hold">{{ t("hold") }}{% endif %}</span>
         </header>
 
-        <div class="overview-market-search" style="position:relative; margin:16px 0;">
-            <label for="overview-market-search-input"><strong>{{ t("search_symbol") }}</strong></label>
-            <div style="display:flex; gap:10px; margin-top:6px;">
-                <input id="overview-market-search-input" type="search" autocomplete="off" placeholder="BTC, Bitcoin, NVIDIA, AAPL ..." style="flex:1; min-width:0;">
-                <button id="overview-market-search-button" type="button" class="overview-button primary">{{ t("search_symbol") }}</button>
-            </div>
-            <div id="overview-market-search-results" role="listbox" style="display:none; position:absolute; z-index:20; left:0; right:0; top:68px;"></div>
-        </div>
-
-        <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:10px;">
+        <div style="display:flex; gap:24px; flex-wrap:wrap; margin:16px 0 10px;">
             <strong id="overview-market-price">—</strong>
             <span id="overview-market-change">—</span>
-            <span id="overview-market-type">—</span>
+            <span id="overview-chart-status">—</span>
         </div>
-        <div id="atlas-candles" class="overview-chart" style="min-height:420px;"></div>
+
+        <div id="atlas-candles" class="overview-chart" style="min-height:420px; cursor:crosshair;"></div>
         <div class="overview-chart-controls">
             <div class="overview-chart-control-group">
-                <span class="overview-chart-control-label">Periode</span>
-                {% for timeframe in [("1d", "1D"), ("5d", "5D"), ("1m", "1M"), ("3m", "3M"), ("6m", "6M"), ("1y", "1Y")] %}<button type="button" class="overview-button overview-period" data-period="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
-            </div>
-            <div class="overview-chart-control-group">
-                <span class="overview-chart-control-label">Intervall</span>
-                {% for timeframe in [("5m", "5m"), ("15m", "15m"), ("1h", "1h"), ("4h", "4h"), ("1d", "1D")] %}<button type="button" class="overview-button overview-interval" data-interval="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
+                <span class="overview-chart-control-label">Historikk</span>
+                {% for timeframe in [("1d", "1D"), ("1w", "1U"), ("1m", "1M"), ("all", "ALT")] %}<button type="button" class="overview-button overview-period" data-period="{{ timeframe[0] }}">{{ timeframe[1] }}</button>{% endfor %}
             </div>
         </div>
-        <div class="overview-chart-footer"><span>{{ t("signal_informational") }}</span><span id="overview-chart-status">—</span></div>
+        <div class="overview-chart-footer"><span>{{ t("signal_informational") }}</span><span>BUY/SELL-markører viser faktiske ATLAS-handler</span></div>
     </section>
 
     <section class="overview-conviction">
         <div class="overview-conviction-copy">
             <div class="overview-kicker">{{ t("atlas_conviction") }}</div>
-            <div class="overview-conviction-title"><span>{{ t("atlas_sees") }}</span>{% if primary_action == "BUY" %}<span class="overview-action buy">{{ t("buy") }}</span>{% elif primary_action == "SELL" %}<span class="overview-action sell">{{ t("sell") }}</span>{% else %}<span class="overview-action hold">{{ t("hold") }}</span>{% endif %}<a class="overview-symbol" href="/market/{{ dashboard.intelligence.symbol|default(request.query_params.get("symbol") or "BTC-USD", true) }}">{{ dashboard.intelligence.symbol|default(request.query_params.get("symbol") or "BTC-USD", true) }}</a></div>
+            <div class="overview-conviction-title"><span>{{ t("atlas_sees") }}</span>{% if primary_action == "BUY" %}<span class="overview-action buy">{{ t("buy") }}</span>{% elif primary_action == "SELL" %}<span class="overview-action sell">{{ t("sell") }}</span>{% else %}<span class="overview-action hold">{{ t("hold") }}</span>{% endif %}<a class="overview-symbol" href="/market/{{ intelligence_symbol }}">{{ intelligence_symbol }}</a></div>
             <p>{% if dashboard.intelligence and dashboard.intelligence.reasoning %}{{ dashboard.intelligence.reasoning[0] }}{% elif dashboard.decision and dashboard.decision.reasoning %}{{ dashboard.decision.reasoning[0] }}{% else %}{{ t("waiting_evidence") }}{% endif %}</p>
         </div>
         <div class="overview-conviction-metrics"><div><small>{{ t("confidence") }}</small><strong>{{ dashboard.intelligence.confidence|default(0, true) }}%</strong></div><div><small>{{ t("robustness") }}</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div><div><small>{{ t("consensus") }}</small><strong>{{ dashboard.intelligence.agreement|default(0, true) }}%</strong></div></div>
@@ -72,47 +61,150 @@
         <div class="overview-stat"><small>{{ t("total_return") }}</small><strong class="{% if dashboard.portfolio.return_percent|default(0, true) >= 0 %}positive{% else %}negative{% endif %}">{% if dashboard.portfolio.return_percent|default(0, true) >= 0 %}+{% endif %}{{ dashboard.portfolio.return_percent|default(0, true) }}%</strong><span class="muted">{{ t("total_pl") }} {{ dashboard.portfolio.total_pnl_nok|default(0, true) }} NOK</span></div>
     </section>
 
-    <section class="overview-card overview-pulse"><header><div><h2>{{ t("market_pulse") }}</h2><small>{{ t("dashboard_universe") }}</small></div><a class="overview-button" href="/markets">{{ t("full_market_view") }}</a></header><div class="overview-pulse-grid">{% for item in dashboard.market[:6] %}<a class="overview-pulse-item" href="/?symbol={{ item.symbol|urlencode }}"><div class="overview-pulse-top"><strong>{{ item.symbol }}</strong><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></div><div class="overview-pulse-price">{{ item.price_nok }} NOK</div><div class="overview-pulse-bottom"><span class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</span><span>{% if item.confidence is not none %}{{ item.confidence }}% {{ t("confidence_lower") }}{% else %}—{% endif %}</span></div></a>{% else %}<p>{{ t("no_ranked_candidates") }}</p>{% endfor %}</div></section>
+    <section class="overview-card overview-pulse"><header><div><h2>{{ t("market_pulse") }}</h2><small>{{ t("dashboard_universe") }}</small></div><a class="overview-button" href="/markets">{{ t("full_market_view") }}</a></header><div class="overview-pulse-grid">{% for item in dashboard.market[:6] %}<a class="overview-pulse-item" href="/?symbol={{ item.symbol|urlencode }}"><div class="overview-pulse-top"><strong>{{ item.symbol }}</strong><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></div><div class="overview-pulse-price">{{ item.price_nok }} NOK</div><div class="overview-pulse-bottom"><span class="{% if item.change is not none and item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change is not none and item.change >= 0 %}+{% endif %}{{ item.change if item.change is not none else "—" }}{% if item.change is not none %}%{% endif %}</span><span>{% if item.confidence is not none %}{{ item.confidence }}% {{ t("confidence_lower") }}{% else %}—{% endif %}</span></div></a>{% else %}<p>{{ t("no_ranked_candidates") }}</p>{% endfor %}</div></section>
 
     <section class="overview-columns">
         <div class="overview-card table-wrap"><header><div><h2>{{ t("opportunities") }}</h2><small>{{ t("ranked_candidates") }}</small></div><a class="overview-button" href="/scanner">{{ t("view_scanner") }}</a></header>{% if dashboard.market_scan %}<table class="overview-table"><thead><tr><th>{{ t("asset") }}</th><th>{{ t("signal") }}</th><th>{{ t("confidence") }}</th><th>{{ t("discovery") }}</th><th>{{ t("why_it_matters") }}</th></tr></thead><tbody>{% for item in dashboard.market_scan %}<tr><td><a class="overview-symbol" href="/?symbol={{ item.symbol|urlencode }}">{{ item.symbol }}</a><span class="overview-sub">{% if item.selected %}{{ t("top_ranked_candidate") }}{% else %}{{ t("market_candidate") }}{% endif %}</span></td><td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}</span></td><td><span class="overview-score">{{ item.confidence }}%</span></td><td>{{ item.discovery_score }}</td><td class="overview-why">{% if item.selected %}{{ t("highest_current_ranking") }}{% elif item.decision == "BUY" %}{{ t("positive_decision_signal") }}{% elif item.decision == "SELL" %}{{ t("downside_signal") }}{% else %}{{ t("mixed_evidence_watch") }}{% endif %}</td></tr>{% endfor %}</tbody></table>{% else %}<p>{{ t("no_ranked_candidates") }}</p>{% endif %}</div>
-        <div class="overview-card"><header><div><h2>{{ t("intelligence") }}</h2><small>{{ dashboard.intelligence.symbol|default(request.query_params.get("symbol") or "BTC-USD", true) }}</small></div><span class="overview-action {{ primary_action|lower }}">{{ primary_action }}</span></header><div class="overview-intelligence"><div><small>{{ t("confidence") }}</small><strong>{{ dashboard.intelligence.confidence|default(0, true) }}%</strong></div><div><small>{{ t("evidence") }}</small><strong>{{ dashboard.intelligence.evidence|default(0, true) }}%</strong></div><div><small>{{ t("agreement") }}</small><strong>{{ dashboard.intelligence.agreement|default(0, true) }}%</strong></div></div><div class="overview-intelligence overview-intelligence-secondary"><div><small>{{ t("robustness") }}</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div><div><small>{{ t("level") }}</small><strong>{{ dashboard.decision_robustness.level }}</strong></div><div><small>{{ t("dominant_influence") }}</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div></div>{% for reason in (dashboard.intelligence.reasoning if dashboard.intelligence else [])[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}</div>
+        <div class="overview-card"><header><div><h2>{{ t("intelligence") }}</h2><small>{{ intelligence_symbol }}</small></div><span class="overview-action {{ primary_action|lower }}">{{ primary_action }}</span></header><div class="overview-intelligence"><div><small>{{ t("confidence") }}</small><strong>{{ dashboard.intelligence.confidence|default(0, true) }}%</strong></div><div><small>{{ t("evidence") }}</small><strong>{{ dashboard.intelligence.evidence|default(0, true) }}%</strong></div><div><small>{{ t("agreement") }}</small><strong>{{ dashboard.intelligence.agreement|default(0, true) }}%</strong></div></div><div class="overview-intelligence overview-intelligence-secondary"><div><small>{{ t("robustness") }}</small><strong>{{ dashboard.decision_robustness.robustness }}</strong></div><div><small>{{ t("level") }}</small><strong>{{ dashboard.decision_robustness.level }}</strong></div><div><small>{{ t("dominant_influence") }}</small><strong>{{ dashboard.decision_influence.dominant_action }}</strong></div></div>{% for reason in (dashboard.intelligence.reasoning if dashboard.intelligence else [])[:4] %}<div class="overview-reason">{{ reason }}</div>{% endfor %}</div>
     </section>
 
-    <section class="overview-columns"><div class="overview-card table-wrap"><header><div><h2>{{ t("watchlist") }}</h2><small>{{ t("latest_context") }}</small></div><a class="overview-button" href="/markets">{{ t("manage") }}</a></header><table class="overview-table"><thead><tr><th>{{ t("asset") }}</th><th>{{ t("current_price") }}</th><th>{{ t("return") }}</th><th>ATLAS</th></tr></thead><tbody>{% for item in dashboard.market %}<tr><td><a class="overview-symbol" href="/?symbol={{ item.symbol|urlencode }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td><td>{{ item.price_nok }} NOK</td><td class="{% if item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change >= 0 %}+{% endif %}{{ item.change }}%</td><td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}{% if item.confidence is not none %} · {{ item.confidence }}%{% endif %}</span></td></tr>{% endfor %}</tbody></table></div><div class="overview-card"><header><div><h2>{{ t("news_events") }}</h2><small>{{ t("latest_context") }}</small></div></header><div class="overview-news">{% if dashboard.news %}{% for article in dashboard.news[:5] %}<div class="overview-news-item"><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a><small>{{ article.source }}</small></div>{% endfor %}{% else %}<p>{{ t("no_news_available") }}</p>{% endif %}</div></div></section>
+    <section class="overview-columns"><div class="overview-card table-wrap"><header><div><h2>{{ t("watchlist") }}</h2><small>{{ t("latest_context") }}</small></div><a class="overview-button" href="/markets">{{ t("manage") }}</a></header><table class="overview-table"><thead><tr><th>{{ t("asset") }}</th><th>{{ t("current_price") }}</th><th>{{ t("return") }}</th><th>ATLAS</th></tr></thead><tbody>{% for item in dashboard.market %}<tr><td><a class="overview-symbol" href="/?symbol={{ item.symbol|urlencode }}">{{ item.symbol }}</a>{% if item.favorite %}<span class="overview-favorite">★</span>{% endif %}</td><td>{{ item.price_nok }} NOK</td><td class="{% if item.change is not none and item.change >= 0 %}positive{% else %}negative{% endif %}">{% if item.change is not none and item.change >= 0 %}+{% endif %}{{ item.change if item.change is not none else "—" }}{% if item.change is not none %}%{% endif %}</td><td><span class="overview-action {{ item.decision|lower }}">{{ item.decision }}{% if item.confidence is not none %} · {{ item.confidence }}%{% endif %}</span></td></tr>{% endfor %}</tbody></table></div><div class="overview-card"><header><div><h2>{{ t("news_events") }}</h2><small>{{ t("latest_context") }}</small></div></header><div class="overview-news">{% if dashboard.news %}{% for article in dashboard.news[:5] %}<div class="overview-news-item"><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a><small>{{ article.source }}</small></div>{% endfor %}{% else %}<p>{{ t("no_news_available") }}</p>{% endif %}</div></div></section>
 </div>
+
+<div id="atlas-trade-detail" hidden style="position:fixed; inset:5vh 5vw; z-index:1000; background:#0d1117; border:1px solid #263241; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.55); padding:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:10px;">
+        <div><strong id="atlas-trade-detail-title">ATLAS trade history</strong><small id="atlas-trade-detail-meta" style="display:block; margin-top:4px; opacity:.7;"></small></div>
+        <button id="atlas-trade-detail-close" type="button" class="overview-button">Lukk</button>
+    </div>
+    <div id="atlas-trade-detail-chart" style="height:calc(100% - 60px);"></div>
+</div>
+<div id="atlas-trade-detail-backdrop" hidden style="position:fixed; inset:0; z-index:999; background:rgba(0,0,0,.55);"></div>
 
 <script src="https://unpkg.com/lightweight-charts@5.0.4/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (function () {
-    const container=document.getElementById('atlas-candles'); if(!container||!window.LightweightCharts)return;
-    const initialSymbol={{ intelligence_symbol|tojson }}; const marketRows={{ dashboard.market|tojson }}; const querySymbol=new URLSearchParams(window.location.search).get('symbol'); let symbol=(querySymbol||initialSymbol||'BTC-USD').toUpperCase();
-    const periodPresets={
-        '1d':{interval:'5m',limit:288},
-        '5d':{interval:'15m',limit:480},
-        '1m':{interval:'1h',limit:720},
-        '3m':{interval:'4h',limit:540},
-        '6m':{interval:'1d',limit:180},
-        '1y':{interval:'1d',limit:365}
+    const container=document.getElementById('atlas-candles');
+    if(!container||!window.LightweightCharts)return;
+
+    const symbol={{ trade_chart.symbol|default(intelligence_symbol, true)|tojson }};
+    const initialPeriod={{ trade_chart.period|default('1d', true)|tojson }};
+    const seededTrades={{ trade_chart.trades|default([], true)|tojson }};
+    let period=initialPeriod;
+    let candleData=[];
+    let markerData=[];
+    let chart;
+    let series;
+    let detailChart;
+    let detailSeries;
+
+    const periodConfig={
+        '1d':{period:'1d',interval:'5m'},
+        '1w':{period:'5d',interval:'15m'},
+        '1m':{period:'1m',interval:'1h'},
+        'all':{period:'5y',interval:'1d'}
     };
-    const intervalPeriods={'5m':'1d','15m':'5d','1h':'1m','4h':'3m','1d':'1y'};
-    const storedPeriod=localStorage.getItem('atlas.chart.period'); let period=storedPeriod||'3m'; let interval=periodPresets[period].interval; let chartInitialized=false;
-    function syncIntervalToPeriod(){interval=periodPresets[period].interval;localStorage.setItem('atlas.chart.interval',interval);}
-    function syncPeriodToInterval(){period=intervalPeriods[interval]||period;localStorage.setItem('atlas.chart.period',period);}
-    const chart=LightweightCharts.createChart(container,{width:container.clientWidth,height:420,layout:{background:{type:'solid',color:'#0d1117'},textColor:'#9aa4b2'},grid:{vertLines:{color:'#18202a'},horzLines:{color:'#18202a'}},rightPriceScale:{borderColor:'#263241'},timeScale:{borderColor:'#263241',timeVisible:true,secondsVisible:false}});
-    const series=chart.addSeries(LightweightCharts.CandlestickSeries,{upColor:'#16c784',downColor:'#ea3943',borderVisible:false,wickUpColor:'#16c784',wickDownColor:'#ea3943'});
-    const input=document.getElementById('overview-market-search-input'),button=document.getElementById('overview-market-search-button'),box=document.getElementById('overview-market-search-results'),title=document.getElementById('overview-market-title'),subtitle=document.getElementById('overview-market-subtitle'),price=document.getElementById('overview-market-price'),change=document.getElementById('overview-market-change'),type=document.getElementById('overview-market-type'),status=document.getElementById('overview-chart-status');
-    function native(value){const u=value.toUpperCase();if(u.endsWith('USDT')||u.endsWith('USDC'))return u;return {'BTC-USD':'BTCUSDT','ETH-USD':'ETHUSDT','SOL-USD':'SOLUSDT','XRP-USD':'XRPUSDT'}[u]||null;}
-    function meta(){const row=marketRows.find(item=>String(item.symbol).toUpperCase()===symbol);title.textContent=symbol;if(row){price.textContent=row.price_usd==null?'—':'$'+Number(row.price_usd).toLocaleString(undefined,{maximumFractionDigits:4});change.textContent=row.change==null?'—':((Number(row.change)>=0?'+':'')+row.change+'%');change.className=Number(row.change)>=0?'positive':'negative';type.textContent=row.type||'market';subtitle.textContent=row.trend||'{{ t("read_only_market_view") }}';}}
-    function show(results){box.innerHTML='';if(!results.length){box.style.display='none';return;}results.forEach(item=>{const b=document.createElement('button');b.type='button';b.style.cssText='display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid #263241;background:#111820;color:#fff;cursor:pointer;';b.textContent=item.symbol+' · '+item.name+' · '+(item.type||'market');b.onclick=()=>window.location.href='/?symbol='+encodeURIComponent(item.symbol);box.appendChild(b);});box.style.display='block';}
-    async function search(){const q=input.value.trim();if(!q){box.style.display='none';return;}try{const r=await fetch('/api/market-search?q='+encodeURIComponent(q),{cache:'no-store'});const d=await r.json();show(d.results||[]);}catch(e){console.error('ATLAS market search failed:',e);}}
-    async function refresh(){status.textContent='Laster markedsdata …';try{const n=native(symbol);const preset=periodPresets[period];const url=n?'/api/binance-candles?symbol='+encodeURIComponent(n)+'&interval='+encodeURIComponent(interval)+'&limit='+encodeURIComponent(preset.limit):'/api/market-candles?symbol='+encodeURIComponent(symbol)+'&period='+encodeURIComponent(period)+'&interval='+encodeURIComponent(interval);const r=await fetch(url,{cache:'no-store'});const d=await r.json();if(!r.ok||!d.candles||!d.candles.length)throw new Error(d.error||'No candle data');const cs=d.candles.map(c=>({time:Math.floor(Number(c.timestamp)),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)}));series.setData(cs);if(!chartInitialized){chart.timeScale().fitContent();chartInitialized=true;}price.textContent='$'+cs[cs.length-1].close.toLocaleString(undefined,{maximumFractionDigits:4});status.textContent=symbol+' · '+period.toUpperCase()+' · '+interval;updateButtons();}catch(e){console.error('ATLAS overview chart refresh failed:',e);status.textContent='Kunne ikke hente markedsdata';}}
-    function updateButtons(){document.querySelectorAll('.overview-period').forEach(b=>{b.classList.toggle('primary',b.dataset.period===period);});document.querySelectorAll('.overview-interval').forEach(b=>{b.classList.toggle('primary',b.dataset.interval===interval);});}
-    button.onclick=search;input.oninput=search;input.onkeydown=e=>{if(e.key==='Enter')search();if(e.key==='Escape')box.style.display='none';};document.addEventListener('click',e=>{if(!box.contains(e.target)&&e.target!==input)box.style.display='none';});
-    document.querySelectorAll('.overview-period').forEach(b=>{b.onclick=()=>{period=b.dataset.period;syncIntervalToPeriod();updateButtons();refresh();};});
-    document.querySelectorAll('.overview-interval').forEach(b=>{b.onclick=()=>{interval=b.dataset.interval;syncPeriodToInterval();updateButtons();refresh();};});
-    window.addEventListener('resize',()=>chart.applyOptions({width:container.clientWidth}));
-    updateButtons();meta();refresh();setInterval(refresh,30000);
+
+    const title=document.getElementById('overview-market-title');
+    const price=document.getElementById('overview-market-price');
+    const status=document.getElementById('overview-chart-status');
+    const detail=document.getElementById('atlas-trade-detail');
+    const backdrop=document.getElementById('atlas-trade-detail-backdrop');
+    const detailClose=document.getElementById('atlas-trade-detail-close');
+    const detailTitle=document.getElementById('atlas-trade-detail-title');
+    const detailMeta=document.getElementById('atlas-trade-detail-meta');
+    const detailContainer=document.getElementById('atlas-trade-detail-chart');
+
+    function createMainChart(){
+        chart=LightweightCharts.createChart(container,{width:container.clientWidth,height:420,layout:{background:{type:'solid',color:'#0d1117'},textColor:'#9aa4b2'},grid:{vertLines:{color:'#18202a'},horzLines:{color:'#18202a'}},rightPriceScale:{borderColor:'#263241'},timeScale:{borderColor:'#263241',timeVisible:true,secondsVisible:false}});
+        series=chart.addSeries(LightweightCharts.CandlestickSeries,{upColor:'#16c784',downColor:'#ea3943',borderVisible:false,wickUpColor:'#16c784',wickDownColor:'#ea3943'});
+        container.addEventListener('click',openDetail);
+    }
+
+    function markerForTrade(trade){
+        const isBuy=String(trade.action).toUpperCase()==='BUY';
+        return {
+            time:Math.floor(new Date(trade.timestamp).getTime()/1000),
+            position:isBuy?'belowBar':'aboveBar',
+            color:isBuy?'#16c784':'#ea3943',
+            shape:isBuy?'arrowUp':'arrowDown',
+            text:isBuy?'BUY':'SELL'
+        };
+    }
+
+    function applyMarkers(){
+        if(!series)return;
+        series.setMarkers(markerData);
+    }
+
+    function renderDetail(){
+        if(!detailContainer||!candleData.length)return;
+        detailContainer.innerHTML='';
+        detailChart=LightweightCharts.createChart(detailContainer,{width:detailContainer.clientWidth,height:detailContainer.clientHeight,layout:{background:{type:'solid',color:'#0d1117'},textColor:'#9aa4b2'},grid:{vertLines:{color:'#18202a'},horzLines:{color:'#18202a'}},rightPriceScale:{borderColor:'#263241'},timeScale:{borderColor:'#263241',timeVisible:true,secondsVisible:false}});
+        detailSeries=detailChart.addSeries(LightweightCharts.CandlestickSeries,{upColor:'#16c784',downColor:'#ea3943',borderVisible:false,wickUpColor:'#16c784',wickDownColor:'#ea3943'});
+        detailSeries.setData(candleData);
+        detailSeries.setMarkers(markerData);
+        detailChart.timeScale().fitContent();
+    }
+
+    function openDetail(){
+        detail.hidden=false;
+        backdrop.hidden=false;
+        detailTitle.textContent='ATLAS trade history · '+symbol;
+        detailMeta.textContent=period.toUpperCase()+' · Klikk på chartet for å åpne detaljvisning';
+        requestAnimationFrame(renderDetail);
+    }
+
+    function closeDetail(){
+        detail.hidden=true;
+        backdrop.hidden=true;
+        if(detailChart){detailChart.remove();detailChart=null;detailSeries=null;}
+    }
+
+    async function refresh(){
+        const cfg=periodConfig[period]||periodConfig['1d'];
+        status.textContent='Laster historiske candles …';
+        try{
+            const url='/api/market-candles?symbol='+encodeURIComponent(symbol)+'&period='+encodeURIComponent(cfg.period)+'&interval='+encodeURIComponent(cfg.interval);
+            const response=await fetch(url,{cache:'no-store'});
+            const payload=await response.json();
+            if(!response.ok||!payload.candles||!payload.candles.length)throw new Error(payload.error||'Ingen markedsdata');
+            candleData=payload.candles.map(c=>({time:Math.floor(Number(c.timestamp)),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)}));
+            series.setData(candleData);
+            chart.timeScale().fitContent();
+            const last=candleData[candleData.length-1];
+            price.textContent='$'+last.close.toLocaleString(undefined,{maximumFractionDigits:4});
+            markerData=seededTrades.filter(t=>String(t.symbol).toUpperCase()===symbol).filter(t=>{const ts=Math.floor(new Date(t.timestamp).getTime()/1000);return ts>=candleData[0].time&&ts<=candleData[candleData.length-1].time;}).map(markerForTrade);
+            applyMarkers();
+            title.textContent=symbol;
+            status.textContent=symbol+' · '+period.toUpperCase()+' · '+markerData.length+' ATLAS-handler';
+        }catch(error){
+            console.error('ATLAS trade chart failed:',error);
+            status.textContent='Kunne ikke hente historiske markedsdata';
+            markerData=[];
+            applyMarkers();
+        }
+    }
+
+    document.querySelectorAll('.overview-period').forEach(button=>button.addEventListener('click',()=>{
+        period=button.dataset.period;
+        document.querySelectorAll('.overview-period').forEach(item=>item.classList.toggle('primary',item.dataset.period===period));
+        const url=new URL(window.location.href);
+        url.searchParams.set('trade_history_period',period);
+        window.history.replaceState({},'',url);
+        refresh();
+    }));
+
+    detailClose.addEventListener('click',closeDetail);
+    backdrop.addEventListener('click',closeDetail);
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!detail.hidden)closeDetail();});
+    window.addEventListener('resize',()=>{
+        if(chart)chart.applyOptions({width:container.clientWidth});
+        if(detailChart)detailChart.applyOptions({width:detailContainer.clientWidth,height:detailContainer.clientHeight});
+    });
+
+    document.querySelectorAll('.overview-period').forEach(item=>item.classList.toggle('primary',item.dataset.period===period));
+    createMainChart();
+    refresh();
 })();
 </script>
 {% endblock %}
