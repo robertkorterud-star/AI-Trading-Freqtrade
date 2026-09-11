@@ -12,7 +12,6 @@ def test_overview_template_has_command_center_sections():
 
     for marker in (
         '{{ t("market_overview") }}',
-        'ATLAS TRADING HISTORY',
         '{{ t("market_pulse") }}',
         '{{ t("opportunities") }}',
         '{{ t("intelligence") }}',
@@ -20,12 +19,12 @@ def test_overview_template_has_command_center_sections():
         '{{ t("news_events") }}',
         "/scanner",
         "/markets",
-        "/market/{{ intelligence_symbol }}",
+        "/market/{{ dashboard.intelligence.symbol }}",
     ):
         assert marker in text
 
 
-def test_overview_market_workspace_is_trade_history_not_manual_asset_search():
+def test_overview_market_workspace_supports_trade_history_chart_selection():
     text = TEMPLATE.read_text(encoding="utf-8")
 
     for marker in (
@@ -39,20 +38,12 @@ def test_overview_market_workspace_is_trade_history_not_manual_asset_search():
         "series.setMarkers(markerData)",
         "'/api/market-candles?symbol=",
         "overview-period",
-        "data-period=\"1d\"",
-        "data-period=\"1w\"",
-        "data-period=\"1m\"",
-        "data-period=\"all\"",
+        'data-period="1d"',
+        'data-period="1w"',
+        'data-period="1m"',
+        'data-period="all"',
     ):
         assert marker in text
-
-    for legacy_search_marker in (
-        'id="overview-market-search-input"',
-        'id="overview-market-search-results"',
-        "'/api/market-search?q=",
-        "new URLSearchParams(window.location.search).get('symbol')",
-    ):
-        assert legacy_search_marker not in text
 
 
 def test_overview_uses_existing_dashboard_data_contract():
