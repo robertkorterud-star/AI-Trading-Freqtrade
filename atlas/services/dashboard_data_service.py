@@ -38,7 +38,7 @@ from atlas.market.candidate_decision_ranker import CandidateDecisionRanker
 class DashboardDataService:
     """Collect dashboard data without creating a second decision path."""
 
-    def __init__(self, config=None, intelligence_sources=None):
+    def __init__(self, config=None, intelligence_sources=None, trading=None):
         self.config = config or AtlasConfig()
         self.settings = SettingsService(config=self.config)
         self.registry = AgentRegistry()
@@ -47,7 +47,7 @@ class DashboardDataService:
         self.registry.register(CompanyAnalyst())
         self.exchange = ExchangeRateService()
         self.portfolio = PortfolioService()
-        self.trading = TradingService()
+        self.trading = trading or TradingService()
         self.trade_history = TradeHistoryService()
         self.asset_universe = AssetUniverse()
         self.market_data = MarketDataAdapter()
