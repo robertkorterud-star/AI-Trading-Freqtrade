@@ -78,7 +78,8 @@
     </div>
     <div id="atlas-trade-detail-context" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:0 0 12px;"></div>
     <div id="atlas-trade-detail-reasoning" style="margin:0 0 12px; opacity:.9;"></div>
-    <div id="atlas-trade-detail-chart" style="height:calc(100% - 145px);"></div>
+    <div id="atlas-trade-detail-news" style="margin:0 0 14px;"></div>
+    <div id="atlas-trade-detail-chart" style="height:calc(100% - 245px);"></div>
 </div>
 <div id="atlas-trade-detail-backdrop" hidden style="position:fixed; inset:0; z-index:999; background:rgba(0,0,0,.55);"></div>
 
@@ -116,6 +117,7 @@
     const detailMeta=document.getElementById('atlas-trade-detail-meta');
     const detailContext=document.getElementById('atlas-trade-detail-context');
     const detailReasoning=document.getElementById('atlas-trade-detail-reasoning');
+    const detailNews=document.getElementById('atlas-trade-detail-news');
     const detailContainer=document.getElementById('atlas-trade-detail-chart');
 
     function createMainChart(){
@@ -126,13 +128,7 @@
 
     function markerForTrade(trade){
         const isBuy=String(trade.action).toUpperCase()==='BUY';
-        return {
-            time:Math.floor(new Date(trade.timestamp).getTime()/1000),
-            position:isBuy?'belowBar':'aboveBar',
-            color:isBuy?'#16c784':'#ea3943',
-            shape:isBuy?'arrowUp':'arrowDown',
-            text:isBuy?'BUY':'SELL'
-        };
+        return {time:Math.floor(new Date(trade.timestamp).getTime()/1000),position:isBuy?'belowBar':'aboveBar',color:isBuy?'#16c784':'#ea3943',shape:isBuy?'arrowUp':'arrowDown',text:isBuy?'BUY':'SELL'};
     }
 
     function applyMarkers(){
@@ -144,8 +140,9 @@
         const snapshot=trade&&trade.analysis_snapshot;
         const decision=snapshot&&snapshot.decision?snapshot.decision:{};
         const intelligence=snapshot&&snapshot.intelligence?snapshot.intelligence:{};
-        const escapeHtml=value=>String(value??'—').replace(/[&<>\"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\':'&#92;','"':'&quot;'}[char]));
+        const escapeHtml=value=>String(value??'—').replace(/[&<>\\"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\':'&#92;','"':'&quot;'}[char]));
         detailContext.innerHTML='';
+        detailNews.innerHTML='';
         const fields=[
             ['Handling',trade&&trade.action],
             ['Pris',trade&&('$'+Number(trade.price_usd).toLocaleString(undefined,{maximumFractionDigits:4}))],
@@ -168,6 +165,40 @@
         if(decision.reasoning&&decision.reasoning.length) reasons.push(...decision.reasoning);
         if(!reasons.length&&intelligence.reasoning&&intelligence.reasoning.length) reasons.push(...intelligence.reasoning);
         detailReasoning.innerHTML=reasons.length?'<strong>ATLAS reasoning</strong><div style="margin-top:6px;">'+reasons.slice(0,4).map(escapeHtml).join('<br>')+'</div>':'<span style="opacity:.65;">Ingen lagret reasoning i snapshotet.</span>';
+
+        const newsItems=[];
+        const results=Array.isArray(snapshot&&snapshot.results)?snapshot.results:[];
+        results.forEach(result=>{
+            const metadata=result&&result.metadata;
+            const items=metadata&&Array.isArray(metadata.news_items)?metadata.news_items:[];
+            items.forEach(item=>newsItems.push(item));
+        });
+        const seen=new Set();
+        const uniqueNews=newsItems.filter(item=>{
+            const key=String(item.url||item.title||'');
+            if(seen.has(key))return false;
+            seen.add(key);
+            return true;
+        });
+        if(uniqueNews.length){
+            const heading=document.createElement('div');
+            heading.innerHTML='<strong>News brukt av ATLAS</strong><small style="display:block;opacity:.65;margin-top:3px;">Lagret i snapshotet fra beslutningstidspunktet</small>';
+            detailNews.appendChild(heading);
+            uniqueNews.slice(0,8).forEach(item=>{
+                const row=document.createElement('div');
+                row.style.cssText='margin-top:8px;padding:9px 10px;border:1px solid #263241;border-radius:8px;background:#111821;';
+                const title=escapeHtml(item.title||'Uten tittel');
+                const source=escapeHtml(item.source||'Ukjent kilde');
+                const summary=escapeHtml(item.summary||'');
+                const published=escapeHtml(item.published_at||'');
+                const url=String(item.url||'');
+                const safeUrl=/^https?:\\/\\//i.test(url)?escapeHtml(url):'';
+                row.innerHTML=(safeUrl?'<a href="'+safeUrl+'" target="_blank" rel="noopener noreferrer"><strong>'+title+'</strong></a>':'<strong>'+title+'</strong>')+'<small style="display:block;opacity:.7;margin-top:3px;">'+source+(published?' · '+published:'')+'</small>'+(summary?'<div style="margin-top:5px;opacity:.85;">'+summary+'</div>':'');
+                detailNews.appendChild(row);
+            });
+        }else if(snapshot){
+            detailNews.innerHTML='<span style="opacity:.65;">Ingen historiske nyhetselementer lagret i dette snapshotet.</span>';
+        }
     }
 
     function renderDetail(){
