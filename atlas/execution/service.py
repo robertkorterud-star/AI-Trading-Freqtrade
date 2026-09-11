@@ -22,6 +22,7 @@ class DecisionExecutionService:
         decision: DecisionResult,
         *,
         price: float | None = None,
+        analysis_snapshot_id: int | None = None,
     ) -> ExecutionResult | None:
         """Execute an approved directional decision through the adapter.
 
@@ -29,6 +30,9 @@ class DecisionExecutionService:
         decisions require an allowed risk assessment with a positive position
         size. When a portfolio assessment is present, it must also be allowed,
         preventing a portfolio veto from being bypassed at execution.
+
+        ``analysis_snapshot_id`` links a resulting paper trade back to the
+        exact canonical ATLAS analysis snapshot that produced the decision.
         """
         if decision.action in {Action.HOLD, Action.WATCH}:
             return None
@@ -52,5 +56,6 @@ class DecisionExecutionService:
             action=decision.action,
             quantity=risk.position_size,
             price=price,
+            analysis_snapshot_id=analysis_snapshot_id,
         )
         return self.execution_engine.execute(request)
