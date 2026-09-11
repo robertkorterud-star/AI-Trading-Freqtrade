@@ -20,6 +20,7 @@ from atlas.decision.explanation import explain_decision
 from atlas.services.exchange_rate_service import ExchangeRateService
 from atlas.services.portfolio_service import PortfolioService
 from atlas.services.settings_service import SettingsService
+from atlas.services.trade_history_service import TradeHistoryService
 from atlas.trading.trading_service import TradingService
 from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
 from atlas.trading.agent_weight_engine import AgentWeightEngine
@@ -47,6 +48,7 @@ class DashboardDataService:
         self.exchange = ExchangeRateService()
         self.portfolio = PortfolioService()
         self.trading = TradingService()
+        self.trade_history = TradeHistoryService()
         self.asset_universe = AssetUniverse()
         self.market_data = MarketDataAdapter()
         self.intelligence_sources = intelligence_sources
@@ -181,7 +183,19 @@ class DashboardDataService:
         self._news_cache[symbol] = (now, result)
         return result
 
-    def get_dashboard_data(self, selected_symbol=None):
+    def _dashboard_trade_history(self, period, now=None):
+        """Build dashboard trade history from persisted ATLAS trading records."""
+        result = self.trade_history.build(
+            self.trading.history(),
+            period=period,
+            now=now,
+        )
+        return {
+            "trades": [trade.as_dict() for trade in result["trades"]],
+            "markers": result["markers"],
+        }
+
+    def get_dashboard_data(self, selected_symbol=None, trade_history_period="1d", now=None):
         default_watchlist = ["BTC-USD", "ETH-USD", "SOL-USD", "NVDA"]
         selected_symbol = (selected_symbol or settings.default_symbol).strip().upper()
         watchlist = [selected_symbol] + [symbol for symbol in default_watchlist if symbol != selected_symbol]
@@ -195,6 +209,7 @@ class DashboardDataService:
         latest_news_explanation = None
         latest_news = self._get_latest_news(selected_symbol)
         latest_snapshot = None
+        history = self._dashboard_trade_history(trade_history_period, now=now)
 
         for symbol in watchlist:
             stored_snapshot = self.snapshot_repository.get_latest_valid(symbol)
@@ -268,7 +283,9 @@ class DashboardDataService:
                     "virtual_capital_nok": self.config.capital_limit,
                 },
                 "portfolio": self.portfolio.as_dict(exchange.rate),
-                "trade_history": [],
+                "trade_history": history["trades"],
+                "trade_history_markers": history["markers"],
+                "trade_history_period": trade_history_period,
                 "agent_performance": {
                     "history": self.agent_performance.history(),
                     "weights": self.agent_weight_engine.calculate(),
@@ -294,7 +311,9 @@ class DashboardDataService:
             "capital": self.config.capital_limit,
             "trading": {"mode": trading_status["mode"], "language": self.settings.get_language(), "ai_provider": self.settings.get_ai_provider(), "paper_trading": trading_status["paper_trading"], "live_orders": trading_status["live_orders"], "virtual_capital_nok": self.config.capital_limit},
             "portfolio": self.portfolio.as_dict(exchange.rate),
-            "trade_history": self.trading.history(),
+            "trade_history": history["trades"],
+            "trade_history_markers": history["markers"],
+            "trade_history_period": trade_history_period,
             "agent_performance": {"history": self.agent_performance.history(), "weights": self.agent_weight_engine.calculate(), "weight_explanations": self.agent_weight_engine.explain()},
             "currency": {"base": exchange.base, "target": exchange.target, "rate": round(exchange.rate, 4)},
             "decision": latest_decision,
