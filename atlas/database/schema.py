@@ -50,11 +50,17 @@ CREATE TABLE IF NOT EXISTS paper_trades (
     amount_nok REAL NOT NULL,
     realized_pnl_nok REAL NOT NULL,
     timestamp TEXT NOT NULL,
-    reason TEXT NOT NULL DEFAULT ''
+    reason TEXT NOT NULL DEFAULT '',
+    analysis_snapshot_id INTEGER,
+    FOREIGN KEY (analysis_snapshot_id)
+        REFERENCES analysis_snapshots(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_paper_trades_timestamp
 ON paper_trades(timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_paper_trades_analysis_snapshot
+ON paper_trades(analysis_snapshot_id);
 
 CREATE INDEX IF NOT EXISTS idx_predictions_symbol
 ON predictions(symbol);
@@ -242,5 +248,27 @@ def initialize_database(database: Database):
                 NOT NULL DEFAULT '{}'
                 """
             )
+
+        trade_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(paper_trades)"
+            ).fetchall()
+        }
+
+        if "analysis_snapshot_id" not in trade_columns:
+            connection.execute(
+                """
+                ALTER TABLE paper_trades
+                ADD COLUMN analysis_snapshot_id INTEGER
+                """
+            )
+
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_paper_trades_analysis_snapshot
+            ON paper_trades(analysis_snapshot_id)
+            """
+        )
 
         connection.commit()
