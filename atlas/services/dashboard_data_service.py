@@ -184,14 +184,27 @@ class DashboardDataService:
         return result
 
     def _dashboard_trade_history(self, period, now=None):
-        """Build dashboard trade history from persisted ATLAS trading records."""
+        """Build dashboard trade history and attach its canonical snapshot context."""
         result = self.trade_history.build(
             self.trading.history(),
             period=period,
             now=now,
         )
+        trades = []
+        for trade in result["trades"]:
+            data = trade.as_dict()
+            snapshot_id = data.get("analysis_snapshot_id")
+            snapshot = None
+            if snapshot_id is not None:
+                snapshot = self.snapshot_repository.get_by_id(int(snapshot_id))
+            data["analysis_snapshot"] = (
+                snapshot.as_dict()
+                if snapshot is not None
+                else None
+            )
+            trades.append(data)
         return {
-            "trades": [trade.as_dict() for trade in result["trades"]],
+            "trades": trades,
             "markers": result["markers"],
         }
 
@@ -224,9 +237,6 @@ class DashboardDataService:
         for symbol in watchlist:
             stored_snapshot = self.snapshot_repository.get_latest_valid(symbol)
             if stored_snapshot is None:
-                # Keep the explicitly selected market visible while ATLAS is
-                # waiting for its first canonical runtime snapshot. This is
-                # display-only market data; it must not create a decision.
                 if symbol == selected_symbol:
                     try:
                         live_market = self.market_data.get(symbol)
