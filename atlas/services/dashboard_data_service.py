@@ -263,7 +263,7 @@ class DashboardDataService:
                 "analysts": [],
                 "market": market,
                 "market_scan": self.market_scan(),
-                "news": [],
+                "news": latest_news,
                 "technical": None,
             }
 
