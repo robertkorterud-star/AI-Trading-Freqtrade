@@ -37,3 +37,4 @@ class DecisionResult:
     ensemble_confidence: float = 0.0
     risk_assessment: object | None = None
     portfolio_assessment: object | None = None
+    analysis_snapshot_id: int | None = None
