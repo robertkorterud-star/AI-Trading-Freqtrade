@@ -59,9 +59,6 @@ CREATE TABLE IF NOT EXISTS paper_trades (
 CREATE INDEX IF NOT EXISTS idx_paper_trades_timestamp
 ON paper_trades(timestamp);
 
-CREATE INDEX IF NOT EXISTS idx_paper_trades_analysis_snapshot
-ON paper_trades(analysis_snapshot_id);
-
 CREATE INDEX IF NOT EXISTS idx_predictions_symbol
 ON predictions(symbol);
 
