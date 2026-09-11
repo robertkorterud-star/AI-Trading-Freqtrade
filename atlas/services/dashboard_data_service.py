@@ -210,6 +210,16 @@ class DashboardDataService:
         latest_news = self._get_latest_news(selected_symbol)
         latest_snapshot = None
         history = self._dashboard_trade_history(trade_history_period, now=now)
+        trade_chart = {
+            "period": trade_history_period,
+            "symbol": selected_symbol,
+            "trades": history["trades"],
+            "markers": [
+                marker
+                for marker in history["markers"]
+                if marker["symbol"] == selected_symbol
+            ],
+        }
 
         for symbol in watchlist:
             stored_snapshot = self.snapshot_repository.get_latest_valid(symbol)
@@ -286,6 +296,7 @@ class DashboardDataService:
                 "trade_history": history["trades"],
                 "trade_history_markers": history["markers"],
                 "trade_history_period": trade_history_period,
+                "trade_chart": trade_chart,
                 "agent_performance": {
                     "history": self.agent_performance.history(),
                     "weights": self.agent_weight_engine.calculate(),
@@ -314,17 +325,18 @@ class DashboardDataService:
             "trade_history": history["trades"],
             "trade_history_markers": history["markers"],
             "trade_history_period": trade_history_period,
+            "trade_chart": trade_chart,
             "agent_performance": {"history": self.agent_performance.history(), "weights": self.agent_weight_engine.calculate(), "weight_explanations": self.agent_weight_engine.explain()},
             "currency": {"base": exchange.base, "target": exchange.target, "rate": round(exchange.rate, 4)},
             "decision": latest_decision,
             "decision_explanation": latest_explanation,
             "news_explanation": latest_news_explanation,
-            "decision_robustness": {"margin": round(latest_decision.decision_margin, 1), "robustness": round(latest_decision.robustness, 1), "level": latest_decision.robustness_level},
-            "decision_influence": {"dominant_action": latest_decision.dominant_action.value if latest_decision.dominant_action else None, "dominant_weight": round(latest_decision.dominant_weight, 1), "action_support_analyst": latest_decision.action_support_analyst, "action_support_action": latest_decision.action_support_action.value if latest_decision.action_support_action else None, "action_support_weight": round(latest_decision.action_support_weight * 100, 1), "opposing_analysts": latest_decision.opposing_analysts, "adaptive_override": latest_decision.adaptive_override},
-            "intelligence": {"symbol": latest_intelligence.symbol, "action": latest_intelligence.action.value, "evidence": round(latest_intelligence.evidence, 1), "confidence": round(latest_intelligence.confidence, 1), "buy_count": latest_intelligence.buy_count, "hold_count": latest_intelligence.hold_count, "sell_count": latest_intelligence.sell_count, "agreement": round(latest_intelligence.agreement, 1), "conflict": latest_intelligence.conflict, "weighted_buy": round(latest_intelligence.weighted_buy, 1), "weighted_hold": round(latest_intelligence.weighted_hold, 1), "weighted_sell": round(latest_intelligence.weighted_sell, 1), "weighted_agreement": round(latest_intelligence.weighted_agreement, 1), "weighted_conflict": latest_intelligence.weighted_conflict, "analysts": latest_intelligence.analysts, "reasoning": latest_intelligence.reasoning},
+            "decision_robustness": {"margin": latest_decision.decision_margin, "robustness": latest_decision.robustness, "level": latest_decision.robustness_level},
+            "decision_influence": {"dominant_action": latest_decision.dominant_action.value if latest_decision.dominant_action else None, "dominant_weight": latest_decision.dominant_weight, "action_support_analyst": latest_decision.action_support_analyst, "action_support_action": latest_decision.action_support_action.value if latest_decision.action_support_action else None, "action_support_weight": latest_decision.action_support_weight, "opposing_analysts": latest_decision.opposing_analysts, "adaptive_override": latest_decision.adaptive_override},
+            "intelligence": latest_intelligence,
             "analysts": latest_results,
             "market": market,
             "market_scan": self.market_scan(),
             "news": latest_news,
-            "technical": None,
+            "technical": next((result for result in latest_results if result.analyst == "Technical Analyst"), None),
         }
