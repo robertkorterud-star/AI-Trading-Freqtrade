@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from atlas.i18n.translations import translate
 from atlas.dashboard.dashboard_service import DashboardService
+from atlas.dashboard.dashboard_api import build_dashboard_api_payload
 from atlas.services.settings_service import SettingsService
 from atlas.services.market_search_service import MarketSearchService
 from atlas.services.adaptive_strategy_research_service import AdaptiveStrategyResearchService
@@ -87,8 +88,11 @@ def get_cached_strategy_research(symbol: str, research_items: list[dict]):
     return result
 
 
-def build_dashboard(selected_symbol=None):
-    return service.get_dashboard(selected_symbol=selected_symbol)
+def build_dashboard(selected_symbol=None, trade_history_period="1d"):
+    return service.get_dashboard(
+        selected_symbol=selected_symbol,
+        trade_history_period=trade_history_period,
+    )
 
 
 def _normalize_candle_timestamp(value) -> float:
@@ -229,10 +233,17 @@ async def setup(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     selected_symbol = request.query_params.get("symbol")
+    trade_history_period = request.query_params.get("trade_history_period", "1d").strip().lower()
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"request": request, "dashboard": build_dashboard(selected_symbol=selected_symbol)},
+        context={
+            "request": request,
+            "dashboard": build_dashboard(
+                selected_symbol=selected_symbol,
+                trade_history_period=trade_history_period,
+            ),
+        },
     )
 
 
@@ -256,43 +267,12 @@ async def scanner(request: Request):
 
 @app.get("/api/dashboard")
 async def dashboard_api(request: Request):
-    dashboard = build_dashboard(selected_symbol=request.query_params.get("symbol"))
-    decision = dashboard["decision"]
-    return JSONResponse(
-        content={
-            "status": dashboard["status"],
-            "version": dashboard["version"],
-            "currency": dashboard["currency"],
-            "technical": dashboard["technical"],
-            "intelligence": dashboard["intelligence"],
-            "market": dashboard["market"],
-            "market_scan": dashboard["market_scan"],
-            "scanner": dashboard["scanner"],
-            "portfolio": dashboard["portfolio"],
-            "trading": dashboard["trading"],
-            "decision": {
-                "action": decision.action.value if decision else None,
-                "confidence": decision.confidence if decision else None,
-                "evidence": decision.evidence if decision else None,
-            },
-            "decision_explanation": dashboard["decision_explanation"],
-            "decision_robustness": dashboard["decision_robustness"],
-            "decision_influence": dashboard["decision_influence"],
-            "analysts": dashboard["analysts"],
-            "news": [
-                {
-                    "title": article.get("title") if isinstance(article, dict) else article.title,
-                    "source": article.get("source") if isinstance(article, dict) else article.source,
-                    "summary": article.get("summary") if isinstance(article, dict) else article.summary,
-                    "url": article.get("url") if isinstance(article, dict) else article.url,
-                    "sentiment": article.get("sentiment") if isinstance(article, dict) else article.sentiment,
-                }
-                for article in dashboard["news"]
-            ],
-            "trade_history": dashboard["trade_history"],
-            "agent_performance": dashboard["agent_performance"],
-        }
+    trade_history_period = request.query_params.get("trade_history_period", "1d").strip().lower()
+    dashboard = build_dashboard(
+        selected_symbol=request.query_params.get("symbol"),
+        trade_history_period=trade_history_period,
     )
+    return JSONResponse(content=build_dashboard_api_payload(dashboard))
 
 
 @app.get("/api/market-search")
