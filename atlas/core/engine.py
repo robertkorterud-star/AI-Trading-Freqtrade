@@ -114,10 +114,17 @@ class AtlasEngine:
 
         self.logger = get_logger("ATLAS")
 
+        self.market_data = MarketDataAdapter()
+
         self.registry = AgentRegistry()
 
         self.registry.register(NewsAnalyst(config=self.config))
-        self.registry.register(TechnicalAnalyst(config=self.config))
+        self.registry.register(
+            TechnicalAnalyst(
+                config=self.config,
+                market_data=self.market_data,
+            )
+        )
         self.registry.register(CompanyAnalyst(config=self.config))
 
         self.analysis_service = AnalysisService(
@@ -125,8 +132,6 @@ class AtlasEngine:
         )
 
         self.asset_universe = AssetUniverse()
-
-        self.market_data = MarketDataAdapter()
 
         self.asset_discovery = AssetDiscoveryService(
             market_data=self.market_data,
@@ -146,7 +151,9 @@ class AtlasEngine:
 
         self.report = ReportBuilder()
 
-        self.technical = TechnicalService()
+        self.technical = TechnicalService(
+            market_data=self.market_data
+        )
 
         portfolio = PortfolioService(
             self.config.capital_limit
@@ -305,6 +312,22 @@ class AtlasEngine:
             controller=controller,
             prediction_tracker=self.prediction_tracker,
         )
+
+    @property
+    def market_data(self):
+        return self._market_data
+
+    @market_data.setter
+    def market_data(self, value):
+        self._market_data = value
+
+        if hasattr(self, "technical"):
+            self.technical.market = value
+
+        if hasattr(self, "registry"):
+            technical_analyst = self.registry.get("Technical Analyst")
+            if technical_analyst is not None:
+                technical_analyst.market = value
 
     def discover_candidates(
         self,
@@ -741,7 +764,7 @@ class AtlasEngine:
                 "symbol": symbol,
                 "action": str(getattr(decision.action, "value", decision.action)),
                 "confidence": getattr(decision, "confidence", None),
-                "analysis_snapshot_id": snapshot.database_id,
+                "analysis_snapshot_id": getattr(snapshot, "database_id", None),
             },
         )
 
@@ -770,8 +793,12 @@ class AtlasEngine:
                     {
                         "symbol": symbol,
                         "action": str(getattr(decision.action, "value", decision.action)),
-                        "quantity": exec_result.quantity,
-                        "analysis_snapshot_id": decision.analysis_snapshot_id,
+                        "quantity": (
+                            exec_result.get("quantity")
+                            if isinstance(exec_result, dict)
+                            else getattr(exec_result, "quantity", None)
+                        ),
+                        "analysis_snapshot_id": getattr(decision, "analysis_snapshot_id", None),
                     },
                 )
 

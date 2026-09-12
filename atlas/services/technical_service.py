@@ -28,7 +28,7 @@ class TechnicalService:
         self.market = market_data or MarketDataAdapter()
 
     def get_snapshot(self, symbol: str) -> TechnicalSnapshot:
-        if hasattr(self.market, "get_snapshot"):
+        if not hasattr(self.market, "get"):
             return self.market.get_snapshot(symbol)
 
         data = self.market.get(symbol)

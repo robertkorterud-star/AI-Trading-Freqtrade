@@ -22,11 +22,11 @@ from atlas.models.analysis_result import AnalysisResult
 class TechnicalAnalyst(BaseAgent):
     """Technical analyst backed by ATLAS's deterministic signal engine."""
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, market_data=None):
 
         super().__init__("Technical Analyst", config=config)
 
-        self.market = MarketDataAdapter()
+        self.market = market_data or MarketDataAdapter()
 
         # Latest volume confirmation is exposed separately
         # from AnalysisResult so the existing contract remains
