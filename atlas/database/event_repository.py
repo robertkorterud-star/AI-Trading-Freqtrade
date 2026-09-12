@@ -46,6 +46,14 @@ class AtlasEventRepository:
 
         return event_id
 
+    def latest_id(self) -> int:
+        """Return the newest event id without loading historical events."""
+        with self.database.connect() as connection:
+            row = connection.execute(
+                "SELECT COALESCE(MAX(id), 0) AS latest_id FROM atlas_events"
+            ).fetchone()
+        return int(row["latest_id"])
+
     def after(self, event_id: int = 0, limit: int = 100):
         """Return events newer than ``event_id`` in ascending order."""
         with self.database.connect() as connection:
