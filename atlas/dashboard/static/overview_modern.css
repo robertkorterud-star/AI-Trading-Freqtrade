@@ -1,63 +1,298 @@
 /* =====================================================
-   ATLAS Overview 2.3
-   Compact modern trading-console treatment.
+   ATLAS Overview 3.0
+   Compact modern trading-console layout.
+   Chart + ATLAS conviction form the primary workspace.
    ===================================================== */
 
-.overview-page { gap:16px; }
-.overview-hero { padding:20px 24px; border-radius:14px; background:linear-gradient(135deg,#141a24,#0f1117 68%); box-shadow:0 10px 30px rgba(0,0,0,.16); }
-.overview-hero h1 { font-size:28px; letter-spacing:-.02em; }
-.overview-hero p { margin-bottom:0; font-size:14px; }
-.overview-card { border-radius:14px; padding:18px; background:linear-gradient(145deg,#17191d,#131416); box-shadow:0 8px 24px rgba(0,0,0,.12); }
-.overview-card > header { margin-bottom:12px; padding-bottom:10px; }
+/* Desktop command-center grid: chart left, conviction right. */
+.overview-page {
+    display:grid;
+    grid-template-columns:minmax(0,1.65fr) minmax(360px,.9fr);
+    gap:16px;
+}
+
+/* The old hero duplicates information already visible in the trading workspace. */
+.overview-hero { display:none; }
+
+.overview-card {
+    border-radius:14px;
+    padding:16px;
+    background:linear-gradient(145deg,#17191d,#111318);
+    box-shadow:0 8px 24px rgba(0,0,0,.14);
+}
+
+.overview-card > header {
+    margin-bottom:10px;
+    padding-bottom:9px;
+}
+
 .overview-card h2 { font-size:18px; }
-.overview-button { padding:8px 12px; border-radius:8px; background:#15171a; transition:all .15s ease; }
+.overview-kicker { font-size:10px; letter-spacing:.14em; }
+
+.overview-button {
+    padding:8px 12px;
+    border-radius:8px;
+    background:#15171a;
+    transition:all .15s ease;
+}
 .overview-button.primary { box-shadow:0 4px 16px rgba(56,189,248,.18); }
 
-/* Compact trading chart: the chart is supporting evidence, not the whole page. */
-.overview-market-workspace { padding:16px 18px 14px; }
+/* =====================================================
+   Primary workspace
+   ===================================================== */
+.overview-market-workspace {
+    grid-column:1;
+    grid-row:1;
+    padding:14px 16px 12px;
+}
+
 .overview-market-workspace > header { align-items:center; }
-.overview-market-workspace > div[style*="display:flex"] { margin:10px 0 8px !important; gap:18px !important; font-size:13px; color:#94a3b8; }
-.overview-market-workspace > div[style*="display:flex"] strong { font-size:18px; color:#f8fafc; }
-.overview-chart { height:300px !important; min-height:300px !important; border:1px solid #202938; border-radius:10px; background:#0b1017; }
-.overview-chart canvas { height:300px !important; }
-.overview-chart-controls { margin-top:10px; padding-top:10px; }
-.overview-chart-controls .overview-button { min-width:44px; padding:7px 10px; }
-.overview-chart-footer { margin-top:8px; font-size:11px; }
+.overview-market-workspace > div[style*="display:flex"] {
+    margin:8px 0 7px !important;
+    gap:16px !important;
+    font-size:12px;
+    color:#94a3b8;
+}
+.overview-market-workspace > div[style*="display:flex"] strong {
+    font-size:17px;
+    color:#f8fafc;
+}
 
-/* Cleaner decision panel. */
-.overview-conviction { gap:22px; padding:20px 24px; border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.16); }
-.overview-conviction-copy { min-height:150px; padding-left:170px; }
-.overview-conviction-copy::before { width:136px; height:136px; font-size:21px; }
-.overview-conviction-copy::after { left:27px; top:calc(50% + 50px); width:82px; font-size:8px; }
-.overview-conviction-title { font-size:22px; }
-.overview-conviction-title .overview-symbol { font-size:22px; }
-.overview-conviction-metrics { gap:10px; }
-.overview-conviction-metrics > div { min-height:78px; padding:13px; border-radius:10px; }
-.overview-conviction-metrics strong { font-size:21px; }
+.overview-chart {
+    height:320px !important;
+    min-height:320px !important;
+    border:1px solid #202938;
+    border-radius:10px;
+    background:#0b1017;
+}
+.overview-chart canvas { height:320px !important; }
 
-/* More compact summary cards and market tiles. */
-.overview-grid { gap:12px; }
-.overview-stat { padding:15px; border-radius:12px; }
+.overview-chart-controls {
+    margin-top:9px;
+    padding-top:9px;
+}
+.overview-chart-controls .overview-button {
+    min-width:44px;
+    padding:7px 10px;
+}
+.overview-chart-footer {
+    margin-top:7px;
+    font-size:10px;
+}
+
+/* =====================================================
+   ATLAS conviction — right-hand decision panel
+   ===================================================== */
+.overview-conviction {
+    grid-column:2;
+    grid-row:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:14px;
+    padding:18px;
+    border-radius:14px;
+    background:radial-gradient(circle at 18% 35%,rgba(56,189,248,.08),transparent 38%),linear-gradient(145deg,#111827,#101010 65%);
+    box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+
+.overview-conviction-copy {
+    position:relative;
+    min-height:150px;
+    padding-left:155px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+.overview-conviction-copy::before {
+    content:"HOLD";
+    position:absolute;
+    left:0;
+    top:50%;
+    transform:translateY(-50%);
+    width:124px;
+    height:124px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    font-weight:900;
+    letter-spacing:.08em;
+    color:#facc15;
+    background:radial-gradient(circle,#17130a 0 54%,transparent 55%),conic-gradient(#facc15 0deg,#facc15 250deg,#3b3312 250deg,#3b3312 360deg);
+    box-shadow:0 0 0 7px rgba(250,204,21,.05),0 0 28px rgba(250,204,21,.16);
+}
+
+.overview-conviction:has(.overview-action.buy) .overview-conviction-copy::before {
+    content:"KJØP";
+    color:#4ade80;
+    background:radial-gradient(circle,#07150d 0 54%,transparent 55%),conic-gradient(#22c55e 0deg,#22c55e 300deg,#12331f 300deg,#12331f 360deg);
+    box-shadow:0 0 0 7px rgba(34,197,94,.05),0 0 30px rgba(34,197,94,.20);
+}
+
+.overview-conviction:has(.overview-action.sell) .overview-conviction-copy::before {
+    content:"SELG";
+    color:#f87171;
+    background:radial-gradient(circle,#19090b 0 54%,transparent 55%),conic-gradient(#ef4444 0deg,#ef4444 300deg,#351216 300deg,#351216 360deg);
+    box-shadow:0 0 0 7px rgba(239,68,68,.05),0 0 30px rgba(239,68,68,.18);
+}
+
+.overview-conviction-copy::after {
+    content:"ATLAS BESLUTNING";
+    position:absolute;
+    left:15px;
+    top:calc(50% + 46px);
+    width:94px;
+    text-align:center;
+    color:#64748b;
+    font-size:7px;
+    font-weight:800;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+}
+
+.overview-conviction-title {
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:7px;
+    font-size:20px;
+    font-weight:800;
+}
+.overview-conviction-title > span:first-child {
+    color:#94a3b8;
+    font-size:13px;
+    font-weight:600;
+}
+.overview-conviction-title .overview-symbol { font-size:20px; }
+.overview-conviction-copy p {
+    margin:9px 0 0;
+    color:#cbd5e1;
+    line-height:1.5;
+    font-size:13px;
+}
+
+.overview-conviction-metrics {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+}
+.overview-conviction-metrics > div {
+    min-height:62px;
+    padding:10px;
+    border:1px solid #2d3a50;
+    border-radius:10px;
+    background:rgba(8,12,18,.72);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+.overview-conviction-metrics small {
+    color:#64748b;
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.overview-conviction-metrics strong {
+    margin-top:4px;
+    font-size:18px;
+}
+.overview-conviction .overview-action { font-size:11px; padding:5px 8px; }
+
+/* =====================================================
+   Full-width sections below the primary workspace
+   ===================================================== */
+.overview-grid,
+.overview-pulse,
+.overview-columns {
+    grid-column:1 / -1;
+}
+
+.overview-grid {
+    grid-row:2;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:12px;
+}
+.overview-stat {
+    padding:14px;
+    border-radius:12px;
+}
 .overview-stat strong { font-size:21px; }
+
+.overview-pulse {
+    grid-row:3;
+}
 .overview-pulse-grid { gap:8px; }
 .overview-pulse-item { padding:12px; border-radius:10px; }
 .overview-pulse-price { margin:10px 0 6px; font-size:16px; }
+
 .overview-intelligence { gap:8px; margin-top:10px; }
 .overview-intelligence > div { padding:10px; border-radius:9px; }
-
-/* Give the page a restrained modern hierarchy. */
-.overview-kicker { font-size:10px; letter-spacing:.14em; }
 .overview-sub { font-size:10px; }
 .overview-reason { padding:9px 0; font-size:12px; }
 .overview-news-item { padding:10px 0; }
 
+/* Keep the lower two-column sections compact. */
+.overview-columns {
+    gap:16px;
+}
+
+/* Avoid the old Dashboard links behaving like a second market terminal. */
+.overview-pulse-item,
+.overview-table .overview-symbol {
+    cursor:pointer;
+}
+
+/* =====================================================
+   Responsive
+   ===================================================== */
+@media (max-width:1100px) {
+    .overview-page {
+        display:flex;
+        flex-direction:column;
+        gap:16px;
+    }
+    .overview-hero { display:none; }
+    .overview-market-workspace,
+    .overview-conviction,
+    .overview-grid,
+    .overview-pulse,
+    .overview-columns { grid-column:auto; grid-row:auto; }
+    .overview-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .overview-columns { grid-template-columns:1fr; }
+}
+
 @media (max-width:700px) {
-    .overview-hero { padding:18px; }
     .overview-card { padding:14px; }
     .overview-market-workspace { padding:14px; }
-    .overview-chart, .overview-chart canvas { height:260px !important; min-height:260px !important; }
-    .overview-conviction { padding:18px; }
-    .overview-conviction-copy { min-height:235px; padding:160px 0 0; }
-    .overview-conviction-copy::before { width:140px; height:140px; }
-    .overview-conviction-copy::after { top:132px; }
+    .overview-chart,
+    .overview-chart canvas {
+        height:260px !important;
+        min-height:260px !important;
+    }
+    .overview-grid { grid-template-columns:1fr; }
+    .overview-conviction { padding:16px; }
+    .overview-conviction-copy {
+        min-height:215px;
+        padding:145px 0 0;
+        text-align:center;
+        align-items:center;
+    }
+    .overview-conviction-copy::before {
+        left:50%;
+        top:0;
+        transform:translateX(-50%);
+        width:130px;
+        height:130px;
+    }
+    .overview-conviction-copy::after {
+        left:50%;
+        top:124px;
+        transform:translateX(-50%);
+    }
+    .overview-conviction-title { justify-content:center; }
+    .overview-conviction-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
