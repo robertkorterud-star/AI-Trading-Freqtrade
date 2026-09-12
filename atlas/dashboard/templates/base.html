@@ -43,14 +43,18 @@
 
     const status = document.getElementById("atlas-refresh-status");
     const source = new EventSource("/api/atlas-events");
+    let live = false;
 
     source.onopen = function () {
         if (status) status.textContent = " · LIVE · connected";
+        // The stream may replay events that existed before this page loaded.
+        // Ignore that initial backlog; only later state changes should refresh.
+        window.setTimeout(function () { live = true; }, 500);
     };
 
     ["DECISION_READY", "TRADE_EXECUTED", "LEARNING_UPDATED"].forEach(function (eventName) {
         source.addEventListener(eventName, function () {
-            window.location.reload();
+            if (live) window.location.reload();
         });
     });
 
