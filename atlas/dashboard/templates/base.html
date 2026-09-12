@@ -48,10 +48,6 @@
         if (status) status.textContent = " · LIVE · connected";
     };
 
-    source.onmessage = function () {
-        window.location.reload();
-    };
-
     ["DECISION_READY", "TRADE_EXECUTED", "LEARNING_UPDATED"].forEach(function (eventName) {
         source.addEventListener(eventName, function () {
             window.location.reload();
