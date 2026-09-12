@@ -24,11 +24,12 @@ class TechnicalSnapshot:
 class TechnicalService:
     """Provides technical market data."""
 
-    def __init__(self):
-
-        self.market = MarketDataAdapter()
+    def __init__(self, market_data=None):
+        self.market = market_data or MarketDataAdapter()
 
     def get_snapshot(self, symbol: str) -> TechnicalSnapshot:
+        if hasattr(self.market, "get_snapshot"):
+            return self.market.get_snapshot(symbol)
 
         data = self.market.get(symbol)
 
@@ -48,7 +49,6 @@ class TechnicalService:
         )
 
     def _trend(self, data):
-
         if data.price > data.ma20 > data.ma50:
             return "Bullish"
 
