@@ -281,14 +281,18 @@ async def dashboard_api(request: Request):
 
 @app.get("/api/atlas-events")
 async def atlas_events(request: Request):
-    """Stream ATLAS state changes without rebuilding the dashboard repeatedly."""
+    """Stream new ATLAS state changes without replaying history on page load."""
+    raw_last_event_id = request.headers.get("Last-Event-ID")
     try:
-        last_event_id = int(request.headers.get("Last-Event-ID", "0"))
+        last_event_id = int(raw_last_event_id) if raw_last_event_id else None
     except ValueError:
-        last_event_id = 0
+        last_event_id = None
 
     async def event_stream():
-        cursor = last_event_id
+        # A freshly loaded dashboard must start after the current event log.
+        # Otherwise each page reload would replay the same historical event,
+        # trigger another reload, and send the user back to the top repeatedly.
+        cursor = event_repository.latest_id() if last_event_id is None else last_event_id
         while not await request.is_disconnected():
             events = event_repository.after(cursor)
             if events:
@@ -498,53 +502,4 @@ async def strategy_research_api(request: Request):
                 for backtest in result.backtests
             ],
         }
-    )
-
-
-@app.get("/portfolio", response_class=HTMLResponse)
-async def portfolio_page(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="portfolio.html",
-        context={"request": request, "dashboard": build_dashboard()},
-    )
-
-
-@app.post("/settings")
-async def update_settings(request: Request):
-    form = await request.form()
-    trading_mode = form.get("trading_mode")
-    language = form.get("language")
-    ai_provider = form.get("ai_provider")
-    if trading_mode is not None:
-        settings_service.set_trading_mode(trading_mode)
-    if language is not None:
-        settings_service.set_language(language)
-    if ai_provider is not None:
-        settings_service.set_ai_provider(ai_provider)
-    return RedirectResponse(url="/settings", status_code=303)
-
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="settings.html",
-        context={"request": request, "dashboard": build_dashboard()},
-    )
-
-
-@app.post("/settings/language")
-async def set_language(request: Request):
-    form = await request.form()
-    settings_service.set_language(form.get("language", "no"))
-    return RedirectResponse(url="/settings", status_code=303)
-
-
-@app.get("/agents", response_class=HTMLResponse)
-async def agents_page(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="agents.html",
-        context={"request": request, "dashboard": build_dashboard()},
     )
