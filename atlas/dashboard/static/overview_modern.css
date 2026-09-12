@@ -1,0 +1,63 @@
+/* =====================================================
+   ATLAS Overview 2.3
+   Compact modern trading-console treatment.
+   ===================================================== */
+
+.overview-page { gap:16px; }
+.overview-hero { padding:20px 24px; border-radius:14px; background:linear-gradient(135deg,#141a24,#0f1117 68%); box-shadow:0 10px 30px rgba(0,0,0,.16); }
+.overview-hero h1 { font-size:28px; letter-spacing:-.02em; }
+.overview-hero p { margin-bottom:0; font-size:14px; }
+.overview-card { border-radius:14px; padding:18px; background:linear-gradient(145deg,#17191d,#131416); box-shadow:0 8px 24px rgba(0,0,0,.12); }
+.overview-card > header { margin-bottom:12px; padding-bottom:10px; }
+.overview-card h2 { font-size:18px; }
+.overview-button { padding:8px 12px; border-radius:8px; background:#15171a; transition:all .15s ease; }
+.overview-button.primary { box-shadow:0 4px 16px rgba(56,189,248,.18); }
+
+/* Compact trading chart: the chart is supporting evidence, not the whole page. */
+.overview-market-workspace { padding:16px 18px 14px; }
+.overview-market-workspace > header { align-items:center; }
+.overview-market-workspace > div[style*="display:flex"] { margin:10px 0 8px !important; gap:18px !important; font-size:13px; color:#94a3b8; }
+.overview-market-workspace > div[style*="display:flex"] strong { font-size:18px; color:#f8fafc; }
+.overview-chart { height:300px !important; min-height:300px !important; border:1px solid #202938; border-radius:10px; background:#0b1017; }
+.overview-chart canvas { height:300px !important; }
+.overview-chart-controls { margin-top:10px; padding-top:10px; }
+.overview-chart-controls .overview-button { min-width:44px; padding:7px 10px; }
+.overview-chart-footer { margin-top:8px; font-size:11px; }
+
+/* Cleaner decision panel. */
+.overview-conviction { gap:22px; padding:20px 24px; border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.16); }
+.overview-conviction-copy { min-height:150px; padding-left:170px; }
+.overview-conviction-copy::before { width:136px; height:136px; font-size:21px; }
+.overview-conviction-copy::after { left:27px; top:calc(50% + 50px); width:82px; font-size:8px; }
+.overview-conviction-title { font-size:22px; }
+.overview-conviction-title .overview-symbol { font-size:22px; }
+.overview-conviction-metrics { gap:10px; }
+.overview-conviction-metrics > div { min-height:78px; padding:13px; border-radius:10px; }
+.overview-conviction-metrics strong { font-size:21px; }
+
+/* More compact summary cards and market tiles. */
+.overview-grid { gap:12px; }
+.overview-stat { padding:15px; border-radius:12px; }
+.overview-stat strong { font-size:21px; }
+.overview-pulse-grid { gap:8px; }
+.overview-pulse-item { padding:12px; border-radius:10px; }
+.overview-pulse-price { margin:10px 0 6px; font-size:16px; }
+.overview-intelligence { gap:8px; margin-top:10px; }
+.overview-intelligence > div { padding:10px; border-radius:9px; }
+
+/* Give the page a restrained modern hierarchy. */
+.overview-kicker { font-size:10px; letter-spacing:.14em; }
+.overview-sub { font-size:10px; }
+.overview-reason { padding:9px 0; font-size:12px; }
+.overview-news-item { padding:10px 0; }
+
+@media (max-width:700px) {
+    .overview-hero { padding:18px; }
+    .overview-card { padding:14px; }
+    .overview-market-workspace { padding:14px; }
+    .overview-chart, .overview-chart canvas { height:260px !important; min-height:260px !important; }
+    .overview-conviction { padding:18px; }
+    .overview-conviction-copy { min-height:235px; padding:160px 0 0; }
+    .overview-conviction-copy::before { width:140px; height:140px; }
+    .overview-conviction-copy::after { top:132px; }
+}
