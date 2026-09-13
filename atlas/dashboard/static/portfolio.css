@@ -6,6 +6,8 @@
     display: flex;
     flex-direction: column;
     gap: 22px;
+    width: 100%;
+    min-width: 0;
 }
 
 .page-heading {
@@ -44,6 +46,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
 }
 
 .portfolio-stat strong {
@@ -91,6 +94,171 @@
 @media (max-width: 600px) {
     .portfolio-stats {
         grid-template-columns: 1fr;
+    }
+
+    .page-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* =====================================================
+   PORTFOLIO - DASHBOARD RESPONSIVENESS
+   ===================================================== */
+
+.portfolio-header,
+.portfolio-dashboard-card {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.portfolio-header-content {
+    min-width: 0;
+}
+
+.portfolio-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    width: 100%;
+    min-width: 0;
+}
+
+.portfolio-summary-grid > .portfolio-stat {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.portfolio-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    min-width: 0;
+    align-items: start;
+}
+
+.portfolio-dashboard-grid > .portfolio-dashboard-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.portfolio-dashboard-card table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+}
+
+.portfolio-dashboard-card th,
+.portfolio-dashboard-card td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.portfolio-dashboard-card .trade-history {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.portfolio-dashboard-card .trade-row {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    grid-template-areas:
+        "main details"
+        "time time";
+    gap: 10px 14px;
+    overflow: hidden;
+}
+
+.portfolio-dashboard-card .trade-main {
+    grid-area: main;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.portfolio-dashboard-card .trade-main strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.portfolio-dashboard-card .trade-details {
+    grid-area: details;
+    min-width: 0;
+    max-width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 5px 12px;
+    overflow: hidden;
+}
+
+.portfolio-dashboard-card .trade-details span,
+.portfolio-dashboard-card .trade-details strong {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.portfolio-dashboard-card .trade-time {
+    grid-area: time;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    text-align: right;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 1000px) {
+    .portfolio-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .portfolio-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .portfolio-header-content {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .portfolio-summary-grid,
+    .portfolio-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-dashboard-card .trade-row {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "main"
+            "details"
+            "time";
+    }
+
+    .portfolio-dashboard-card .trade-details {
+        justify-content: flex-start;
+    }
+
+    .portfolio-dashboard-card .trade-time {
+        text-align: left;
     }
 
     .page-heading {
