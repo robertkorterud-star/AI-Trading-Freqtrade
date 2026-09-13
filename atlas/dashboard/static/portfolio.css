@@ -17,14 +17,8 @@
     gap: 20px;
 }
 
-.page-heading h1 {
-    color: #38bdf8;
-    margin-bottom: 6px;
-}
-
-.page-heading p {
-    color: #94a3b8;
-}
+.page-heading h1 { color: #38bdf8; margin-bottom: 6px; }
+.page-heading p { color: #94a3b8; }
 
 .paper-badge {
     color: #facc15;
@@ -34,6 +28,7 @@
     padding: 7px 11px;
     font-size: 12px;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .portfolio-stats {
@@ -49,9 +44,7 @@
     min-width: 0;
 }
 
-.portfolio-stat strong {
-    font-size: 23px;
-}
+.portfolio-stat strong { font-size: 23px; }
 
 .portfolio-grid {
     display: grid;
@@ -71,39 +64,11 @@
     color: #94a3b8;
 }
 
-.empty-icon {
-    font-size: 38px;
-    margin-bottom: 12px;
-}
-
-.empty-portfolio h3 {
-    color: #f8fafc;
-    margin-bottom: 8px;
-}
-
-@media (max-width: 1000px) {
-    .portfolio-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .portfolio-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 600px) {
-    .portfolio-stats {
-        grid-template-columns: 1fr;
-    }
-
-    .page-heading {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-}
+.empty-icon { font-size: 38px; margin-bottom: 12px; }
+.empty-portfolio h3 { color: #f8fafc; margin-bottom: 8px; }
 
 /* =====================================================
-   PORTFOLIO - DASHBOARD RESPONSIVENESS
+   PORTFOLIO DASHBOARD LAYOUT
    ===================================================== */
 
 .portfolio-header,
@@ -112,9 +77,7 @@
     box-sizing: border-box;
 }
 
-.portfolio-header-content {
-    min-width: 0;
-}
+.portfolio-header-content { min-width: 0; }
 
 .portfolio-summary-grid {
     display: grid;
@@ -129,9 +92,10 @@
     box-sizing: border-box;
 }
 
+/* Two clean columns for the dashboard cards.  History and handler span both. */
 .portfolio-dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 22px;
     width: 100%;
     min-width: 0;
@@ -146,6 +110,15 @@
     overflow: hidden;
 }
 
+.portfolio-dashboard-grid > .trade-history-dashboard-card {
+    grid-column: 1 / -1;
+}
+
+/* The dry-run handler is also a full-width section rather than a narrow third column. */
+.portfolio-dashboard-grid > .trade-history-dashboard-card:last-child {
+    grid-column: 1 / -1;
+}
+
 .portfolio-dashboard-card table {
     width: 100%;
     max-width: 100%;
@@ -158,91 +131,107 @@
     word-break: break-word;
 }
 
+/* =====================================================
+   TRADE HISTORY
+   ===================================================== */
+
 .portfolio-dashboard-card .trade-history {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     width: 100%;
     min-width: 0;
     max-width: 100%;
 }
 
 .portfolio-dashboard-card .trade-row {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr) 190px;
+    grid-template-areas: "main details time";
+    align-items: center;
+    gap: 14px;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-    grid-template-areas:
-        "main details"
-        "time time";
-    gap: 10px 14px;
     overflow: hidden;
 }
 
 .portfolio-dashboard-card .trade-main {
     grid-area: main;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
     overflow: hidden;
 }
 
 .portfolio-dashboard-card .trade-main strong {
     min-width: 0;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .portfolio-dashboard-card .trade-details {
     grid-area: details;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px 20px;
     min-width: 0;
     max-width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 5px 12px;
     overflow: hidden;
 }
 
 .portfolio-dashboard-card .trade-details span,
 .portfolio-dashboard-card .trade-details strong {
     min-width: 0;
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    white-space: nowrap;
 }
 
 .portfolio-dashboard-card .trade-time {
     grid-area: time;
     min-width: 0;
-    width: 100%;
     max-width: 100%;
     text-align: right;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-@media (max-width: 1000px) {
-    .portfolio-summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 1100px) {
+    .portfolio-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .portfolio-dashboard-grid { grid-template-columns: 1fr; }
+
+    .portfolio-dashboard-grid > .trade-history-dashboard-card,
+    .portfolio-dashboard-grid > .trade-history-dashboard-card:last-child {
+        grid-column: 1;
     }
 
-    .portfolio-grid {
-        grid-template-columns: 1fr;
+    .portfolio-dashboard-card .trade-row {
+        grid-template-columns: 120px minmax(0, 1fr);
+        grid-template-areas:
+            "main details"
+            "time time";
     }
 
-    .portfolio-dashboard-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .portfolio-dashboard-card .trade-time { text-align: left; }
 }
 
 @media (max-width: 700px) {
-    .portfolio-header-content {
+    .portfolio-summary-grid { grid-template-columns: 1fr; }
+
+    .portfolio-header-content,
+    .page-heading {
         align-items: flex-start;
         flex-direction: column;
-    }
-
-    .portfolio-summary-grid,
-    .portfolio-dashboard-grid {
-        grid-template-columns: 1fr;
     }
 
     .portfolio-dashboard-card .trade-row {
@@ -251,18 +240,9 @@
             "main"
             "details"
             "time";
+        gap: 8px;
     }
 
-    .portfolio-dashboard-card .trade-details {
-        justify-content: flex-start;
-    }
-
-    .portfolio-dashboard-card .trade-time {
-        text-align: left;
-    }
-
-    .page-heading {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+    .portfolio-dashboard-card .trade-details { justify-content: flex-start; }
+    .portfolio-dashboard-card .trade-time { text-align: left; }
 }
