@@ -4,7 +4,26 @@ import pandas as pd
 
 from atlas.core.config import AtlasConfig
 from atlas.core.engine import AtlasEngine
+from atlas.risk.risk_engine import RiskEngine
+from atlas.services.portfolio_service import PortfolioService
+from atlas.trading.paper_trading_engine import PaperTradingEngine
+from atlas.trading.trading_controller import TradingController
 from atlas.trading.trading_runtime import TradingRuntime
+from atlas.trading.trading_service import TradingService
+
+
+def make_legacy_trading_runtime(config):
+    portfolio = PortfolioService(config.capital_limit)
+    trading = TradingService()
+    trader = PaperTradingEngine(
+        portfolio=portfolio,
+        risk=RiskEngine(),
+        trading=trading,
+    )
+    return TradingRuntime(
+        config=config,
+        controller=TradingController(trader=trader),
+    )
 
 
 def test_atlas_engine_uses_btc_usd_symbol():
@@ -47,23 +66,14 @@ def test_atlas_engine_uses_btc_usd_symbol():
         for result in results
     )
 
+def test_atlas_engine_end_to_end_paper_buy(tmp_path):
 
-def test_atlas_engine_has_trading_runtime():
-
-    engine = AtlasEngine()
-
-    assert isinstance(
-        engine.trading_runtime,
-        TradingRuntime,
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
     )
-
-
-def test_atlas_engine_end_to_end_paper_buy():
-
-    engine = AtlasEngine()
-
-    engine.config.trading_mode = "paper"
-    engine.config.paper_trading = True
+    config.trading_mode = "paper"
+    config.paper_trading = True
+    runtime = make_legacy_trading_runtime(config)
 
     decision = make_buy_decision = __import__(
         "atlas.models.decision_result",
@@ -78,7 +88,7 @@ def test_atlas_engine_end_to_end_paper_buy():
         evidence=95.0,
     )
 
-    result = engine.trading_runtime.execute(
+    result = runtime.execute(
         decision=decision,
         price_usd=65000,
         usd_nok=9.50,
@@ -91,12 +101,14 @@ def test_atlas_engine_end_to_end_paper_buy():
     assert result["amount_nok"] == 1000
 
 
-def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit():
+def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit(tmp_path):
 
-    engine = AtlasEngine()
-
-    engine.config.trading_mode = "paper"
-    engine.config.paper_trading = True
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
+    )
+    config.trading_mode = "paper"
+    config.paper_trading = True
+    runtime = make_legacy_trading_runtime(config)
 
     buy_decision = __import__(
         "atlas.models.decision_result",
@@ -124,7 +136,7 @@ def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit():
         evidence=95.0,
     )
 
-    buy_result = engine.trading_runtime.execute(
+    buy_result = runtime.execute(
         decision=buy_decision,
         price_usd=65000,
         usd_nok=9.50,
@@ -134,7 +146,7 @@ def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit():
     assert buy_result["executed"] is True
     assert buy_result["action"] == "BUY"
 
-    sell_result = engine.trading_runtime.execute(
+    sell_result = runtime.execute(
         decision=sell_decision,
         price_usd=70000,
         usd_nok=9.50,
@@ -145,7 +157,7 @@ def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit():
     assert sell_result["action"] == "SELL"
     assert sell_result["realized_pnl_nok"] > 0
 
-    portfolio = engine.trading_runtime.controller.trader.portfolio.as_dict(
+    portfolio = runtime.controller.trader.portfolio.as_dict(
         9.50
     )
 

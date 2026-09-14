@@ -251,6 +251,45 @@ async def dashboard(request: Request):
     )
 
 
+
+@app.get("/portfolio", response_class=HTMLResponse)
+async def portfolio_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="portfolio.html",
+        context={"request": request, "dashboard": build_dashboard()},
+    )
+
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={"request": request, "dashboard": build_dashboard()},
+    )
+
+
+@app.post("/settings")
+async def update_settings(request: Request):
+    form = await request.form()
+
+    trading_mode = form.get("trading_mode")
+    if trading_mode:
+        settings_service.set_trading_mode(str(trading_mode))
+
+    language = form.get("language")
+    if language:
+        settings_service.set_language(str(language))
+
+    ai_provider = form.get("ai_provider")
+    if ai_provider:
+        settings_service.set_ai_provider(str(ai_provider))
+
+    return RedirectResponse(url="/settings", status_code=303)
+
+
 @app.get("/scanner", response_class=HTMLResponse)
 async def scanner(request: Request):
     scanner_data = service.get_scanner()

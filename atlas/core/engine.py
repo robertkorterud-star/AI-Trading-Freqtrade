@@ -15,13 +15,9 @@ from atlas.decision.engine import DecisionEngine
 
 from atlas.report.report_builder import ReportBuilder
 
-from atlas.risk.risk_engine import RiskEngine
 from atlas.services.portfolio_service import PortfolioService
 from atlas.services.technical_service import TechnicalService
 from atlas.services.exchange_rate_service import ExchangeRateService
-from atlas.trading.paper_trading_engine import PaperTradingEngine
-from atlas.trading.trading_controller import TradingController
-from atlas.trading.trading_runtime import TradingRuntime
 from atlas.trading.trading_service import TradingService
 from atlas.risk.manager import RiskManager
 from atlas.portfolio.manager import PortfolioManager
@@ -170,8 +166,6 @@ class AtlasEngine:
         # Expose service instances for testability and adapter wiring.
         self.portfolio_service = portfolio
 
-        risk = RiskEngine()
-
         trade_repository = TradeRepository(
             self.database
         )
@@ -295,22 +289,6 @@ class AtlasEngine:
             outcomes=self.outcome_tracker,
             agent_performance=self.agent_performance,
             outcome_repository=self.outcome_repository,
-        )
-
-        trader = PaperTradingEngine(
-            portfolio=portfolio,
-            risk=risk,
-            trading=trading,
-        )
-
-        controller = TradingController(
-            trader=trader,
-        )
-
-        self.trading_runtime = TradingRuntime(
-            config=self.config,
-            controller=controller,
-            prediction_tracker=self.prediction_tracker,
         )
 
     @property

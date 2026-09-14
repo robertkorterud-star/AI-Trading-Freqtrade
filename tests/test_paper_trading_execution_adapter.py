@@ -101,3 +101,39 @@ def test_paper_adapter_sell_respects_portfolio_service_contract():
 
     # trading history should contain one sell
     assert trading.count() == 1
+
+
+def test_paper_adapter_does_not_average_into_existing_position_on_buy():
+    portfolio = PortfolioService(1000000)
+    trading = TradingService()
+
+    class FakeExchange:
+        def get_rate(self, base, target):
+            return type("R", (), {"rate": 10.0})()
+
+    adapter = PaperTradingExecutionAdapter(
+        portfolio=portfolio,
+        trading=trading,
+        exchange_service=FakeExchange(),
+    )
+
+    engine = ExecutionEngine(adapter)
+    service = DecisionExecutionService(engine)
+
+    first_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
+    second_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
+
+    first_result = service.execute(first_buy, price=20000.0)
+    second_result = service.execute(second_buy, price=21000.0)
+
+    assert first_result is not None
+    assert second_result is None
+
+    snapshot = portfolio.as_dict(usd_nok=10.0)
+    positions = snapshot["positions"]
+
+    assert len(positions) == 1
+    assert positions[0]["symbol"] == "BTC-USD"
+    assert abs(positions[0]["quantity"] - 0.5) < 1e-8
+
+    assert trading.count() == 1

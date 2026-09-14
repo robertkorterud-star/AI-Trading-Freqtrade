@@ -10,6 +10,7 @@ from atlas.models.action import Action
 from atlas.services.portfolio_service import PortfolioService
 from atlas.trading.trading_service import TradingService
 from atlas.services.exchange_rate_service import ExchangeRateService
+from atlas.algorithms.position_exit import PositionContext, PositionAction, PositionExitEngine
 
 
 class PaperTradingExecutionAdapter:
@@ -30,6 +31,7 @@ class PaperTradingExecutionAdapter:
         self.trading = trading or TradingService()
         # Keep a reference to ExchangeRateService and fetch rate at execute-time.
         self.exchange_service = exchange_service
+        self.position_exit_engine = PositionExitEngine()
 
     def execute(self, request: ExecutionRequest) -> ExecutionResult:
         # Validate adapter inputs at this boundary:
@@ -47,6 +49,37 @@ class PaperTradingExecutionAdapter:
         # Convert execution quantity (units) and price_usd to NOK amount
         # according to the required adapter responsibility.
         if request.action is Action.BUY:
+            existing_position = self.portfolio._positions.get(request.symbol)
+
+            current_position = 0.0
+            entry_price = None
+
+            if existing_position is not None:
+                current_position = existing_position.quantity
+                entry_price = existing_position.average_price_usd
+
+            position_context = PositionContext(
+                current_position=current_position,
+                entry_price=entry_price,
+                current_price=price_usd,
+                peak_price=entry_price,
+                confidence=1.0,
+                risk_score=0.0,
+            )
+
+            position_decision = self.position_exit_engine.decide(
+                Action.BUY,
+                position_context,
+            )
+
+            if position_decision.action is PositionAction.HOLD:
+                return None
+
+            if position_decision.action is not PositionAction.ENTER:
+                raise RuntimeError(
+                    f"Unexpected position action for BUY: {position_decision.action}"
+                )
+
             amount_nok = request.quantity * price_usd * usd_nok
 
             position = self.portfolio.buy(

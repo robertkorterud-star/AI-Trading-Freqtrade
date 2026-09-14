@@ -15,9 +15,13 @@ def buy_result() -> AnalysisResult:
     )
 
 
-def test_atlas_engine_modern_paper_execution_chain():
+def test_atlas_engine_modern_paper_execution_chain(tmp_path):
     """Ensure AtlasEngine wires the modern decision->risk->execution paper path."""
-    config = AtlasConfig(trading_mode="paper", capital_limit=1_000_000.0)
+    config = AtlasConfig(
+        trading_mode="paper",
+        capital_limit=1_000_000.0,
+        database_path=str(tmp_path / "atlas.db"),
+    )
     engine = AtlasEngine(config=config)
 
     # modern managers should be available on the engine and assigned to DecisionEngine
