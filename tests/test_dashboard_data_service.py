@@ -16,6 +16,37 @@ class _FakeIntelligenceSources:
         return list(self.items)
 
 
+def test_dashboard_news_prioritizes_distinct_sources(tmp_path):
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+    )
+    service = DashboardDataService(
+        config=config,
+        intelligence_sources=_FakeIntelligenceSources(
+            [
+                {"source": "YouTube", "title": f"Video {index}"}
+                for index in range(6)
+            ]
+            + [
+                {"source": "Finnhub", "title": "BTC market update"},
+                {"source": "Reuters", "title": "Markets update"},
+                {"source": "Yahoo Finance", "title": "Bitcoin update"},
+            ]
+        ),
+    )
+
+    news = service._get_latest_news("BTC-USD")
+
+    assert [article["source"] for article in news[:4]] == [
+        "YouTube",
+        "Finnhub",
+        "Reuters",
+        "Yahoo Finance",
+    ]
+    assert len({article["source"] for article in news[:5]}) > 1
+
+
 def _service_with_snapshot(tmp_path, symbol="BTC-USD"):
     config = AtlasConfig(
         database_path=str(tmp_path / "atlas.db"),

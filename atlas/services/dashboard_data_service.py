@@ -180,6 +180,27 @@ class DashboardDataService:
         if not isinstance(result, list):
             result = []
 
+        # Keep the complete current-news feed, but make its leading items useful
+        # to the overview. IntelligenceSourceAdapter groups results by adapter,
+        # so without this pass a large YouTube result set hides every other
+        # available source behind the template's first-five limit.
+        by_source = {}
+        source_order = []
+        for item in result:
+            source = item.get("source", "") if isinstance(item, dict) else ""
+            source = str(source).strip() or "Unknown"
+            if source not in by_source:
+                by_source[source] = []
+                source_order.append(source)
+            by_source[source].append(item)
+
+        diversified = []
+        for source in source_order:
+            diversified.append(by_source[source].pop(0))
+        for source in source_order:
+            diversified.extend(by_source[source])
+
+        result = diversified
         self._news_cache[symbol] = (now, result)
         return result
 
