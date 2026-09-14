@@ -79,6 +79,7 @@ from atlas.market.candidates.source import CandidatePool
 from atlas.market.candidates.ai_research import AIResearchSource
 from atlas.market.candidates.ai_provider import AICandidateProvider
 from atlas.market.candidates.market_discovery import MarketDiscoverySource
+from atlas.market.candidates.research_service import CandidateResearchService
 from atlas.core.ai_provider_factory import AIProviderFactory
 
 
@@ -116,6 +117,8 @@ class AtlasEngine:
         self.logger = get_logger("ATLAS")
 
         self.market_data = MarketDataAdapter()
+
+        self.candidate_research_service = CandidateResearchService()
 
         self.registry = AgentRegistry()
 
@@ -321,13 +324,20 @@ class AtlasEngine:
     ):
         """Discover research candidates using AI and market discovery."""
 
+        ai_research = research
+
+        if not ai_research.strip():
+            ai_research = self.candidate_research_service.get_context(
+                limit=limit,
+            ).as_text()
+
         ai_provider = AIProviderFactory.create(
             config=self.config,
         )
 
         ai_candidates = AIResearchSource(
             AICandidateProvider(ai_provider),
-            research=research,
+            research=ai_research,
         )
 
         market_candidates = MarketDiscoverySource(
