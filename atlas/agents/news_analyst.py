@@ -7,20 +7,20 @@ Analyzes recent financial news using the AI adapter.
 from dataclasses import asdict, is_dataclass
 
 from atlas.agents.base_agent import BaseAgent
-from atlas.adapters.news import NewsAdapter
 from atlas.models.action import Action
 from atlas.models.analysis_result import AnalysisResult
 from atlas.core.ai_provider_factory import AIProviderFactory
 from atlas.news.explanation import explain_news
+from atlas.news.source_manager import NewsSourceManager
 
 
 class NewsAnalyst(BaseAgent):
     """AI-powered financial news analyst."""
 
-    def __init__(self, config=None) -> None:
+    def __init__(self, config=None, news_sources=None) -> None:
         super().__init__("News Analyst", config=config)
 
-        self.news = NewsAdapter()
+        self.news = news_sources or NewsSourceManager()
         self.news_explanation = None
 
     @staticmethod
