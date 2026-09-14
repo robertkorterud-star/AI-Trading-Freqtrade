@@ -134,6 +134,72 @@ class AIAdapter:
             result,
         )
 
+
+
+    def discover_candidates(self, research: str = "") -> list[dict]:
+        """Discover promising stocks and crypto from research context."""
+
+        prompt = f"""
+You are the candidate research analyst for an algorithmic
+trading system called ATLAS.
+
+Your task is to identify financial assets that deserve deeper
+analysis by ATLAS.
+
+You are NOT making a trade decision.
+
+Use only the supplied research context.
+
+Look for:
+- stocks with meaningful catalysts or changing fundamentals
+- crypto assets with meaningful catalysts or changing sentiment
+- unusual market developments worth deeper investigation
+- assets where multiple pieces of evidence suggest further research
+
+Rules:
+- Prefer specific assets over broad sectors.
+- Do not invent symbols or facts.
+- Do not return BUY, SELL or HOLD instructions.
+- Do not make portfolio decisions.
+- Return an empty list when evidence is insufficient.
+- Score each candidate from 0 to 100 based on research strength.
+- Keep the reason short and evidence-based.
+- Return ONLY valid JSON.
+
+Required format:
+
+[
+  {{
+    "symbol": "NVDA",
+    "score": 85,
+    "reason": "Short evidence-based explanation",
+    "metadata": {{
+      "asset_type": "stock",
+      "catalysts": []
+    }}
+  }}
+]
+
+RESEARCH CONTEXT:
+
+{research}
+""".strip()
+
+        response = self.client.responses.create(
+            model=self.model,
+            input=prompt,
+        )
+
+        result = json.loads(response.output_text)
+
+        if isinstance(result, dict):
+            result = result.get("candidates", [])
+
+        if not isinstance(result, list):
+            return []
+
+        return result
+
     def analyze_news(
         self,
         symbol: str,

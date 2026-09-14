@@ -43,6 +43,113 @@ class OllamaAdapter:
             )
         ).rstrip("/")
 
+
+
+    def discover_candidates(self, research: str = "") -> list[dict]:
+        """Discover promising stocks and crypto using local Ollama."""
+
+        prompt = f"""
+You are the candidate research analyst for an algorithmic
+trading system called ATLAS.
+
+Your task is to identify financial assets that deserve deeper
+analysis by ATLAS.
+
+You are NOT making a trade decision.
+
+Use only the supplied research context.
+
+Look for:
+- stocks with meaningful catalysts or changing fundamentals
+- crypto assets with meaningful catalysts or changing sentiment
+- unusual market developments worth deeper investigation
+- assets where multiple pieces of evidence suggest further research
+
+Rules:
+- Prefer specific assets over broad sectors.
+- Do not invent symbols or facts.
+- Do not return BUY, SELL or HOLD instructions.
+- Do not make portfolio decisions.
+- Return an empty list when evidence is insufficient.
+- Score each candidate from 0 to 100 based on research strength.
+- Keep the reason short and evidence-based.
+- Return ONLY valid JSON.
+
+Required format:
+
+[
+  {{
+    "symbol": "NVDA",
+    "score": 85,
+    "reason": "Short evidence-based explanation",
+    "metadata": {{
+      "asset_type": "stock",
+      "catalysts": []
+    }}
+  }}
+]
+
+RESEARCH CONTEXT:
+
+{research}
+""".strip()
+
+        response = requests.post(
+            f"{self.base_url}/api/generate",
+            json={
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "format": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {
+                                "type": "string"
+                            },
+                            "score": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                            },
+                            "reason": {
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "symbol",
+                            "score",
+                            "reason",
+                            "metadata"
+                        ]
+                    }
+                },
+            },
+            timeout=120,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+        output = data.get("response", "")
+
+        if not output:
+            output = data.get("thinking", "")
+
+        if not output:
+            return []
+
+        result = json.loads(output)
+
+        if not isinstance(result, list):
+            return []
+
+        return result
+
     def analyze_news(
         self,
         symbol: str,

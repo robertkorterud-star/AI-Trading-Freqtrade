@@ -7,7 +7,7 @@ class FakeAIResearchProvider:
         self.candidates = candidates
         self.calls = 0
 
-    def discover_candidates(self):
+    def discover_candidates(self, research=''):
         self.calls += 1
         return list(self.candidates)
 

@@ -75,6 +75,11 @@ from atlas.market.candidate_selection_report import (
     CandidateSelectionReport,
 )
 from atlas.adapters.market_data import MarketDataAdapter
+from atlas.market.candidates.source import CandidatePool
+from atlas.market.candidates.ai_research import AIResearchSource
+from atlas.market.candidates.ai_provider import AICandidateProvider
+from atlas.market.candidates.market_discovery import MarketDiscoverySource
+from atlas.core.ai_provider_factory import AIProviderFactory
 
 
 def build_config_from_args(args=None):
@@ -306,6 +311,40 @@ class AtlasEngine:
             technical_analyst = self.registry.get("Technical Analyst")
             if technical_analyst is not None:
                 technical_analyst.market = value
+
+
+    def research_candidates(
+        self,
+        research: str = "",
+        limit: int = 10,
+        minimum_score: float = 0.0,
+    ):
+        """Discover research candidates using AI and market discovery."""
+
+        ai_provider = AIProviderFactory.create(
+            config=self.config,
+        )
+
+        ai_candidates = AIResearchSource(
+            AICandidateProvider(ai_provider),
+            research=research,
+        )
+
+        market_candidates = MarketDiscoverySource(
+            discovery=self.asset_discovery,
+            universe=self.asset_universe,
+            limit=limit,
+            minimum_score=minimum_score,
+        )
+
+        pool = CandidatePool(
+            sources=[
+                ai_candidates,
+                market_candidates,
+            ]
+        )
+
+        return pool.collect()[:max(0, limit)]
 
     def discover_candidates(
         self,

@@ -1,4 +1,6 @@
-"""AI-research candidate source for ATLAS."""
+"""AI-backed candidate discovery source for ATLAS."""
+
+from __future__ import annotations
 
 from typing import Protocol
 
@@ -6,24 +8,31 @@ from atlas.market.candidates.source import Candidate
 
 
 class AIResearchProvider(Protocol):
-    """Provider capable of proposing candidates through research."""
-
-    def discover_candidates(self) -> list[Candidate]:
-        """Return candidates identified through AI research."""
+    def discover_candidates(
+        self,
+        research: str = "",
+    ) -> list[Candidate]:
         ...
 
 
 class AIResearchSource:
-    """Expose AI research as the CandidateSource contract."""
+    """Candidate source backed by AI research."""
 
-    def __init__(self, provider: AIResearchProvider):
+    def __init__(
+        self,
+        provider: AIResearchProvider,
+        research: str = "",
+    ):
         self.provider = provider
+        self.research = research
 
     def discover(self) -> list[Candidate]:
-        """Return candidates proposed by the configured research provider."""
+        candidates = self.provider.discover_candidates(
+            self.research
+        )
 
         return [
             candidate
-            for candidate in self.provider.discover_candidates()
+            for candidate in candidates
             if candidate.symbol.strip()
         ]

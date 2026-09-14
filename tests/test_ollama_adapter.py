@@ -209,3 +209,65 @@ def test_ollama_adapter_parses_qwen_thinking_response():
     assert result["sentiment"] == "POSITIVE"
     assert result["action"] == "BUY"
     assert result["confidence"] == 75
+
+
+def test_ollama_discover_candidates(monkeypatch):
+    adapter = OllamaAdapter(
+        model="test-model",
+        base_url="http://ollama.test",
+    )
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "response": (
+                    '[{"symbol":"NVDA","score":90,'
+                    '"reason":"Strong catalyst",'
+                    '"metadata":{"asset_type":"stock"}}]'
+                )
+            }
+
+    captured = {}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured["kwargs"] = kwargs
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "atlas.adapters.ollama.requests.post",
+        fake_post,
+    )
+
+    result = adapter.discover_candidates(
+        "NVDA has a strong catalyst."
+    )
+
+    assert result[0]["symbol"] == "NVDA"
+    assert result[0]["score"] == 90
+    assert captured["url"].endswith("/api/generate")
+    assert captured["kwargs"]["json"]["stream"] is False
+
+
+def test_ollama_discover_candidates_empty_response(monkeypatch):
+    adapter = OllamaAdapter(
+        model="test-model",
+        base_url="http://ollama.test",
+    )
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"response": ""}
+
+    monkeypatch.setattr(
+        "atlas.adapters.ollama.requests.post",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+
+    assert adapter.discover_candidates("No evidence.") == []
