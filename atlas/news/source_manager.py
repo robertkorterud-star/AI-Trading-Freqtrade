@@ -108,6 +108,61 @@ class NewsSourceManager:
         self._cache[key] = (now, list(articles))
         return articles
 
+    def market_research(self, limit: int = 50) -> list[dict]:
+        """Return cached broad-market research for candidate discovery."""
+
+        name = "alpha_vantage"
+        source = self.sources.get(name)
+
+        if source is None:
+            return []
+
+        key = (name, "__MARKET__")
+        now = self._clock()
+        cached = self._cache.get(key)
+
+        if cached is not None:
+            fetched_at, articles = cached
+            if now - fetched_at < self.FRESHNESS_SECONDS[name]:
+                return list(articles)
+
+        try:
+            adapter = getattr(source, "adapter", None)
+
+            if adapter is None or not hasattr(adapter, "market_news"):
+                return []
+
+            articles = adapter.market_news(limit=limit)
+        except Exception:
+            articles = []
+
+        if not isinstance(articles, list):
+            articles = []
+
+        normalized_articles = []
+        seen = set()
+
+        for article in articles:
+            normalized = self._normalize(article)
+
+            if not normalized["title"]:
+                continue
+
+            identity = self._identity(normalized)
+
+            if identity in seen:
+                continue
+
+            seen.add(identity)
+            normalized_articles.append(normalized)
+
+        self._cache[key] = (
+            now,
+            list(normalized_articles),
+        )
+
+        return normalized_articles
+
     def latest(self, symbol: str) -> list[dict]:
         """Return deduplicated articles in source-policy order."""
 

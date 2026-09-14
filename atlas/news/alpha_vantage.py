@@ -92,3 +92,69 @@ class AlphaVantageNewsAdapter:
             )
 
         return results
+
+    def market_news(self, limit: int = 50) -> list[dict]:
+        """Return broad market news for candidate research.
+
+        This is intentionally separate from symbol-specific news used by
+        NewsAnalyst. It is suitable for periodic candidate discovery only.
+        """
+
+        if not self.api_key:
+            return []
+
+        try:
+            response = requests.get(
+                self.BASE_URL,
+                params={
+                    "function": "NEWS_SENTIMENT",
+                    "topics": "financial_markets",
+                    "sort": "LATEST",
+                    "limit": min(max(int(limit), 1), 1000),
+                    "apikey": self.api_key,
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception:
+            return []
+
+        feed = payload.get("feed", [])
+        if not isinstance(feed, list):
+            return []
+
+        results = []
+
+        for article in feed:
+            title = str(article.get("title", "")).strip()
+
+            if not title:
+                continue
+
+            results.append(
+                {
+                    "title": title,
+                    "source": str(
+                        article.get("source", "Alpha Vantage")
+                    ).strip()
+                    or "Alpha Vantage",
+                    "summary": str(
+                        article.get("summary", "")
+                    ).strip(),
+                    "url": str(
+                        article.get("url", "")
+                    ).strip(),
+                    "sentiment": str(
+                        article.get(
+                            "overall_sentiment_label",
+                            "neutral",
+                        )
+                    ).strip().lower(),
+                    "published_at": str(
+                        article.get("time_published", "")
+                    ).strip(),
+                }
+            )
+
+        return results

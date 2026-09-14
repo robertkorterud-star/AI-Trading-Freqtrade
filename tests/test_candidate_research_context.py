@@ -1,0 +1,53 @@
+from atlas.market.candidates.research_context import (
+    CandidateResearchContext,
+    CandidateResearchContextBuilder,
+)
+
+
+class FakeNewsSourceManager:
+    def market_research(self, limit=50):
+        return [
+            {
+                "source": "Reuters",
+                "published_at": "2026-09-14T10:00:00",
+                "title": "Nvidia demand accelerates",
+                "summary": "Strong semiconductor demand.",
+            },
+            {
+                "source": "Alpha Vantage",
+                "published_at": "2026-09-14T09:00:00",
+                "title": "Bitcoin sentiment improves",
+                "summary": "Crypto market sentiment is improving.",
+            },
+        ]
+
+
+def test_candidate_research_context_builder():
+    context = CandidateResearchContextBuilder(
+        FakeNewsSourceManager()
+    ).build()
+
+    assert len(context.articles) == 2
+    assert "Nvidia demand accelerates" in context.as_text()
+    assert "Bitcoin sentiment improves" in context.as_text()
+
+
+def test_candidate_research_context_is_bounded():
+    context = CandidateResearchContext(
+        articles=tuple(
+            {
+                "source": "Test",
+                "published_at": "",
+                "title": f"Headline {index}",
+                "summary": "x" * 3000,
+            }
+            for index in range(50)
+        )
+    )
+
+    rendered = context.as_text(max_articles=3)
+
+    assert "Headline 0" in rendered
+    assert "Headline 2" in rendered
+    assert "Headline 3" not in rendered
+    assert len(rendered) < 10000
