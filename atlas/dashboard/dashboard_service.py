@@ -37,14 +37,22 @@ class DashboardService:
         self.data = DashboardDataService(config=resolved_config, trading=trading)
         persisted_trades = trading.history()
         if persisted_trades:
-            try:
-                self.data.portfolio.restore_from_trades(persisted_trades)
-            except ValueError:
+            restored = False
+            # Keep the latest valid account history when older legacy records
+            # cannot be replayed. This mirrors the paper adapter's protection
+            # against legacy overspending without discarding newer valid trades.
+            for start_index in range(len(persisted_trades)):
+                try:
+                    self.data.portfolio.restore_from_trades(
+                        persisted_trades[start_index:]
+                    )
+                except ValueError:
+                    continue
+                else:
+                    restored = True
+                    break
+            if not restored:
                 self.data.portfolio.reset()
-            else:
-                snapshot = self.data.portfolio.as_dict(1.0)
-                if snapshot["cash_nok"] < -1e-9:
-                    self.data.portfolio.reset()
         self._portfolio_trade_count = trading.count()
         self.scanner = ScannerService()
         self.binance_scanner = BinanceScannerService(
