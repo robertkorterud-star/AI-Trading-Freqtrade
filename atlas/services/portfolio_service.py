@@ -120,6 +120,80 @@ class PortfolioService:
 
         self._positions: Dict[str, Position] = {}
 
+    def restore_from_trades(self, trades):
+        """Rebuild paper-account state from persisted trade records.
+
+        ``TradingService`` is the owner of trade history. This method only
+        rehydrates the existing PortfolioService state after a process restart;
+        it does not persist trades or make trading decisions.
+        """
+        self.reset()
+
+        ordered_trades = sorted(
+            trades,
+            key=lambda trade: trade.timestamp,
+        )
+
+        for trade in ordered_trades:
+            symbol = str(trade.symbol)
+            quantity = float(trade.quantity)
+            price_usd = float(trade.price_usd)
+            amount_nok = float(trade.amount_nok)
+
+            if trade.action == "BUY":
+                if quantity <= 0.0 or price_usd <= 0.0 or amount_nok <= 0.0:
+                    raise ValueError("Invalid persisted BUY trade.")
+
+                existing = self._positions.get(symbol)
+                if existing is None:
+                    self._positions[symbol] = Position(
+                        symbol=symbol,
+                        quantity=quantity,
+                        average_price_usd=price_usd,
+                        current_price_usd=price_usd,
+                        last_buy_price_usd=price_usd,
+                    )
+                else:
+                    total_quantity = existing.quantity + quantity
+                    total_cost = existing.invested_usd + quantity * price_usd
+                    existing.quantity = total_quantity
+                    existing.average_price_usd = total_cost / total_quantity
+                    existing.current_price_usd = price_usd
+                    existing.last_buy_price_usd = price_usd
+
+                self._cash_nok -= amount_nok
+                continue
+
+            if trade.action == "SELL":
+                if quantity <= 0.0 or price_usd <= 0.0 or amount_nok < 0.0:
+                    raise ValueError("Invalid persisted SELL trade.")
+
+                position = self._positions.get(symbol)
+                if position is None:
+                    raise ValueError(
+                        f"Persisted SELL has no open position for {symbol}."
+                    )
+                if quantity > position.quantity + 1e-12:
+                    raise ValueError(
+                        f"Persisted SELL exceeds current position for {symbol}."
+                    )
+
+                realized_pnl_nok = float(trade.realized_pnl_nok)
+                self._cash_nok += amount_nok
+                if realized_pnl_nok > 0.0:
+                    self._cash_nok -= realized_pnl_nok
+                    self._profit_vault_nok += realized_pnl_nok
+
+                remaining_quantity = position.quantity - quantity
+                if remaining_quantity <= 1e-12:
+                    del self._positions[symbol]
+                else:
+                    position.quantity = remaining_quantity
+                    position.current_price_usd = price_usd
+                continue
+
+            raise ValueError(f"Unsupported persisted trade action: {trade.action}")
+
     # -------------------------------------------------
     # PRICE UPDATE
     # -------------------------------------------------
