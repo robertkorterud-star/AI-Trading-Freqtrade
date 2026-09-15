@@ -38,13 +38,13 @@ class DashboardService:
         persisted_trades = trading.history()
         if persisted_trades:
             restored = False
-            # Keep the latest valid account history when older legacy records
-            # cannot be replayed. This mirrors the paper adapter's protection
-            # against legacy overspending without discarding newer valid trades.
-            for start_index in range(len(persisted_trades)):
+            # TradingService exposes newest trades first. Try the newest prefix
+            # so valid modern trades survive older legacy records that cannot
+            # be replayed safely.
+            for trade_count in range(1, len(persisted_trades) + 1):
                 try:
                     self.data.portfolio.restore_from_trades(
-                        persisted_trades[start_index:]
+                        list(reversed(persisted_trades[:trade_count]))
                     )
                     snapshot = self.data.portfolio.as_dict(1.0)
                     if snapshot["cash_nok"] < -1e-9:
