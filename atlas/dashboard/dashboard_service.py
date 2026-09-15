@@ -46,6 +46,9 @@ class DashboardService:
                     self.data.portfolio.restore_from_trades(
                         persisted_trades[start_index:]
                     )
+                    snapshot = self.data.portfolio.as_dict(1.0)
+                    if snapshot["cash_nok"] < -1e-9:
+                        raise ValueError("Persisted history exceeds available cash.")
                 except ValueError:
                     continue
                 else:
