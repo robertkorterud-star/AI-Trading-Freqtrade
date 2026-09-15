@@ -123,14 +123,20 @@ def test_paper_adapter_blocks_repeated_buy_until_price_drop_threshold():
     first_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
     repeated_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
     accumulation_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
+    premature_follow_up = _make_decision("BTC-USD", Action.BUY, 0.5)
 
     first_result = service.execute(first_buy, price=20000.0)
     repeated_result = service.execute(repeated_buy, price=19900.0)
     accumulation_result = service.execute(accumulation_buy, price=19600.0)
+    premature_follow_up_result = service.execute(
+        premature_follow_up,
+        price=19400.0,
+    )
 
     assert first_result is not None
     assert repeated_result is None
     assert accumulation_result is not None
+    assert premature_follow_up_result is None
 
     snapshot = portfolio.as_dict(usd_nok=10.0)
     positions = snapshot["positions"]
