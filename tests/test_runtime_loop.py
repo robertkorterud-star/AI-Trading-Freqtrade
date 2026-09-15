@@ -62,7 +62,7 @@ def test_runtime_loop_runs_canonical_engine_cycle(monkeypatch):
     monkeypatch.setattr("atlas.core.runtime_loop.time.sleep", fake_sleep)
     monkeypatch.setattr(
         "atlas.core.runtime_loop.time.monotonic",
-        iter([0.0, 1.0]).__next__,
+        iter([0.0, 0.0, 1.0]).__next__,
     )
 
     with pytest.raises(KeyboardInterrupt):
