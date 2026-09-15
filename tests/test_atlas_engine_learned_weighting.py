@@ -14,6 +14,7 @@ def test_atlas_engine_uses_persisted_learned_agent_weights(
     tmp_path,
 ):
     storage = tmp_path / "agent_performance.json"
+    database = tmp_path / "atlas.db"
 
     tracker = AgentPerformanceTracker(
         storage_path=storage,
@@ -33,9 +34,10 @@ def test_atlas_engine_uses_persisted_learned_agent_weights(
             action="BUY",
         )
 
-    # Simulate a fresh ATLAS process.
+    # Simulate a fresh ATLAS process with isolated persistence.
     config = AtlasConfig(
         agent_performance_storage=str(storage),
+        database_path=str(database),
     )
 
     engine = AtlasEngine(config=config)
