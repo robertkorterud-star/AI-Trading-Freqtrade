@@ -77,6 +77,57 @@ def test_weak_buy_reduces_existing_position():
     assert result.target_position < 0.80
 
 
+def test_existing_position_holds_until_accumulation_drop():
+    engine = PositionExitEngine(accumulation_drop_pct=2.0)
+
+    result = engine.decide(
+        Action.BUY,
+        PositionContext(
+            current_position=0.80,
+            entry_price=100.0,
+            current_price=98.01,
+            confidence=0.95,
+        ),
+    )
+
+    assert result.action is PositionAction.HOLD
+    assert "accumulation" in result.reason
+
+
+def test_existing_position_can_accumulate_after_configured_drop():
+    engine = PositionExitEngine(accumulation_drop_pct=2.0)
+
+    result = engine.decide(
+        Action.BUY,
+        PositionContext(
+            current_position=0.80,
+            entry_price=100.0,
+            current_price=98.0,
+            confidence=0.95,
+        ),
+    )
+
+    assert result.action is PositionAction.ENTER
+    assert result.target_position > 0.0
+    assert "accumulation" in result.reason
+
+
+def test_accumulation_threshold_is_configurable():
+    engine = PositionExitEngine(accumulation_drop_pct=3.0)
+
+    result = engine.decide(
+        Action.BUY,
+        PositionContext(
+            current_position=0.80,
+            entry_price=100.0,
+            current_price=98.0,
+            confidence=0.95,
+        ),
+    )
+
+    assert result.action is PositionAction.HOLD
+
+
 def test_strong_sell_exits_position():
     engine = PositionExitEngine()
 
