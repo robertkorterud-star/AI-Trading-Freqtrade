@@ -1,3 +1,4 @@
+from atlas.core.config import AtlasConfig
 from atlas.services.settings_service import SettingsService
 
 
@@ -109,3 +110,24 @@ def test_settings_service_rejects_invalid_accumulation_drop_pct():
         raise AssertionError(
             "Invalid accumulation_drop_pct must be rejected"
         )
+
+
+def test_settings_service_persists_ai_provider_across_restart(tmp_path):
+
+    database_path = tmp_path / "atlas_settings.db"
+
+    first_config = AtlasConfig(
+        database_path=str(database_path),
+        load_persisted_settings=True,
+    )
+    first_service = SettingsService(config=first_config)
+    first_service.set_ai_provider("ollama")
+
+    restarted_config = AtlasConfig(
+        database_path=str(database_path),
+        load_persisted_settings=True,
+    )
+    restarted_service = SettingsService(config=restarted_config)
+
+    assert restarted_service.get_ai_provider() == "ollama"
+    assert restarted_service.get_config().ai_provider == "ollama"
