@@ -1,11 +1,43 @@
 import pytest
+from types import SimpleNamespace
 
 from atlas.core.runtime_loop import AtlasRuntimeLoop
+
+
+class FakeResearchService:
+    def get_context(self, limit=50):
+        return SimpleNamespace()
+
+
+class FakeLogger:
+    def info(self, message):
+        pass
+
+
+class FakeAssetUniverse:
+    def all(self):
+        return [SimpleNamespace(symbol="AAPL")]
+
+
+class FakeTechnicalService:
+    def get_snapshot(self, symbol):
+        return SimpleNamespace(
+            symbol=symbol,
+            price=100.0,
+            previous_close=99.0,
+            change_percent=1.01,
+            trend="Bullish",
+            volume_ratio=1.5,
+        )
 
 
 class FakeEngine:
     def __init__(self):
         self.calls = 0
+        self.candidate_research_service = FakeResearchService()
+        self.logger = FakeLogger()
+        self.asset_universe = FakeAssetUniverse()
+        self.technical = FakeTechnicalService()
 
     def start(self):
         self.calls += 1
