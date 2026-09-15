@@ -911,6 +911,12 @@ def test_atlas_engine_start_uses_selected_candidate(
 
     engine.config.trading_mode = "advisor"
 
+    monkeypatch.setattr(
+        engine.decision_execution_service,
+        "execute",
+        lambda decision, price=None, **kwargs: None,
+    )
+
     engine.start()
 
     assert analyzed_symbols
