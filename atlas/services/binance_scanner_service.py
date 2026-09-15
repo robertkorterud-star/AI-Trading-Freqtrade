@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from atlas.adapters.news import NewsAdapter
 from atlas.market.market_scout import AssetType, MarketObservation
@@ -20,6 +21,7 @@ class BinanceScannerService:
     DEFAULT_VOLUME_ENRICHMENT_LIMIT = 15
     DEFAULT_VOLUME_CACHE_TTL_SECONDS = 300.0
     DEFAULT_CATALYST_CACHE_TTL_SECONDS = 3600.0
+    DEFAULT_ENRICHMENT_WORKERS = 8
 
     # Finnhub relationships are preferred, but crypto-news feeds are not
     # guaranteed to populate them. These aliases make catalyst matching
@@ -112,15 +114,15 @@ class BinanceScannerService:
         catalyst_symbols = self._catalyst_symbols_for_universe(
             symbol for symbol, _, _, _ in eligible
         )
+        volume_data = self._enrich_volume_data(enriched_symbols)
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent in eligible:
             volume = quote_volume
             average_volume = quote_volume
             breakout_percent = 0.0
-            if symbol in enriched_symbols:
-                volume_data = self._current_average_and_breakout(symbol)
-                if volume_data is not None:
-                    volume, average_volume, breakout_percent = volume_data
+            enriched = volume_data.get(symbol)
+            if enriched is not None:
+                volume, average_volume, breakout_percent = enriched
 
             observations.append(
                 MarketObservation(
@@ -136,6 +138,31 @@ class BinanceScannerService:
                 )
             )
         return observations
+
+    def _enrich_volume_data(
+        self,
+        symbols: set[str],
+    ) -> dict[str, tuple[float, float, float]]:
+        """Fetch independent volume enrichments concurrently."""
+        if not symbols:
+            return {}
+
+        workers = min(self.DEFAULT_ENRICHMENT_WORKERS, len(symbols))
+        results: dict[str, tuple[float, float, float]] = {}
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(self._current_average_and_breakout, symbol): symbol
+                for symbol in symbols
+            }
+            for future in as_completed(futures):
+                symbol = futures[future]
+                try:
+                    enriched = future.result()
+                except Exception:
+                    continue
+                if enriched is not None:
+                    results[symbol] = enriched
+        return results
 
     def _catalyst_symbols_for_universe(self, universe_symbols) -> set[str]:
         """Return Binance symbols supported by the current crypto-news feed.
