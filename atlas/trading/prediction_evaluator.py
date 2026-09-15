@@ -57,9 +57,14 @@ class PredictionEvaluator:
         if self.prediction_repository is None:
             return
 
-        self.agent_performance.rebuild_from_predictions(
+        evaluated_predictions = (
             self.prediction_repository.get_evaluated()
         )
+
+        if evaluated_predictions:
+            self.agent_performance.rebuild_from_predictions(
+                evaluated_predictions
+            )
 
     def ready_predictions(
         self,
