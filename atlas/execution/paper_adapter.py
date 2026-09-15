@@ -94,7 +94,7 @@ class PaperTradingExecutionAdapter:
 
             self.trading.record_buy(
                 symbol=request.symbol,
-                quantity=request.quantity,
+                quantity=position.quantity,
                 price_usd=price_usd,
                 amount_nok=amount_nok,
                 reason="ExecutionAdapter: paper BUY",
