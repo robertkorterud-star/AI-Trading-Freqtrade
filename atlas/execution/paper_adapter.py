@@ -26,12 +26,15 @@ class PaperTradingExecutionAdapter:
         portfolio: PortfolioService,
         trading: TradingService | None,
         exchange_service: ExchangeRateService,
+        accumulation_drop_pct: float = 2.0,
     ) -> None:
         self.portfolio = portfolio
         self.trading = trading or TradingService()
         # Keep a reference to ExchangeRateService and fetch rate at execute-time.
         self.exchange_service = exchange_service
-        self.position_exit_engine = PositionExitEngine()
+        self.position_exit_engine = PositionExitEngine(
+            accumulation_drop_pct=accumulation_drop_pct,
+        )
 
     def execute(self, request: ExecutionRequest) -> ExecutionResult:
         # Validate adapter inputs at this boundary:
@@ -91,7 +94,7 @@ class PaperTradingExecutionAdapter:
 
             self.trading.record_buy(
                 symbol=request.symbol,
-                quantity=position.quantity,
+                quantity=request.quantity,
                 price_usd=price_usd,
                 amount_nok=amount_nok,
                 reason="ExecutionAdapter: paper BUY",
