@@ -15,6 +15,49 @@ from atlas.database.trade_repository import TradeRepository
 from atlas.core.config import AtlasConfig
 
 
+class _LazyScannerSnapshot(dict):
+    """Load the scanner snapshot only when the dashboard actually reads it."""
+
+    def __init__(self, loader):
+        super().__init__()
+        self._loader = loader
+        self._loaded = False
+
+    def _ensure_loaded(self):
+        if self._loaded:
+            return
+        super().update(self._loader())
+        self._loaded = True
+
+    def __getitem__(self, key):
+        self._ensure_loaded()
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        self._ensure_loaded()
+        return super().get(key, default)
+
+    def items(self):
+        self._ensure_loaded()
+        return super().items()
+
+    def keys(self):
+        self._ensure_loaded()
+        return super().keys()
+
+    def values(self):
+        self._ensure_loaded()
+        return super().values()
+
+    def __iter__(self):
+        self._ensure_loaded()
+        return super().__iter__()
+
+    def __len__(self):
+        self._ensure_loaded()
+        return super().__len__()
+
+
 class DashboardService:
     """Provides dashboard data."""
 
@@ -136,7 +179,7 @@ class DashboardService:
         return self.scanner.as_dict(self._get_scanner_result())
 
     def get_dashboard(self, selected_symbol=None, trade_history_period="1d", now=None):
-        """Return dashboard data, including period-filtered trade history."""
+        """Return dashboard data, deferring the scanner snapshot until it is read."""
         normalized_symbol = self._normalize_dashboard_symbol(selected_symbol)
         self._sync_portfolio_with_new_trades()
         dashboard = self.data.get_dashboard_data(
@@ -144,5 +187,5 @@ class DashboardService:
             trade_history_period=trade_history_period,
             now=now,
         )
-        dashboard["scanner"] = self.get_scanner()
+        dashboard["scanner"] = _LazyScannerSnapshot(self.get_scanner)
         return dashboard
