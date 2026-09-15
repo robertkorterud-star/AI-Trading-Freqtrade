@@ -95,7 +95,8 @@ class AtlasRuntimeLoop:
 
 def run(config: AtlasConfig | None = None, interval_seconds: float = 30.0):
     """Start the continuous canonical ATLAS runtime."""
+    runtime_config = config or AtlasConfig(load_persisted_settings=True)
     AtlasRuntimeLoop(
-        engine=AtlasEngine(config=config),
+        engine=AtlasEngine(config=runtime_config),
         interval_seconds=interval_seconds,
     ).run_forever()
