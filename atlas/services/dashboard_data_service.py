@@ -310,19 +310,21 @@ class DashboardDataService:
                 latest_snapshot = stored_snapshot
 
         trading_status = self.settings.get_trading_status()
+        trading_data = {
+            "mode": trading_status["mode"],
+            "language": self.settings.get_language(),
+            "ai_provider": self.settings.get_ai_provider(),
+            "paper_trading": trading_status["paper_trading"],
+            "live_orders": trading_status["live_orders"],
+            "accumulation_drop_pct": trading_status["accumulation_drop_pct"],
+            "virtual_capital_nok": self.config.capital_limit,
+        }
         if latest_decision is None or latest_intelligence is None or latest_snapshot is None:
             return {
                 "status": "Waiting for ATLAS runtime",
                 "version": "0.8.1",
                 "capital": self.config.capital_limit,
-                "trading": {
-                    "mode": trading_status["mode"],
-                    "language": self.settings.get_language(),
-                    "ai_provider": self.settings.get_ai_provider(),
-                    "paper_trading": trading_status["paper_trading"],
-                    "live_orders": trading_status["live_orders"],
-                    "virtual_capital_nok": self.config.capital_limit,
-                },
+                "trading": trading_data,
                 "portfolio": self.portfolio.as_dict(exchange.rate),
                 "trade_history": history["trades"],
                 "trade_history_markers": history["markers"],
@@ -351,7 +353,7 @@ class DashboardDataService:
             "status": "Running",
             "version": "0.8.1",
             "capital": self.config.capital_limit,
-            "trading": {"mode": trading_status["mode"], "language": self.settings.get_language(), "ai_provider": self.settings.get_ai_provider(), "paper_trading": trading_status["paper_trading"], "live_orders": trading_status["live_orders"], "virtual_capital_nok": self.config.capital_limit},
+            "trading": trading_data,
             "portfolio": self.portfolio.as_dict(exchange.rate),
             "trade_history": history["trades"],
             "trade_history_markers": history["markers"],
