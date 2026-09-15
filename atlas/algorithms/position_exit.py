@@ -55,6 +55,7 @@ class PositionExitEngine:
         exit_confidence: float = 0.30,
         stop_loss: float = 0.08,
         trailing_stop: float = 0.10,
+        accumulation_drop_pct: float = 2.0,
     ):
         if max_position <= 0.0:
             raise ValueError("max_position must be greater than zero")
@@ -74,12 +75,16 @@ class PositionExitEngine:
         if not 0.0 <= trailing_stop <= 1.0:
             raise ValueError("trailing_stop must be between 0 and 1")
 
+        if not 0.0 <= accumulation_drop_pct <= 100.0:
+            raise ValueError("accumulation_drop_pct must be between 0 and 100")
+
         self.max_position = max_position
         self.entry_confidence = entry_confidence
         self.reduce_confidence = reduce_confidence
         self.exit_confidence = exit_confidence
         self.stop_loss = stop_loss
         self.trailing_stop = trailing_stop
+        self.accumulation_drop_pct = accumulation_drop_pct
 
     def decide(
         self,
@@ -90,6 +95,8 @@ class PositionExitEngine:
         Manage a long position from an upstream BUY/HOLD/SELL decision.
 
         A BUY with sufficient confidence opens or maintains exposure.
+        An existing position may receive another entry only after the
+        configured accumulation price drop has been reached.
         A weakening BUY reduces an existing position.
         SELL exits when confidence is sufficiently strong and reduces
         exposure when the sell signal is weaker.
@@ -129,13 +136,27 @@ class PositionExitEngine:
 
             target = self._entry_size(confidence, risk)
 
+            if context.current_position <= 0.0:
+                return PositionDecision(
+                    action=PositionAction.ENTER,
+                    target_position=target,
+                    size_fraction=self._fraction(target),
+                    reason="buy signal passed position sizing gate",
+                )
+
+            if self._accumulation_allowed(context):
+                return PositionDecision(
+                    action=PositionAction.ENTER,
+                    target_position=target,
+                    size_fraction=self._fraction(target),
+                    reason="buy signal passed accumulation price-drop gate",
+                )
+
             return PositionDecision(
-                action=PositionAction.ENTER
-                if context.current_position <= 0.0
-                else PositionAction.HOLD,
-                target_position=target,
-                size_fraction=self._fraction(target),
-                reason="buy signal passed position sizing gate",
+                action=PositionAction.HOLD,
+                target_position=context.current_position,
+                size_fraction=self._fraction(context.current_position),
+                reason="existing position has not reached accumulation price-drop threshold",
             )
 
         if action_value == "sell":
@@ -186,6 +207,15 @@ class PositionExitEngine:
             size_fraction=0.0,
             reason="no position and no entry signal",
         )
+
+    def _accumulation_allowed(self, context: PositionContext) -> bool:
+        if context.entry_price is None or context.current_price is None:
+            return False
+
+        threshold = context.entry_price * (
+            1.0 - self.accumulation_drop_pct / 100.0
+        )
+        return context.current_price <= threshold
 
     def _entry_size(self, confidence: float, risk: float) -> float:
         """
