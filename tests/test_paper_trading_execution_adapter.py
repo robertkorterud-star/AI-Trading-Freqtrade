@@ -103,7 +103,7 @@ def test_paper_adapter_sell_respects_portfolio_service_contract():
     assert trading.count() == 1
 
 
-def test_paper_adapter_does_not_average_into_existing_position_on_buy():
+def test_paper_adapter_blocks_repeated_buy_until_price_drop_threshold():
     portfolio = PortfolioService(1000000)
     trading = TradingService()
 
@@ -121,19 +121,21 @@ def test_paper_adapter_does_not_average_into_existing_position_on_buy():
     service = DecisionExecutionService(engine)
 
     first_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
-    second_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
+    repeated_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
+    accumulation_buy = _make_decision("BTC-USD", Action.BUY, 0.5)
 
     first_result = service.execute(first_buy, price=20000.0)
-    second_result = service.execute(second_buy, price=21000.0)
+    repeated_result = service.execute(repeated_buy, price=19900.0)
+    accumulation_result = service.execute(accumulation_buy, price=19600.0)
 
     assert first_result is not None
-    assert second_result is None
+    assert repeated_result is None
+    assert accumulation_result is not None
 
     snapshot = portfolio.as_dict(usd_nok=10.0)
     positions = snapshot["positions"]
 
     assert len(positions) == 1
     assert positions[0]["symbol"] == "BTC-USD"
-    assert abs(positions[0]["quantity"] - 0.5) < 1e-8
-
-    assert trading.count() == 1
+    assert abs(positions[0]["quantity"] - 1.0) < 1e-8
+    assert trading.count() == 2
