@@ -44,6 +44,7 @@ def test_settings_service_returns_trading_status():
     assert status["mode"] == "advisor"
     assert status["paper_trading"] is True
     assert status["live_orders"] is False
+    assert status["accumulation_drop_pct"] == 2.0
 
 
 def test_settings_service_defaults_to_ollama_ai_provider():
@@ -84,3 +85,27 @@ def test_settings_service_rejects_unknown_ai_provider():
     raise AssertionError(
         "Unknown AI provider must be rejected"
     )
+
+
+def test_settings_service_can_set_accumulation_drop_pct():
+
+    service = SettingsService()
+
+    service.set_accumulation_drop_pct(3.5)
+
+    assert service.get_config().accumulation_drop_pct == 3.5
+    assert service.get_trading_status()["accumulation_drop_pct"] == 3.5
+
+
+def test_settings_service_rejects_invalid_accumulation_drop_pct():
+
+    service = SettingsService()
+
+    for value in (0.0, 20.1, "not-a-number"):
+        try:
+            service.set_accumulation_drop_pct(value)
+        except ValueError:
+            continue
+        raise AssertionError(
+            "Invalid accumulation_drop_pct must be rejected"
+        )
