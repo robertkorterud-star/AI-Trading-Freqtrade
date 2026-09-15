@@ -63,11 +63,7 @@ class PaperTradingExecutionAdapter:
 
             position_context = PositionContext(
                 current_position=current_position,
-                entry_price=(
-                    existing_position.average_price_usd
-                    if existing_position is not None
-                    else None
-                ),
+                entry_price=accumulation_price,
                 current_price=price_usd,
                 peak_price=(
                     existing_position.average_price_usd
@@ -76,7 +72,6 @@ class PaperTradingExecutionAdapter:
                 ),
                 confidence=1.0,
                 risk_score=0.0,
-                accumulation_price=accumulation_price,
             )
 
             position_decision = self.position_exit_engine.decide(
