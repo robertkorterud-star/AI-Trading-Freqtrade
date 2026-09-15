@@ -29,6 +29,10 @@ class AtlasConfig:
 
     capital_limit: float = 5000.0
 
+    # Percentage price drop required before ATLAS may consider
+    # an additional accumulation entry for an existing position.
+    accumulation_drop_pct: float = 2.0
+
     agent_performance_storage: str = (
         "atlas/data/agent_performance.json"
     )
