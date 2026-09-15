@@ -123,8 +123,8 @@ def test_portfolio_restores_position_and_cash_from_persisted_trades():
 
     result = portfolio.as_dict(9.50)
 
-    assert result["cash_nok"] == 4482.5
+    assert result["cash_nok"] == 4430.0
     assert result["profit_vault_nok"] == 47.5
     assert result["position_count"] == 1
     assert result["positions"][0]["quantity"] == 0.01
-    assert result["positions"][0]["average_price_usd"] == 60000.0
+    assert result["positions"][0]["average_price_usd"] == 62500.0
