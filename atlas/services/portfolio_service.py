@@ -15,6 +15,11 @@ class Position:
     quantity: float
     average_price_usd: float
     current_price_usd: float
+    last_buy_price_usd: float | None = None
+
+    def __post_init__(self):
+        if self.last_buy_price_usd is None:
+            self.last_buy_price_usd = self.average_price_usd
 
     @property
     def invested_usd(self):
@@ -200,6 +205,7 @@ class PortfolioService:
             )
 
             existing.current_price_usd = price_usd
+            existing.last_buy_price_usd = price_usd
 
         else:
 
@@ -208,6 +214,7 @@ class PortfolioService:
                 quantity=quantity,
                 average_price_usd=price_usd,
                 current_price_usd=price_usd,
+                last_buy_price_usd=price_usd,
             )
 
         self._cash_nok -= amount_nok
