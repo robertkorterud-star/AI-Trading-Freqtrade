@@ -14,6 +14,7 @@ class SettingsService:
         "paper_trading",
         "language",
         "ai_provider",
+        "accumulation_drop_pct",
     )
 
     def __init__(self, config=None):
@@ -51,6 +52,10 @@ class SettingsService:
             self.config.language = persisted["language"]
         if "ai_provider" in persisted:
             self.config.ai_provider = persisted["ai_provider"]
+        if "accumulation_drop_pct" in persisted:
+            self.config.accumulation_drop_pct = float(
+                persisted["accumulation_drop_pct"]
+            )
 
     def _persist(self, key, value):
         if key not in self._PERSISTED_KEYS:
@@ -77,6 +82,7 @@ class SettingsService:
             "mode": self.config.trading_mode,
             "paper_trading": self.config.paper_trading,
             "live_orders": False,
+            "accumulation_drop_pct": self.config.accumulation_drop_pct,
         }
 
     def get_language(self):
@@ -107,6 +113,20 @@ class SettingsService:
 
         self.config.ai_provider = provider
         self._persist("ai_provider", provider)
+
+    def set_accumulation_drop_pct(self, value):
+        try:
+            value = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("accumulation_drop_pct must be a number") from exc
+
+        if not 0.1 <= value <= 20.0:
+            raise ValueError(
+                "accumulation_drop_pct must be between 0.1 and 20.0"
+            )
+
+        self.config.accumulation_drop_pct = value
+        self._persist("accumulation_drop_pct", value)
 
     def set_trading_mode(self, mode):
         if mode == "advisor":
