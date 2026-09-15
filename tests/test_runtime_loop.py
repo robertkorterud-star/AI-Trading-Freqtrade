@@ -1,7 +1,7 @@
 import pytest
 from types import SimpleNamespace
 
-from atlas.core.runtime_loop import AtlasRuntimeLoop
+from atlas.core.runtime_loop import AtlasRuntimeLoop, run
 
 
 class FakeResearchService:
@@ -70,3 +70,28 @@ def test_runtime_loop_runs_canonical_engine_cycle(monkeypatch):
 
     assert engine.calls == 1
     assert sleeps == [29.0]
+
+
+def test_runtime_run_loads_persisted_settings_when_no_config_is_supplied(monkeypatch):
+    captured = {}
+
+    class FakeAtlasEngine:
+        def __init__(self, config=None):
+            captured["config"] = config
+
+    class FakeRuntimeLoop:
+        def __init__(self, engine=None, interval_seconds=30.0):
+            captured["engine"] = engine
+            captured["interval_seconds"] = interval_seconds
+
+        def run_forever(self):
+            captured["started"] = True
+
+    monkeypatch.setattr("atlas.core.runtime_loop.AtlasEngine", FakeAtlasEngine)
+    monkeypatch.setattr("atlas.core.runtime_loop.AtlasRuntimeLoop", FakeRuntimeLoop)
+
+    run(interval_seconds=45)
+
+    assert captured["config"].load_persisted_settings is True
+    assert captured["interval_seconds"] == 45
+    assert captured["started"] is True
