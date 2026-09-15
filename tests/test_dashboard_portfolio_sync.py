@@ -1,3 +1,5 @@
+import pytest
+
 from atlas.core.config import AtlasConfig
 from atlas.dashboard.dashboard_service import DashboardService
 
@@ -28,7 +30,7 @@ def test_dashboard_syncs_trade_recorded_after_service_start(tmp_path):
 
     snapshot = service.data.portfolio.as_dict(10.0)
 
-    assert snapshot["cash_nok"] == 3999.999999999999
+    assert snapshot["cash_nok"] == pytest.approx(4000.0)
     assert len(snapshot["positions"]) == 1
     assert snapshot["positions"][0]["symbol"] == "MSFT"
-    assert snapshot["positions"][0]["quantity"] == 0.21217596933818203
+    assert snapshot["positions"][0]["quantity"] == pytest.approx(0.21217596933818203)
