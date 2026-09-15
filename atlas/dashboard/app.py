@@ -287,6 +287,10 @@ async def update_settings(request: Request):
     if ai_provider:
         settings_service.set_ai_provider(str(ai_provider))
 
+    accumulation_drop_pct = form.get("accumulation_drop_pct")
+    if accumulation_drop_pct is not None and str(accumulation_drop_pct).strip():
+        settings_service.set_accumulation_drop_pct(str(accumulation_drop_pct))
+
     return RedirectResponse(url="/settings", status_code=303)
 
 
