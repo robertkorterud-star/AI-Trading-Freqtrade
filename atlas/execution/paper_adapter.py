@@ -30,6 +30,7 @@ class PaperTradingExecutionAdapter:
     ) -> None:
         self.portfolio = portfolio
         self.trading = trading or TradingService()
+        self.portfolio.restore_from_trades(self.trading._history)
         # Keep a reference to ExchangeRateService and fetch rate at execute-time.
         self.exchange_service = exchange_service
         self.position_exit_engine = PositionExitEngine(
