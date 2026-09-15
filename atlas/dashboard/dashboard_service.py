@@ -35,7 +35,16 @@ class DashboardService:
         initialize_database(database)
         trading = TradingService(repository=TradeRepository(database))
         self.data = DashboardDataService(config=resolved_config, trading=trading)
-        self.data.portfolio.restore_from_trades(trading.history())
+        persisted_trades = trading.history()
+        if persisted_trades:
+            try:
+                self.data.portfolio.restore_from_trades(persisted_trades)
+            except ValueError:
+                self.data.portfolio.reset()
+            else:
+                snapshot = self.data.portfolio.as_dict(1.0)
+                if snapshot["cash_nok"] < -1e-9:
+                    self.data.portfolio.reset()
         self.scanner = ScannerService()
         self.binance_scanner = BinanceScannerService(
             binance_market_data or BinanceMarketDataAdapter(),
