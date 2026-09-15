@@ -93,6 +93,28 @@
             </div>
         </div>
 
+        <div class="card settings-dashboard-card">
+            <h2>📉 {{ t('accumulation') }}</h2>
+            <p>{{ t('accumulation_description') }}</p>
+            <div class="settings-option">
+                <label for="accumulation_drop_pct">{{ t('accumulation_drop_pct') }}</label>
+                <div>
+                    <input
+                        type="number"
+                        id="accumulation_drop_pct"
+                        name="accumulation_drop_pct"
+                        value="{{ dashboard.trading.accumulation_drop_pct }}"
+                        min="0.1"
+                        max="20"
+                        step="0.1"
+                        required
+                    >
+                    <span>%</span>
+                </div>
+                <small>{{ t('accumulation_range') }}</small>
+            </div>
+        </div>
+
         <div class="card settings-dashboard-card settings-safety-card">
             <h2>🛡️ {{ t('safety') }}</h2>
             <div class="settings-safety-row">
