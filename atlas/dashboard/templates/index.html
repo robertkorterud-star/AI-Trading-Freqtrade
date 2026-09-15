@@ -87,7 +87,12 @@
 <script>
 (function () {
     const container=document.getElementById('atlas-candles');
-    if(!container||!window.LightweightCharts)return;
+    const status=document.getElementById('overview-chart-status');
+    if(!container)return;
+    if(!window.LightweightCharts){
+        if(status)status.textContent='Chartbiblioteket kunne ikke lastes';
+        return;
+    }
 
     const symbol={{ trade_chart.symbol|default(intelligence_symbol, true)|tojson }};
     const initialPeriod={{ trade_chart.period|default('1d', true)|tojson }};
@@ -99,6 +104,8 @@
     let series;
     let detailChart;
     let detailSeries;
+    let markers;
+    let detailMarkers;
 
     const periodConfig={
         '1d':{period:'1d',interval:'5m'},
@@ -109,7 +116,6 @@
 
     const title=document.getElementById('overview-market-title');
     const price=document.getElementById('overview-market-price');
-    const status=document.getElementById('overview-chart-status');
     const detail=document.getElementById('atlas-trade-detail');
     const backdrop=document.getElementById('atlas-trade-detail-backdrop');
     const detailClose=document.getElementById('atlas-trade-detail-close');
@@ -133,7 +139,11 @@
 
     function applyMarkers(){
         if(!series)return;
-        series.setMarkers(markerData);
+        if(!markers){
+            markers=LightweightCharts.createSeriesMarkers(series,markerData);
+        }else{
+            markers.setMarkers(markerData);
+        }
     }
 
     function formatTradeDetail(trade){
@@ -192,7 +202,7 @@
                 const summary=escapeHtml(item.summary||'');
                 const published=escapeHtml(item.published_at||'');
                 const url=String(item.url||'');
-                const safeUrl=/^https?:\\/\\//i.test(url)?escapeHtml(url):'';
+                const safeUrl=/^https?:\/\//i.test(url)?escapeHtml(url):'';
                 row.innerHTML=(safeUrl?'<a href="'+safeUrl+'" target="_blank" rel="noopener noreferrer"><strong>'+title+'</strong></a>':'<strong>'+title+'</strong>')+'<small style="display:block;opacity:.7;margin-top:3px;">'+source+(published?' · '+published:'')+'</small>'+(summary?'<div style="margin-top:5px;opacity:.85;">'+summary+'</div>':'');
                 detailNews.appendChild(row);
             });
@@ -207,7 +217,7 @@
         detailChart=LightweightCharts.createChart(detailContainer,{width:detailContainer.clientWidth,height:detailContainer.clientHeight,layout:{background:{type:'solid',color:'#0d1117'},textColor:'#9aa4b2'},grid:{vertLines:{color:'#18202a'},horzLines:{color:'#18202a'}},rightPriceScale:{borderColor:'#263241'},timeScale:{borderColor:'#263241',timeVisible:true,secondsVisible:false}});
         detailSeries=detailChart.addSeries(LightweightCharts.CandlestickSeries,{upColor:'#16c784',downColor:'#ea3943',borderVisible:false,wickUpColor:'#16c784',wickDownColor:'#ea3943'});
         detailSeries.setData(candleData);
-        detailSeries.setMarkers(markerData);
+        detailMarkers=LightweightCharts.createSeriesMarkers(detailSeries,markerData);
         detailChart.timeScale().fitContent();
     }
 
@@ -238,7 +248,12 @@
     function closeDetail(){
         detail.hidden=true;
         backdrop.hidden=true;
-        if(detailChart){detailChart.remove();detailChart=null;detailSeries=null;}
+        if(detailChart){
+            detailChart.remove();
+            detailChart=null;
+            detailSeries=null;
+            detailMarkers=null;
+        }
     }
 
     async function refresh(){

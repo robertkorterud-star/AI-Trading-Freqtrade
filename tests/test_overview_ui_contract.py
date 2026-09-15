@@ -35,7 +35,7 @@ def test_overview_market_workspace_supports_trade_history_chart_selection():
         "trade_chart.symbol",
         "trade_chart.trades",
         "markerForTrade",
-        "series.setMarkers(markerData)",
+        "LightweightCharts.createSeriesMarkers(series,markerData)",
         "'/api/market-candles?symbol=",
         "overview-period",
         '("1d", "1D")',
