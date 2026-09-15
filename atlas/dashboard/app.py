@@ -251,7 +251,6 @@ async def dashboard(request: Request):
     )
 
 
-
 @app.get("/portfolio", response_class=HTMLResponse)
 async def portfolio_page(request: Request):
     return templates.TemplateResponse(
@@ -260,6 +259,14 @@ async def portfolio_page(request: Request):
         context={"request": request, "dashboard": build_dashboard()},
     )
 
+
+@app.get("/agents", response_class=HTMLResponse)
+async def agents_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="agents.html",
+        context={"request": request, "dashboard": build_dashboard()},
+    )
 
 
 @app.get("/settings", response_class=HTMLResponse)
