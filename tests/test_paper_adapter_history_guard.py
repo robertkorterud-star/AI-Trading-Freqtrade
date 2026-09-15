@@ -25,7 +25,7 @@ def test_paper_adapter_ignores_overspent_legacy_history():
             timestamp=datetime(2026, 9, 14, 7, 27, 24),
         )
     ]
-    portfolio = PortfolioService(capital_limit=5_000.0)
+    portfolio = PortfolioService(starting_capital_nok=5_000.0)
 
     PaperTradingExecutionAdapter(
         portfolio=portfolio,
