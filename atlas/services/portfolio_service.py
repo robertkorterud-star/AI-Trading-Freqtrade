@@ -6,6 +6,7 @@ No live orders.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict, List
 
 
@@ -121,26 +122,35 @@ class PortfolioService:
         self._positions: Dict[str, Position] = {}
 
     def restore_from_trades(self, trades):
-        """Rebuild paper-account state from persisted trade records.
+        """Rebuild paper-account state from persisted trade history.
 
-        ``TradingService`` is the owner of trade history. This method only
-        rehydrates the existing PortfolioService state after a process restart;
-        it does not persist trades or make trading decisions.
+        ``TradingService`` remains the owner of trade history. This method
+        only rehydrates PortfolioService state after a process restart; it
+        does not persist trades or make trading decisions.
         """
         self.reset()
 
-        ordered_trades = sorted(
-            trades,
-            key=lambda trade: trade.timestamp,
-        )
+        def value(trade, key):
+            if isinstance(trade, dict):
+                return trade[key]
+            return getattr(trade, key)
+
+        def timestamp(trade):
+            current = value(trade, "timestamp")
+            if isinstance(current, str):
+                return datetime.fromisoformat(current)
+            return current
+
+        ordered_trades = sorted(trades, key=timestamp)
 
         for trade in ordered_trades:
-            symbol = str(trade.symbol)
-            quantity = float(trade.quantity)
-            price_usd = float(trade.price_usd)
-            amount_nok = float(trade.amount_nok)
+            symbol = str(value(trade, "symbol"))
+            action = str(value(trade, "action"))
+            quantity = float(value(trade, "quantity"))
+            price_usd = float(value(trade, "price_usd"))
+            amount_nok = float(value(trade, "amount_nok"))
 
-            if trade.action == "BUY":
+            if action == "BUY":
                 if quantity <= 0.0 or price_usd <= 0.0 or amount_nok <= 0.0:
                     raise ValueError("Invalid persisted BUY trade.")
 
@@ -164,7 +174,7 @@ class PortfolioService:
                 self._cash_nok -= amount_nok
                 continue
 
-            if trade.action == "SELL":
+            if action == "SELL":
                 if quantity <= 0.0 or price_usd <= 0.0 or amount_nok < 0.0:
                     raise ValueError("Invalid persisted SELL trade.")
 
@@ -178,7 +188,7 @@ class PortfolioService:
                         f"Persisted SELL exceeds current position for {symbol}."
                     )
 
-                realized_pnl_nok = float(trade.realized_pnl_nok)
+                realized_pnl_nok = float(value(trade, "realized_pnl_nok"))
                 self._cash_nok += amount_nok
                 if realized_pnl_nok > 0.0:
                     self._cash_nok -= realized_pnl_nok
@@ -192,7 +202,7 @@ class PortfolioService:
                     position.current_price_usd = price_usd
                 continue
 
-            raise ValueError(f"Unsupported persisted trade action: {trade.action}")
+            raise ValueError(f"Unsupported persisted trade action: {action}")
 
     # -------------------------------------------------
     # PRICE UPDATE
