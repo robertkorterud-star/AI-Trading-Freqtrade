@@ -35,6 +35,7 @@ class DashboardService:
         initialize_database(database)
         trading = TradingService(repository=TradeRepository(database))
         self.data = DashboardDataService(config=resolved_config, trading=trading)
+        self.data.portfolio.restore_from_trades(trading.history())
         self.scanner = ScannerService()
         self.binance_scanner = BinanceScannerService(
             binance_market_data or BinanceMarketDataAdapter(),
