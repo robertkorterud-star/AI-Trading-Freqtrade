@@ -55,19 +55,28 @@ class PaperTradingExecutionAdapter:
             existing_position = self.portfolio._positions.get(request.symbol)
 
             current_position = 0.0
-            entry_price = None
+            accumulation_price = None
 
             if existing_position is not None:
                 current_position = existing_position.quantity
-                entry_price = existing_position.average_price_usd
+                accumulation_price = existing_position.last_buy_price_usd
 
             position_context = PositionContext(
                 current_position=current_position,
-                entry_price=entry_price,
+                entry_price=(
+                    existing_position.average_price_usd
+                    if existing_position is not None
+                    else None
+                ),
                 current_price=price_usd,
-                peak_price=entry_price,
+                peak_price=(
+                    existing_position.average_price_usd
+                    if existing_position is not None
+                    else None
+                ),
                 confidence=1.0,
                 risk_score=0.0,
+                accumulation_price=accumulation_price,
             )
 
             position_decision = self.position_exit_engine.decide(
@@ -94,7 +103,7 @@ class PaperTradingExecutionAdapter:
 
             self.trading.record_buy(
                 symbol=request.symbol,
-                quantity=position.quantity,
+                quantity=request.quantity,
                 price_usd=price_usd,
                 amount_nok=amount_nok,
                 reason="ExecutionAdapter: paper BUY",
