@@ -804,7 +804,7 @@ class AtlasEngine:
             reason="ATLAS prediction.",
         )
 
-        if self.config.trading_mode == "paper":
+        if self.config.paper_trading:
 
             snapshot = evaluation_snapshot
 
