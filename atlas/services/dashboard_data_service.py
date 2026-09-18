@@ -135,13 +135,28 @@ class DashboardDataService:
 
     def market_scan(self, limit=5):
         """Rank only decisions already produced by the canonical runtime."""
+        snapshots = {
+            asset.symbol: self.snapshot_repository.get_latest_valid(asset.symbol)
+            for asset in self.asset_universe.all()
+        }
+        available_assets = [
+            asset
+            for asset in self.asset_universe.all()
+            if snapshots[asset.symbol] is not None
+        ]
+        if not available_assets:
+            return []
+
         try:
-            discovered = self.asset_discovery.discover(self.asset_universe, limit=limit)
+            discovered = self.asset_discovery.discover(
+                AssetUniverse(assets=available_assets),
+                limit=limit,
+            )
         except Exception:
             discovered = []
         candidates = []
         for item in discovered:
-            snapshot = self.snapshot_repository.get_latest_valid(item.symbol)
+            snapshot = snapshots.get(item.symbol)
             if snapshot is None:
                 continue
             decision = self._snapshot_decision(snapshot)
