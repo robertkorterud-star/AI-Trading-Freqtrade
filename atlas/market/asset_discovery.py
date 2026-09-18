@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
 from atlas.market.asset import Asset
@@ -35,6 +36,7 @@ class AssetDiscoveryService:
     VOLATILITY_WEIGHT = 0.20
     NEWS_WEIGHT = 0.20
     LIQUIDITY_WEIGHT = 0.20
+    DEFAULT_DISCOVERY_WORKERS = 8
 
     def __init__(self, market_data=None):
         self.market_data = market_data
@@ -132,15 +134,28 @@ class AssetDiscoveryService:
                 "A market data provider is required."
             )
 
+        assets = universe.all()
         market_data = {}
+        workers = min(self.DEFAULT_DISCOVERY_WORKERS, len(assets))
 
-        for asset in universe.all():
-            try:
-                market_data[asset.symbol] = (
-                    self.market_input(asset)
-                )
-            except Exception:
-                continue
+        if workers == 1:
+            for asset in assets:
+                try:
+                    market_data[asset.symbol] = self.market_input(asset)
+                except Exception:
+                    continue
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(self.market_input, asset): asset
+                    for asset in assets
+                }
+                for future in as_completed(futures):
+                    asset = futures[future]
+                    try:
+                        market_data[asset.symbol] = future.result()
+                    except Exception:
+                        continue
 
         available_assets = [
             asset
