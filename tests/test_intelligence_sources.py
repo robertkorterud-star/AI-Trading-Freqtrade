@@ -309,3 +309,38 @@ def test_intelligence_sources_includes_web_research():
     assert len(results) == 1
     assert results[0]["source"] == "Google News"
     assert "RSI" in results[0]["summary"]
+
+
+def test_intelligence_source_adapter_can_skip_youtube_transcripts():
+
+    class FakeYouTube:
+        def search(self, symbol):
+            return [
+                {
+                    "source": "YouTube",
+                    "title": "NVDA analysis",
+                    "summary": "Market update.",
+                    "sentiment": "neutral",
+                    "video_id": "abc123",
+                }
+            ]
+
+    class FailingTranscript:
+        def get(self, video_id):
+            raise AssertionError("transcript fetch should be skipped")
+
+    class EmptyFinnhub:
+        def search(self, symbol):
+            return []
+
+    adapter = IntelligenceSourceAdapter(
+        youtube=FakeYouTube(),
+        finnhub=EmptyFinnhub(),
+        transcript=FailingTranscript(),
+    )
+
+    results = adapter.get("NVDA", include_transcripts=False)
+
+    assert len(results) == 1
+    assert results[0]["title"] == "NVDA analysis"
+    assert "transcript" not in results[0]
