@@ -173,7 +173,7 @@ class DashboardDataService:
         try:
             if self.intelligence_sources is None:
                 self.intelligence_sources = IntelligenceSourceAdapter()
-            result = self.intelligence_sources.get(symbol)
+            result = self.intelligence_sources.get(symbol, include_transcripts=False)
         except Exception:
             result = []
 
