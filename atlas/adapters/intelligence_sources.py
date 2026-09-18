@@ -106,6 +106,7 @@ class IntelligenceSourceAdapter:
         symbol: str,
         cik: str | None = None,
         include_sec: bool = False,
+        include_transcripts: bool = True,
     ) -> list[dict]:
         """Return normalized research items from all sources."""
 
@@ -117,7 +118,7 @@ class IntelligenceSourceAdapter:
 
             video_id = normalized.get("video_id")
 
-            if video_id:
+            if video_id and include_transcripts:
                 transcript = self.transcript.get(
                     video_id
                 )
