@@ -224,3 +224,40 @@ def test_discovery_returns_empty_when_all_assets_are_unavailable():
     )
 
     assert discovery.discover(universe) == []
+
+
+def test_discovery_uses_batch_market_data_when_available():
+    class FakeMarketData:
+        def __init__(self):
+            self.batch_calls = 0
+            self.get_calls = 0
+
+        def get_many(self, symbols):
+            self.batch_calls += 1
+            return {
+                symbol: type(
+                    "MarketData",
+                    (),
+                    {
+                        "price": 120.0,
+                        "ma50": 100.0,
+                        "change_percent": 2.0,
+                        "volume_ratio": 2.0,
+                    },
+                )()
+                for symbol in symbols
+            }
+
+        def get(self, symbol):
+            self.get_calls += 1
+            raise AssertionError("batch market data should be used")
+
+    market_data = FakeMarketData()
+    discovery = AssetDiscoveryService(market_data=market_data)
+    universe = AssetUniverse()
+
+    results = discovery.discover(universe)
+
+    assert len(results) == universe.count()
+    assert market_data.batch_calls == 1
+    assert market_data.get_calls == 0
