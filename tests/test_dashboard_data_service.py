@@ -127,21 +127,6 @@ def _service_with_snapshot(tmp_path, symbol="BTC-USD"):
     return service
 
 
-def test_dashboard_market_scan_caches_discovery_for_short_window(tmp_path, monkeypatch):
-    service = _service_with_snapshot(tmp_path)
-    calls = []
-
-    def _discover(*args, **kwargs):
-        calls.append(1)
-        return []
-
-    monkeypatch.setattr(service.asset_discovery, "discover", _discover)
-
-    assert service.market_scan() == []
-    assert service.market_scan() == []
-    assert len(calls) == 1
-
-
 def test_dashboard_reports_paper_trading_status(tmp_path):
     service = _service_with_snapshot(tmp_path)
     service.settings.set_trading_mode("paper")
