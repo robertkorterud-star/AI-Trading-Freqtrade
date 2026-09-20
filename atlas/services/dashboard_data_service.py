@@ -259,6 +259,7 @@ class DashboardDataService:
         latest_news = self._get_latest_news(selected_symbol)
         latest_snapshot = None
         history = self._dashboard_trade_history(trade_history_period, now=now)
+        live_market_data = self.market_data.get_many(watchlist)
         trade_chart = {
             "period": trade_history_period,
             "symbol": selected_symbol,
@@ -272,10 +273,12 @@ class DashboardDataService:
 
         for symbol in watchlist:
             stored_snapshot = self.snapshot_repository.get_latest_valid(symbol)
+            live_market = live_market_data.get(symbol)
             if stored_snapshot is None:
                 if symbol == selected_symbol:
                     try:
-                        live_market = self.market_data.get(symbol)
+                        if live_market is None:
+                            raise ValueError("No live market data available.")
                         price_usd = round(float(live_market.price), 2)
                         market.append({
                             "symbol": symbol,
@@ -296,13 +299,10 @@ class DashboardDataService:
             decision = self._snapshot_decision(stored_snapshot)
             snapshot_intelligence = self._snapshot_intelligence(stored_snapshot)
             price_usd = stored_snapshot.decision.get("price_usd")
-            live_market = None
             if price_usd is None:
-                try:
-                    live_market = self.market_data.get(symbol)
-                    price_usd = live_market.price
-                except Exception:
+                if live_market is None:
                     continue
+                price_usd = live_market.price
             price_usd = round(float(price_usd), 2)
             change = round(float(live_market.change_percent), 2) if live_market is not None else None
             market.append({
