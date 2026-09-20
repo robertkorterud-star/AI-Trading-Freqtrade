@@ -266,8 +266,14 @@ class DashboardDataService:
         live_symbols = [
             symbol
             for symbol in watchlist
-            if snapshots[symbol] is None
-            or snapshots[symbol].decision.get("price_usd") is None
+            if (
+                snapshots[symbol] is None
+                and symbol == selected_symbol
+            )
+            or (
+                snapshots[symbol] is not None
+                and snapshots[symbol].decision.get("price_usd") is None
+            )
         ]
         live_market_data = self.market_data.get_many(live_symbols)
         trade_chart = {
