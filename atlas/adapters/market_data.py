@@ -95,6 +95,81 @@ class YFinanceMarketDataProvider:
             volume_ratio=float(volume_ratio),
         )
 
+    def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
+        """Return market data for multiple symbols using one Yahoo download."""
+        normalized = [symbol for symbol in symbols if symbol]
+        if not normalized:
+            return {}
+        if len(normalized) == 1:
+            try:
+                return {normalized[0]: self.get(normalized[0])}
+            except Exception:
+                return {}
+
+        history = yf.download(
+            normalized,
+            period=self.history_period,
+            auto_adjust=False,
+            progress=False,
+            threads=True,
+        )
+        if history.empty:
+            return {}
+
+        close_data = history["Close"]
+        volume_data = history["Volume"] if "Volume" in history else None
+        results = {}
+
+        for symbol in normalized:
+            try:
+                close = close_data[symbol].dropna()
+                if len(close) < 50:
+                    continue
+
+                ma20 = close.rolling(20).mean().iloc[-1]
+                ma50 = close.rolling(50).mean().iloc[-1]
+
+                if volume_data is None:
+                    volume = average_volume = 0.0
+                    volume_ratio = 1.0
+                else:
+                    volume_series = volume_data[symbol].dropna()
+                    if len(volume_series) < 20:
+                        volume = average_volume = 0.0
+                        volume_ratio = 1.0
+                    else:
+                        volume = float(volume_series.iloc[-1])
+                        average_volume = float(volume_series.tail(20).mean())
+                        volume_ratio = (
+                            volume / average_volume
+                            if average_volume > 0
+                            else 1.0
+                        )
+
+                ticker = yf.Ticker(symbol)
+                info = ticker.fast_info
+                price = float(info["lastPrice"])
+                previous = float(info["previousClose"])
+                currency = str(info.get("currency") or "USD").upper()
+                change = ((price - previous) / previous) * 100
+
+                results[symbol] = MarketData(
+                    symbol=symbol,
+                    price=price,
+                    currency=currency,
+                    previous_close=previous,
+                    change_percent=change,
+                    ma20=float(ma20),
+                    ma50=float(ma50),
+                    volume=volume,
+                    average_volume=average_volume,
+                    volume_ratio=float(volume_ratio),
+                )
+            except Exception:
+                continue
+
+        return results
+
     def snapshot(
         self,
         symbol: str,
