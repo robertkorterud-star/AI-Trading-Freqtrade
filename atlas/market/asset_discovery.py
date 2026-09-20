@@ -76,43 +76,16 @@ class AssetDiscoveryService:
             score=round(score, 2),
         )
 
-    def market_input(self, asset: Asset) -> DiscoveryInput:
-        """Convert market data into discovery signals."""
-
-        if self.market_data is None:
-            raise ValueError(
-                "A market data provider is required."
-            )
-
-        data = self.market_data.get(
-            asset.symbol
-        )
-
+    def _market_input_from_data(self, asset: Asset, data) -> DiscoveryInput:
         if data is None:
             return DiscoveryInput()
 
-        volume_score = (
-            self._clamp(
-                float(data.volume_ratio) * 50.0
-            )
-        )
-
+        volume_score = self._clamp(float(data.volume_ratio) * 50.0)
         momentum_score = self._clamp(
-            (
-                (
-                    float(data.price) / float(data.ma50)
-                )
-                - 1.0
-            ) * 1000.0
+            ((float(data.price) / float(data.ma50)) - 1.0) * 1000.0
         )
-
-        volatility_score = self._clamp(
-            abs(float(data.change_percent)) * 10.0
-        )
-
-        liquidity_score = self._clamp(
-            float(data.volume_ratio) * 50.0
-        )
+        volatility_score = self._clamp(abs(float(data.change_percent)) * 10.0)
+        liquidity_score = self._clamp(float(data.volume_ratio) * 50.0)
 
         return DiscoveryInput(
             volume_score=volume_score,
@@ -120,6 +93,15 @@ class AssetDiscoveryService:
             volatility_score=volatility_score,
             news_score=0.0,
             liquidity_score=liquidity_score,
+        )
+
+    def market_input(self, asset: Asset) -> DiscoveryInput:
+        """Convert market data into discovery signals."""
+        if self.market_data is None:
+            raise ValueError("A market data provider is required.")
+        return self._market_input_from_data(
+            asset,
+            self.market_data.get(asset.symbol),
         )
 
     def discover(
@@ -136,26 +118,40 @@ class AssetDiscoveryService:
 
         assets = universe.all()
         market_data = {}
-        workers = min(self.DEFAULT_DISCOVERY_WORKERS, len(assets))
 
-        if workers == 1:
+        get_many = getattr(self.market_data, "get_many", None)
+        if callable(get_many):
+            try:
+                batch = get_many([asset.symbol for asset in assets])
+            except Exception:
+                batch = {}
             for asset in assets:
-                try:
-                    market_data[asset.symbol] = self.market_input(asset)
-                except Exception:
-                    continue
+                data = batch.get(asset.symbol)
+                if data is not None:
+                    market_data[asset.symbol] = self._market_input_from_data(
+                        asset,
+                        data,
+                    )
         else:
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                futures = {
-                    executor.submit(self.market_input, asset): asset
-                    for asset in assets
-                }
-                for future in as_completed(futures):
-                    asset = futures[future]
+            workers = min(self.DEFAULT_DISCOVERY_WORKERS, len(assets))
+            if workers == 1:
+                for asset in assets:
                     try:
-                        market_data[asset.symbol] = future.result()
+                        market_data[asset.symbol] = self.market_input(asset)
                     except Exception:
                         continue
+            else:
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    futures = {
+                        executor.submit(self.market_input, asset): asset
+                        for asset in assets
+                    }
+                    for future in as_completed(futures):
+                        asset = futures[future]
+                        try:
+                            market_data[asset.symbol] = future.result()
+                        except Exception:
+                            continue
 
         available_assets = [
             asset
