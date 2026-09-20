@@ -54,6 +54,8 @@ class DashboardDataService:
         self.intelligence_sources = intelligence_sources
         self._news_cache = {}
         self._news_cache_ttl_seconds = 300.0
+        self._market_scan_cache = {}
+        self._market_scan_cache_ttl_seconds = 30.0
         self.asset_discovery = AssetDiscoveryService(market_data=self.market_data)
         self.candidate_decision_ranker = CandidateDecisionRanker()
         database = Database(self.config.database_path)
@@ -135,6 +137,13 @@ class DashboardDataService:
 
     def market_scan(self, limit=5):
         """Rank only decisions already produced by the canonical runtime."""
+        now = time.monotonic()
+        cached = self._market_scan_cache.get(limit)
+        if cached is not None:
+            created_at, result = cached
+            if now - created_at < self._market_scan_cache_ttl_seconds:
+                return list(result)
+
         snapshots = {
             asset.symbol: self.snapshot_repository.get_latest_valid(asset.symbol)
             for asset in self.asset_universe.all()
@@ -164,7 +173,7 @@ class DashboardDataService:
         ranked = self.candidate_decision_ranker.rank([item["decision"] for item in candidates])
         selected_symbol = ranked[0].symbol if ranked else None
         by_symbol = {item["symbol"]: item for item in candidates}
-        return [
+        result = [
             {
                 "symbol": decision.symbol,
                 "discovery_score": by_symbol[decision.symbol]["discovery_score"],
@@ -174,6 +183,8 @@ class DashboardDataService:
             }
             for decision in ranked
         ]
+        self._market_scan_cache[limit] = (now, result)
+        return list(result)
 
     def _get_latest_news(self, symbol):
         """Return cached external intelligence for dashboard news context."""
