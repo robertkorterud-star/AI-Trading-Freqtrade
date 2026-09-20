@@ -259,7 +259,17 @@ class DashboardDataService:
         latest_news = self._get_latest_news(selected_symbol)
         latest_snapshot = None
         history = self._dashboard_trade_history(trade_history_period, now=now)
-        live_market_data = self.market_data.get_many(watchlist)
+        snapshots = {
+            symbol: self.snapshot_repository.get_latest_valid(symbol)
+            for symbol in watchlist
+        }
+        live_symbols = [
+            symbol
+            for symbol in watchlist
+            if snapshots[symbol] is None
+            or snapshots[symbol].decision.get("price_usd") is None
+        ]
+        live_market_data = self.market_data.get_many(live_symbols)
         trade_chart = {
             "period": trade_history_period,
             "symbol": selected_symbol,
@@ -272,7 +282,7 @@ class DashboardDataService:
         }
 
         for symbol in watchlist:
-            stored_snapshot = self.snapshot_repository.get_latest_valid(symbol)
+            stored_snapshot = snapshots[symbol]
             live_market = live_market_data.get(symbol)
             if stored_snapshot is None:
                 if symbol == selected_symbol:
