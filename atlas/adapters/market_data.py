@@ -27,6 +27,10 @@ class MarketDataProvider(Protocol):
         """Return the latest normalized market snapshot for ``symbol``."""
         ...
 
+    def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
+        """Return normalized market snapshots for multiple symbols."""
+        ...
+
 
 def oslo_symbol(symbol: str) -> str:
     """Return a Yahoo Finance symbol for an Oslo Børs ticker.
@@ -222,3 +226,28 @@ class MarketDataAdapter:
 
     def get(self, symbol: str) -> MarketData:
         return self.provider.get(symbol)
+
+    def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
+        """Return batch market data while preserving per-symbol fallback behavior."""
+        normalized = [symbol for symbol in symbols if symbol]
+        if not normalized:
+            return {}
+
+        provider_get_many = getattr(self.provider, "get_many", None)
+        if callable(provider_get_many):
+            try:
+                results = dict(provider_get_many(normalized))
+            except Exception:
+                results = {}
+        else:
+            results = {}
+
+        for symbol in normalized:
+            if symbol in results:
+                continue
+            try:
+                results[symbol] = self.provider.get(symbol)
+            except Exception:
+                continue
+
+        return results
