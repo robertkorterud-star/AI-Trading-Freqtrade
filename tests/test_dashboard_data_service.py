@@ -171,12 +171,19 @@ def test_dashboard_keeps_selected_market_visible_while_waiting_for_runtime(tmp_p
         price = 1.35
         change_percent = 2.5
 
-    monkeypatch.setattr(service.market_data, "get", lambda symbol: _FakeMarket())
+    calls = []
+
+    def _get_many(symbols):
+        calls.append(list(symbols))
+        return {symbol: _FakeMarket() for symbol in symbols}
+
+    monkeypatch.setattr(service.market_data, "get_many", _get_many)
 
     data = service.get_dashboard_data(selected_symbol="XRP-USD")
 
     selected = next(item for item in data["market"] if item["symbol"] == "XRP-USD")
 
+    assert calls == [["XRP-USD"]]
     assert selected["is_selected"] is True
     assert selected["price_usd"] == 1.35
     assert selected["change"] == 2.5
