@@ -315,3 +315,38 @@ def test_dashboard_exposes_filtered_trade_history_and_markers(tmp_path, monkeypa
             "timestamp": (now - timedelta(hours=1)).isoformat(timespec="seconds"),
         },
     ]
+
+
+
+def test_dashboard_market_scan_reads_current_snapshot_each_time(tmp_path, monkeypatch):
+    service = _service_with_snapshot(tmp_path)
+    snapshot = service.snapshot_repository.get_latest_valid("BTC-USD")
+    refreshed_snapshot = service.snapshot_repository.get_latest_valid("BTC-USD")
+    refreshed_snapshot.decision = dict(refreshed_snapshot.decision)
+    refreshed_snapshot.decision["confidence"] = 42.0
+
+    calls = {"count": 0}
+
+    def _latest_valid(symbol):
+        if symbol != "BTC-USD":
+            return None
+        calls["count"] += 1
+        return snapshot if calls["count"] == 1 else refreshed_snapshot
+
+    class _DiscoveryResult:
+        symbol = "BTC-USD"
+        score = 50.0
+
+    monkeypatch.setattr(service.snapshot_repository, "get_latest_valid", _latest_valid)
+    monkeypatch.setattr(
+        service.asset_discovery,
+        "discover",
+        lambda *args, **kwargs: [_DiscoveryResult()],
+    )
+
+    first = service.market_scan()
+    second = service.market_scan()
+
+    assert first[0]["confidence"] == 85.0
+    assert second[0]["confidence"] == 42.0
+    assert calls["count"] == 2
