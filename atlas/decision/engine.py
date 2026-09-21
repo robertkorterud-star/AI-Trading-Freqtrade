@@ -15,12 +15,13 @@ from atlas.models.decision_result import DecisionResult
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.risk.manager import RiskManager, RiskAssessment
 from atlas.portfolio.manager import PortfolioManager, PortfolioAssessment, PortfolioPosition
+from atlas.algorithms.position_exit import PositionContext, PositionAction, PositionExitEngine
 
 
 class DecisionEngine:
     """Creates the final investment decision."""
 
-    def __init__(self, expected_return_service=None, risk_manager=None, portfolio_manager=None):
+    def __init__(self, expected_return_service=None, risk_manager=None, portfolio_manager=None, position_exit_engine=None):
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
         self.signal_ensemble = SignalEnsemble()
@@ -28,6 +29,7 @@ class DecisionEngine:
         self.expected_return_service = expected_return_service
         self.risk_manager = risk_manager
         self.portfolio_manager = portfolio_manager
+        self.position_exit_engine = position_exit_engine
         self.last_intelligence = None
         self.last_ensemble_signal = None
         self.last_risk_assessment = None
@@ -81,6 +83,9 @@ class DecisionEngine:
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
         portfolio_positions: Iterable[PortfolioPosition] = (),
+        current_position: float = 0.0,
+        last_buy_price: float | None = None,
+        average_price: float | None = None,
     ) -> DecisionResult:
         """Evaluate algorithm signals through the canonical DecisionEngine.
 
@@ -105,6 +110,9 @@ class DecisionEngine:
             current_exposure_pct=current_exposure_pct,
             drawdown_pct=drawdown_pct,
             portfolio_positions=portfolio_positions,
+            current_position=current_position,
+            last_buy_price=last_buy_price,
+            average_price=average_price,
         )
 
     @staticmethod
@@ -160,6 +168,9 @@ class DecisionEngine:
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
         portfolio_positions: Iterable[PortfolioPosition] = (),
+        current_position: float = 0.0,
+        last_buy_price: float | None = None,
+        average_price: float | None = None,
     ) -> DecisionResult:
         if not results:
             raise ValueError("No analysis results provided.")
@@ -242,6 +253,21 @@ class DecisionEngine:
         ):
             action = dominant_action
             adaptive_override = True
+
+        if action is Action.BUY and self.position_exit_engine is not None:
+            position_decision = self.position_exit_engine.decide(
+                Action.BUY,
+                PositionContext(
+                    current_position=current_position,
+                    entry_price=last_buy_price,
+                    current_price=price,
+                    peak_price=average_price,
+                    confidence=summary["confidence"] / 100.0,
+                    risk_score=0.0,
+                ),
+            )
+            if position_decision.action is PositionAction.HOLD:
+                action = Action.HOLD
 
         risk_assessment: RiskAssessment | None = None
         if self.risk_manager is not None:

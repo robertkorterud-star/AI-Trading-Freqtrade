@@ -719,3 +719,46 @@ def test_decision_preserves_low_volume_confirmation():
     assert "Volume level: WEAK" in reasoning
     assert "0.50x" in reasoning
     assert "weak volume confirmation" in reasoning.lower()
+
+
+
+def test_decision_engine_blocks_repeated_buy_until_accumulation_drop():
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.algorithms.position_exit import PositionExitEngine
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.BUY,
+        confidence=100.0,
+        evidence=100.0,
+        reasoning=["Strong BUY."],
+    )
+
+    engine = DecisionEngine(
+        position_exit_engine=PositionExitEngine(accumulation_drop_pct=2.0)
+    )
+
+    first = engine.evaluate(
+        [result],
+        price=20000.0,
+        current_position=0.0,
+    )
+    repeated = engine.evaluate(
+        [result],
+        price=19900.0,
+        current_position=0.5,
+        last_buy_price=20000.0,
+        average_price=20000.0,
+    )
+    accumulated = engine.evaluate(
+        [result],
+        price=19600.0,
+        current_position=0.5,
+        last_buy_price=20000.0,
+        average_price=20000.0,
+    )
+
+    assert first.action is Action.BUY
+    assert repeated.action is Action.HOLD
+    assert accumulated.action is Action.BUY

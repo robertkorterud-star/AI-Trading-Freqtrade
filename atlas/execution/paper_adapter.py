@@ -10,7 +10,6 @@ from atlas.models.action import Action
 from atlas.services.portfolio_service import PortfolioService
 from atlas.trading.trading_service import TradingService
 from atlas.services.exchange_rate_service import ExchangeRateService
-from atlas.algorithms.position_exit import PositionContext, PositionAction, PositionExitEngine
 
 
 class PaperTradingExecutionAdapter:
@@ -26,7 +25,6 @@ class PaperTradingExecutionAdapter:
         portfolio: PortfolioService,
         trading: TradingService | None,
         exchange_service: ExchangeRateService,
-        accumulation_drop_pct: float = 2.0,
     ) -> None:
         self.portfolio = portfolio
         self.trading = trading or TradingService()
@@ -48,9 +46,6 @@ class PaperTradingExecutionAdapter:
                     self.portfolio.reset()
         # Keep a reference to ExchangeRateService and fetch rate at execute-time.
         self.exchange_service = exchange_service
-        self.position_exit_engine = PositionExitEngine(
-            accumulation_drop_pct=accumulation_drop_pct,
-        )
 
     def execute(self, request: ExecutionRequest) -> ExecutionResult:
         # Validate adapter inputs at this boundary:
@@ -68,41 +63,6 @@ class PaperTradingExecutionAdapter:
         # Convert execution quantity (units) and price_usd to NOK amount
         # according to the required adapter responsibility.
         if request.action is Action.BUY:
-            existing_position = self.portfolio._positions.get(request.symbol)
-
-            current_position = 0.0
-            accumulation_price = None
-
-            if existing_position is not None:
-                current_position = existing_position.quantity
-                accumulation_price = existing_position.last_buy_price_usd
-
-            position_context = PositionContext(
-                current_position=current_position,
-                entry_price=accumulation_price,
-                current_price=price_usd,
-                peak_price=(
-                    existing_position.average_price_usd
-                    if existing_position is not None
-                    else None
-                ),
-                confidence=1.0,
-                risk_score=0.0,
-            )
-
-            position_decision = self.position_exit_engine.decide(
-                Action.BUY,
-                position_context,
-            )
-
-            if position_decision.action is PositionAction.HOLD:
-                return None
-
-            if position_decision.action is not PositionAction.ENTER:
-                raise RuntimeError(
-                    f"Unexpected position action for BUY: {position_decision.action}"
-                )
-
             amount_nok = request.quantity * price_usd * usd_nok
 
             position = self.portfolio.buy(

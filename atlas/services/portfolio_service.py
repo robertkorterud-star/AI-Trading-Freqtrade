@@ -476,6 +476,11 @@ class PortfolioService:
                         2,
                     ),
 
+                    "last_buy_price_usd": round(
+                        position.last_buy_price_usd,
+                        2,
+                    ) if position.last_buy_price_usd is not None else None,
+
                     "invested_nok": round(
                         position.invested_usd
                         * usd_nok,

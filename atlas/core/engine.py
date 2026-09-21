@@ -12,6 +12,7 @@ from atlas.core.analysis_service import AnalysisService
 from atlas.agents.news_analyst import NewsAnalyst
 
 from atlas.decision.engine import DecisionEngine
+from atlas.algorithms.position_exit import PositionExitEngine
 
 from atlas.report.report_builder import ReportBuilder
 
@@ -205,6 +206,9 @@ class AtlasEngine:
         # during `evaluate()` when supplied with the runtime context.
         self.decision_engine.risk_manager = risk_manager
         self.decision_engine.portfolio_manager = portfolio_manager
+        self.decision_engine.position_exit_engine = PositionExitEngine(
+            accumulation_drop_pct=self.config.accumulation_drop_pct,
+        )
 
 
         # Track peak equity in NOK for drawdown calculation (mirror DryRunLoop)
@@ -912,6 +916,15 @@ class AtlasEngine:
                 market_value_usd = mv_nok / usd_nok if usd_nok else 0.0
                 portfolio_positions.append(PortfolioPosition(symbol=p.get("symbol", ""), market_value=market_value_usd))
             kwargs["portfolio_positions"] = portfolio_positions
+        if "current_position" in params or "last_buy_price" in params or "average_price" in params:
+            _, portfolio_snapshot = get_runtime_context()
+            for p in portfolio_snapshot.get("positions", []):
+                if p.get("symbol") != analysis[0].symbol:
+                    continue
+                kwargs["current_position"] = float(p.get("quantity", 0.0))
+                kwargs["last_buy_price"] = p.get("last_buy_price_usd")
+                kwargs["average_price"] = p.get("average_price_usd")
+                break
 
         if kwargs:
             return self.decision_engine.evaluate(analysis, **kwargs)
