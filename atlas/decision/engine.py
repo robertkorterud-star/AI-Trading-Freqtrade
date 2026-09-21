@@ -15,7 +15,6 @@ from atlas.models.decision_result import DecisionResult
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.risk.manager import RiskManager, RiskAssessment
 from atlas.portfolio.manager import PortfolioManager, PortfolioAssessment, PortfolioPosition
-from atlas.algorithms.position_exit import PositionContext, PositionAction, PositionExitEngine
 
 
 class DecisionEngine:
@@ -255,6 +254,8 @@ class DecisionEngine:
             adaptive_override = True
 
         if action is Action.BUY and self.position_exit_engine is not None:
+            from atlas.algorithms.position_exit import PositionContext, PositionAction
+
             position_decision = self.position_exit_engine.decide(
                 Action.BUY,
                 PositionContext(
