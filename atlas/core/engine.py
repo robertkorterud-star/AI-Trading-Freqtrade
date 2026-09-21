@@ -220,7 +220,6 @@ class AtlasEngine:
             portfolio=portfolio,
             trading=trading,
             exchange_service=self.exchange,
-            accumulation_drop_pct=self.config.accumulation_drop_pct,
         )
 
         self.execution_engine = ExecutionEngine(paper_adapter)
