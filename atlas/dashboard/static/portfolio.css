@@ -3,46 +3,46 @@
    Compact trading-oriented layout
    ===================================================== */
 
-.portfolio-page { display:flex; flex-direction:column; gap:18px; width:100%; min-width:0; }
+.portfolio-page { display:flex; flex-direction:column; gap:12px; width:100%; min-width:0; }
 .portfolio-header,.portfolio-dashboard-card,.portfolio-stat { min-width:0; box-sizing:border-box; }
 
-.portfolio-header { padding:22px 26px; }
-.portfolio-header-content { display:flex; align-items:center; justify-content:space-between; gap:20px; min-width:0; }
-.portfolio-header h1 { margin:0 0 5px; }
-.portfolio-header p { margin:0; color:#94a3b8; }
+.portfolio-header { padding:14px 22px; }
+.portfolio-header-content { display:flex; align-items:center; justify-content:space-between; gap:16px; min-width:0; }
+.portfolio-header h1 { margin:0 0 3px; font-size:30px; }
+.portfolio-header p { margin:0; color:#94a3b8; font-size:14px; }
 
 .paper-badge {
     color:#facc15; background:rgba(250,204,21,.1); border:1px solid rgba(250,204,21,.35);
-    border-radius:8px; padding:7px 11px; font-size:12px; font-weight:700; white-space:nowrap;
+    border-radius:7px; padding:6px 10px; font-size:11px; font-weight:700; white-space:nowrap;
 }
 
-.portfolio-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; width:100%; }
-.portfolio-stat { min-height:96px; padding:18px 22px; justify-content:center; gap:7px; }
-.portfolio-stat small { color:#94a3b8; font-size:13px; }
-.portfolio-stat strong { font-size:22px; line-height:1.15; }
+.portfolio-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; width:100%; }
+.portfolio-stat { min-height:72px; padding:13px 18px; justify-content:center; gap:5px; }
+.portfolio-stat small { color:#94a3b8; font-size:12px; }
+.portfolio-stat strong { font-size:20px; line-height:1.1; }
 
 .portfolio-dashboard-grid {
-    display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
-    gap:18px; width:100%; min-width:0; align-items:stretch;
+    display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);
+    gap:12px; width:100%; min-width:0; align-items:start;
 }
-.portfolio-dashboard-card { padding:20px 26px; overflow:hidden; }
+.portfolio-dashboard-card { padding:16px 22px; overflow:hidden; }
 
-.section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
-.section-heading h2 { margin:0; }
-.section-subtitle { margin:4px 0 0; color:#94a3b8; font-size:13px; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:9px; }
+.section-heading h2 { margin:0; font-size:21px; }
+.section-subtitle { margin:3px 0 0; color:#94a3b8; font-size:12px; }
 
-.performance-value { font-size:30px; font-weight:700; line-height:1.1; margin:8px 0 18px; }
-.performance-meta { display:flex; flex-wrap:wrap; gap:8px 28px; color:#94a3b8; font-size:14px; }
-.performance-meta strong { color:#f8fafc; margin-left:4px; }
+.performance-value { font-size:27px; font-weight:700; line-height:1.05; margin:5px 0 12px; }
+.performance-meta { display:flex; flex-wrap:wrap; gap:6px 20px; color:#94a3b8; font-size:13px; }
+.performance-meta strong { color:#f8fafc; margin-left:3px; }
 
 .portfolio-table-wrap { width:100%; overflow-x:auto; }
 .portfolio-table { width:100%; border-collapse:collapse; table-layout:auto; }
 .portfolio-table th,.portfolio-table td {
-    padding:10px 8px; text-align:left; white-space:nowrap;
+    padding:7px 7px; text-align:left; white-space:nowrap;
     border-bottom:1px solid rgba(148,163,184,.12);
 }
-.portfolio-table th { color:#94a3b8; font-size:12px; font-weight:700; }
-.portfolio-table td { color:#e2e8f0; font-size:14px; }
+.portfolio-table th { color:#94a3b8; font-size:11px; font-weight:700; }
+.portfolio-table td { color:#e2e8f0; font-size:13px; }
 .portfolio-table th:first-child,.portfolio-table td:first-child { padding-left:0; }
 .portfolio-table th:last-child,.portfolio-table td:last-child { padding-right:0; }
 .portfolio-table tbody tr:last-child td { border-bottom:0; }
@@ -55,11 +55,11 @@
 .trade-history-table th:not(:first-child),.trade-history-table td:not(:first-child) { text-align:right; }
 .trade-history-table th:nth-child(2),.trade-history-table td:nth-child(2),
 .trade-history-table th:nth-child(3),.trade-history-table td:nth-child(3) { text-align:left; }
-.trade-time { color:#94a3b8 !important; font-size:13px !important; }
+.trade-time { color:#94a3b8 !important; font-size:12px !important; }
 
 .trade-action {
-    display:inline-flex; align-items:center; justify-content:center; min-width:48px;
-    padding:4px 8px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:.03em;
+    display:inline-flex; align-items:center; justify-content:center; min-width:44px;
+    padding:3px 7px; border-radius:5px; font-size:10px; font-weight:800; letter-spacing:.03em;
 }
 .trade-action.buy { color:#4ade80; background:rgba(74,222,128,.10); border:1px solid rgba(74,222,128,.22); }
 .trade-action.sell { color:#f87171; background:rgba(248,113,113,.10); border:1px solid rgba(248,113,113,.22); }
@@ -68,23 +68,23 @@
 .negative { color:#ef4444 !important; }
 .muted { color:#64748b; }
 
-.empty-portfolio { display:flex; align-items:center; gap:14px; color:#94a3b8; }
-.compact-empty { min-height:74px; }
-.history-empty { min-height:110px; justify-content:center; text-align:center; }
-.empty-icon { flex:0 0 auto; font-size:28px; }
-.empty-portfolio h3 { margin:0 0 4px; color:#f8fafc; font-size:16px; }
-.empty-portfolio p { margin:0; color:#94a3b8; font-size:13px; }
+.empty-portfolio { display:flex; align-items:center; gap:10px; color:#94a3b8; }
+.compact-empty { min-height:52px; }
+.history-empty { min-height:72px; justify-content:center; text-align:center; }
+.empty-icon { flex:0 0 auto; font-size:22px; }
+.empty-portfolio h3 { margin:0 0 3px; color:#f8fafc; font-size:14px; }
+.empty-portfolio p { margin:0; color:#94a3b8; font-size:12px; }
 
 @media (max-width:1100px) {
     .portfolio-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .portfolio-dashboard-grid { grid-template-columns:1fr; }
 }
 @media (max-width:700px) {
-    .portfolio-page { gap:14px; }
-    .portfolio-header,.portfolio-dashboard-card { padding:18px; }
-    .portfolio-header-content { align-items:flex-start; flex-direction:column; gap:12px; }
+    .portfolio-page { gap:10px; }
+    .portfolio-header,.portfolio-dashboard-card { padding:14px 16px; }
+    .portfolio-header-content { align-items:flex-start; flex-direction:column; gap:10px; }
     .portfolio-summary-grid { grid-template-columns:1fr; }
-    .portfolio-stat { min-height:82px; }
-    .portfolio-table th,.portfolio-table td { padding:9px 7px; }
-    .performance-value { font-size:26px; }
+    .portfolio-stat { min-height:68px; }
+    .portfolio-table th,.portfolio-table td { padding:7px 6px; }
+    .performance-value { font-size:24px; }
 }
