@@ -1,248 +1,90 @@
 /* =====================================================
    PORTFOLIO
+   Compact trading-oriented layout
    ===================================================== */
 
-.portfolio-page {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    width: 100%;
-    min-width: 0;
-}
+.portfolio-page { display:flex; flex-direction:column; gap:18px; width:100%; min-width:0; }
+.portfolio-header,.portfolio-dashboard-card,.portfolio-stat { min-width:0; box-sizing:border-box; }
 
-.page-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-}
-
-.page-heading h1 { color: #38bdf8; margin-bottom: 6px; }
-.page-heading p { color: #94a3b8; }
+.portfolio-header { padding:22px 26px; }
+.portfolio-header-content { display:flex; align-items:center; justify-content:space-between; gap:20px; min-width:0; }
+.portfolio-header h1 { margin:0 0 5px; }
+.portfolio-header p { margin:0; color:#94a3b8; }
 
 .paper-badge {
-    color: #facc15;
-    background: rgba(250, 204, 21, .1);
-    border: 1px solid rgba(250, 204, 21, .35);
-    border-radius: 8px;
-    padding: 7px 11px;
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
+    color:#facc15; background:rgba(250,204,21,.1); border:1px solid rgba(250,204,21,.35);
+    border-radius:8px; padding:7px 11px; font-size:12px; font-weight:700; white-space:nowrap;
 }
 
-.portfolio-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
-}
+.portfolio-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; width:100%; }
+.portfolio-stat { min-height:96px; padding:18px 22px; justify-content:center; gap:7px; }
+.portfolio-stat small { color:#94a3b8; font-size:13px; }
+.portfolio-stat strong { font-size:22px; line-height:1.15; }
 
-.portfolio-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-width: 0;
-}
-
-.portfolio-stat strong { font-size: 23px; }
-
-.portfolio-grid {
-    display: grid;
-    grid-template-columns: minmax(280px, .8fr) minmax(450px, 1.2fr);
-    gap: 22px;
-}
-
-.performance-value {
-    font-size: 32px;
-    font-weight: 700;
-    margin: 12px 0 20px;
-}
-
-.empty-portfolio {
-    text-align: center;
-    padding: 45px 20px;
-    color: #94a3b8;
-}
-
-.empty-icon { font-size: 38px; margin-bottom: 12px; }
-.empty-portfolio h3 { color: #f8fafc; margin-bottom: 8px; }
-
-/* =====================================================
-   PORTFOLIO DASHBOARD LAYOUT
-   ===================================================== */
-
-.portfolio-header,
-.portfolio-dashboard-card {
-    min-width: 0;
-    box-sizing: border-box;
-}
-
-.portfolio-header-content { min-width: 0; }
-
-.portfolio-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
-    width: 100%;
-    min-width: 0;
-}
-
-.portfolio-summary-grid > .portfolio-stat {
-    min-width: 0;
-    box-sizing: border-box;
-}
-
-/* Two clean columns for the dashboard cards.  History and handler span both. */
 .portfolio-dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px;
-    width: 100%;
-    min-width: 0;
-    align-items: start;
+    display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
+    gap:18px; width:100%; min-width:0; align-items:stretch;
 }
+.portfolio-dashboard-card { padding:20px 26px; overflow:hidden; }
 
-.portfolio-dashboard-grid > .portfolio-dashboard-card {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.section-heading h2 { margin:0; }
+.section-subtitle { margin:4px 0 0; color:#94a3b8; font-size:13px; }
+
+.performance-value { font-size:30px; font-weight:700; line-height:1.1; margin:8px 0 18px; }
+.performance-meta { display:flex; flex-wrap:wrap; gap:8px 28px; color:#94a3b8; font-size:14px; }
+.performance-meta strong { color:#f8fafc; margin-left:4px; }
+
+.portfolio-table-wrap { width:100%; overflow-x:auto; }
+.portfolio-table { width:100%; border-collapse:collapse; table-layout:auto; }
+.portfolio-table th,.portfolio-table td {
+    padding:10px 8px; text-align:left; white-space:nowrap;
+    border-bottom:1px solid rgba(148,163,184,.12);
 }
+.portfolio-table th { color:#94a3b8; font-size:12px; font-weight:700; }
+.portfolio-table td { color:#e2e8f0; font-size:14px; }
+.portfolio-table th:first-child,.portfolio-table td:first-child { padding-left:0; }
+.portfolio-table th:last-child,.portfolio-table td:last-child { padding-right:0; }
+.portfolio-table tbody tr:last-child td { border-bottom:0; }
 
-.portfolio-dashboard-grid > .trade-history-dashboard-card {
-    grid-column: 1 / -1;
+.positions-table th:nth-child(2),.positions-table td:nth-child(2),
+.positions-table th:nth-child(3),.positions-table td:nth-child(3) { text-align:right; }
+.positions-table th:nth-child(3),.positions-table td:nth-child(3) { padding-right:0; }
+
+.trade-history-dashboard-card { width:100%; }
+.trade-history-table th:not(:first-child),.trade-history-table td:not(:first-child) { text-align:right; }
+.trade-history-table th:nth-child(2),.trade-history-table td:nth-child(2),
+.trade-history-table th:nth-child(3),.trade-history-table td:nth-child(3) { text-align:left; }
+.trade-time { color:#94a3b8 !important; font-size:13px !important; }
+
+.trade-action {
+    display:inline-flex; align-items:center; justify-content:center; min-width:48px;
+    padding:4px 8px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:.03em;
 }
+.trade-action.buy { color:#4ade80; background:rgba(74,222,128,.10); border:1px solid rgba(74,222,128,.22); }
+.trade-action.sell { color:#f87171; background:rgba(248,113,113,.10); border:1px solid rgba(248,113,113,.22); }
 
-/* The dry-run handler is also a full-width section rather than a narrow third column. */
-.portfolio-dashboard-grid > .trade-history-dashboard-card:last-child {
-    grid-column: 1 / -1;
+.positive { color:#22c55e !important; }
+.negative { color:#ef4444 !important; }
+.muted { color:#64748b; }
+
+.empty-portfolio { display:flex; align-items:center; gap:14px; color:#94a3b8; }
+.compact-empty { min-height:74px; }
+.history-empty { min-height:110px; justify-content:center; text-align:center; }
+.empty-icon { flex:0 0 auto; font-size:28px; }
+.empty-portfolio h3 { margin:0 0 4px; color:#f8fafc; font-size:16px; }
+.empty-portfolio p { margin:0; color:#94a3b8; font-size:13px; }
+
+@media (max-width:1100px) {
+    .portfolio-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .portfolio-dashboard-grid { grid-template-columns:1fr; }
 }
-
-.portfolio-dashboard-card table {
-    width: 100%;
-    max-width: 100%;
-    table-layout: fixed;
-}
-
-.portfolio-dashboard-card th,
-.portfolio-dashboard-card td {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-/* =====================================================
-   TRADE HISTORY
-   ===================================================== */
-
-.portfolio-dashboard-card .trade-history {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-}
-
-.portfolio-dashboard-card .trade-row {
-    display: grid;
-    grid-template-columns: 130px minmax(0, 1fr) 190px;
-    grid-template-areas: "main details time";
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-.portfolio-dashboard-card .trade-main {
-    grid-area: main;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.portfolio-dashboard-card .trade-main strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.portfolio-dashboard-card .trade-details {
-    grid-area: details;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 6px 20px;
-    min-width: 0;
-    max-width: 100%;
-    overflow: hidden;
-}
-
-.portfolio-dashboard-card .trade-details span,
-.portfolio-dashboard-card .trade-details strong {
-    min-width: 0;
-    white-space: nowrap;
-}
-
-.portfolio-dashboard-card .trade-time {
-    grid-area: time;
-    min-width: 0;
-    max-width: 100%;
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* =====================================================
-   RESPONSIVE
-   ===================================================== */
-
-@media (max-width: 1100px) {
-    .portfolio-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-    .portfolio-dashboard-grid { grid-template-columns: 1fr; }
-
-    .portfolio-dashboard-grid > .trade-history-dashboard-card,
-    .portfolio-dashboard-grid > .trade-history-dashboard-card:last-child {
-        grid-column: 1;
-    }
-
-    .portfolio-dashboard-card .trade-row {
-        grid-template-columns: 120px minmax(0, 1fr);
-        grid-template-areas:
-            "main details"
-            "time time";
-    }
-
-    .portfolio-dashboard-card .trade-time { text-align: left; }
-}
-
-@media (max-width: 700px) {
-    .portfolio-summary-grid { grid-template-columns: 1fr; }
-
-    .portfolio-header-content,
-    .page-heading {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .portfolio-dashboard-card .trade-row {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "main"
-            "details"
-            "time";
-        gap: 8px;
-    }
-
-    .portfolio-dashboard-card .trade-details { justify-content: flex-start; }
-    .portfolio-dashboard-card .trade-time { text-align: left; }
+@media (max-width:700px) {
+    .portfolio-page { gap:14px; }
+    .portfolio-header,.portfolio-dashboard-card { padding:18px; }
+    .portfolio-header-content { align-items:flex-start; flex-direction:column; gap:12px; }
+    .portfolio-summary-grid { grid-template-columns:1fr; }
+    .portfolio-stat { min-height:82px; }
+    .portfolio-table th,.portfolio-table td { padding:9px 7px; }
+    .performance-value { font-size:26px; }
 }
