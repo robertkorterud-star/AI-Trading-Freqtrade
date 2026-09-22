@@ -350,3 +350,72 @@ def test_dashboard_market_scan_reads_current_snapshot_each_time(tmp_path, monkey
     assert first[0]["confidence"] == 85.0
     assert second[0]["confidence"] == 42.0
     assert calls["count"] == 2
+
+
+def test_dashboard_position_detail_returns_snapshot_trade_context(tmp_path, monkeypatch):
+    service = _service_with_snapshot(tmp_path, symbol="MSFT-USD")
+    snapshot = service.snapshot_repository.get_latest_valid("MSFT-USD")
+    trade = TradeRecord(
+        "MSFT-USD",
+        "BUY",
+        1.0,
+        500.0,
+        5000.0,
+        0.0,
+        datetime.now(),
+        "test",
+        analysis_snapshot_id=snapshot.database_id,
+    )
+    monkeypatch.setattr(
+        service.trading,
+        "history",
+        lambda: [trade.as_dict()],
+    )
+    monkeypatch.setattr(
+        service,
+        "_get_latest_news",
+        lambda symbol: [{"title": "MSFT update", "source": "Test"}],
+    )
+
+    detail = service.get_position_detail("msft")
+
+    assert detail["symbol"] == "MSFT"
+    assert detail["analysis_snapshot"]["database_id"] == snapshot.database_id
+    assert detail["analysis_snapshot"]["decision"]["action"] == "BUY"
+    assert detail["analysis_snapshot"]["intelligence"]["agreement"] == 100.0
+    assert detail["trade_history"][0]["symbol"] == "MSFT-USD"
+    assert detail["trade_markers"][0]["action"] == "BUY"
+    assert detail["news"][0]["title"] == "MSFT update"
+
+
+def test_dashboard_position_detail_falls_back_to_trade_snapshot(tmp_path, monkeypatch):
+    service = _service_with_snapshot(tmp_path, symbol="MSFT-USD")
+    snapshot = service.snapshot_repository.get_latest_valid("MSFT-USD")
+    trade = TradeRecord(
+        "MSFT-USD",
+        "SELL",
+        1.0,
+        505.0,
+        5050.0,
+        50.0,
+        datetime.now(),
+        "test",
+        analysis_snapshot_id=snapshot.database_id,
+    )
+    monkeypatch.setattr(
+        service.snapshot_repository,
+        "get_latest_valid",
+        lambda symbol: None,
+    )
+    monkeypatch.setattr(
+        service.trading,
+        "history",
+        lambda: [trade.as_dict()],
+    )
+    monkeypatch.setattr(service, "_get_latest_news", lambda symbol: [])
+
+    detail = service.get_position_detail("MSFT")
+
+    assert detail["analysis_snapshot"]["database_id"] == snapshot.database_id
+    assert detail["analysis_snapshot"]["decision"]["action"] == "BUY"
+    assert detail["trade_history"][0]["action"] == "SELL"
