@@ -244,6 +244,44 @@ class DashboardDataService:
             "markers": result["markers"],
         }
 
+
+    def get_position_detail(self, symbol):
+        """Return persisted ATLAS analysis and trade context for one held instrument."""
+        normalized_symbol = str(symbol or "").strip().upper()
+        if not normalized_symbol:
+            raise ValueError("Symbol is required.")
+
+        snapshot = self.snapshot_repository.get_latest_valid(normalized_symbol)
+
+        if snapshot is None:
+            for trade in self.trading.history():
+                if str(trade.get("symbol", "")).strip().upper() != normalized_symbol:
+                    continue
+                snapshot_id = trade.get("analysis_snapshot_id")
+                if snapshot_id is None:
+                    continue
+                snapshot = self.snapshot_repository.get_by_id(int(snapshot_id))
+                if snapshot is not None:
+                    break
+
+        history = self._dashboard_trade_history("all")
+        symbol_trades = [
+            trade for trade in history["trades"]
+            if str(trade.get("symbol", "")).strip().upper() == normalized_symbol
+        ]
+        markers = [
+            marker for marker in history["markers"]
+            if str(marker.get("symbol", "")).strip().upper() == normalized_symbol
+        ]
+
+        return {
+            "symbol": normalized_symbol,
+            "analysis_snapshot": snapshot.as_dict() if snapshot is not None else None,
+            "trade_history": symbol_trades,
+            "trade_markers": markers,
+            "news": self._get_latest_news(normalized_symbol),
+        }
+
     def get_dashboard_data(self, selected_symbol=None, trade_history_period="1d", now=None):
         default_watchlist = ["BTC-USD", "ETH-USD", "SOL-USD", "NVDA"]
         selected_symbol = (selected_symbol or settings.default_symbol).strip().upper()
