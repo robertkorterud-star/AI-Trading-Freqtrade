@@ -31,7 +31,7 @@
             {% if dashboard.portfolio.positions %}
                 <div class="portfolio-table-wrap">
                     <table class="portfolio-table positions-table">
-                        <thead><tr><th>{{ t('symbol') }}</th><th>{{ t('value') }}</th><th>P&amp;L</th></tr></thead>
+                        <thead><tr><th>{{ t('symbol') }}</th><th>Antall</th><th>Inngang</th><th>Nå</th><th>Verdi</th><th>P&amp;L</th><th>P&amp;L %</th></tr></thead>
                         <tbody>{% for position in dashboard.portfolio.positions %}<tr class="position-row" data-symbol="{{ position.symbol }}" tabindex="0" role="button" aria-label="Åpne {{ position.symbol }}"><td><strong>{{ position.symbol }}</strong><span class="position-type">{% if '-USD' in position.symbol %}Krypto{% else %}Aksje{% endif %}</span></td><td>{{ position.quantity }}</td><td>$ {{ "{:,.2f}".format(position.average_price_usd) }}</td><td>$ {{ "{:,.2f}".format(position.current_price_usd) }}</td><td>{{ position.market_value_nok }} NOK</td><td class="{% if position.pnl_nok >= 0 %}positive{% elif position.pnl_nok < 0 %}negative{% endif %}">{% if position.pnl_nok >= 0 %}+{% endif %}{{ position.pnl_nok }} NOK</td><td class="{% if position.pnl_percent >= 0 %}positive{% elif position.pnl_percent < 0 %}negative{% endif %}">{% if position.pnl_percent >= 0 %}+{% endif %}{{ position.pnl_percent }}%</td></tr>{% endfor %}</tbody>
                     </table>
                 </div>
@@ -222,37 +222,102 @@
         resizeObserver.observe(chartContainer);
     }
 
+    function renderAtlasSnapshot(snapshot, news, trades){
+        if(!snapshot){
+            atlasStats.innerHTML='<div class="position-detail-loading">Ingen lagret ATLAS-analyse for denne posisjonen.</div>';
+            reasoning.textContent='Det finnes ingen lagret ATLAS-analyse knyttet til denne posisjonen.';
+            return;
+        }
+
+        const decision=snapshot.decision||{};
+        const intelligence=snapshot.intelligence||{};
+        const results=Array.isArray(snapshot.results)?snapshot.results:[];
+        signal.textContent=decision.action||'WAITING';
+        signal.className='overview-action '+String(decision.action||'hold').toLowerCase();
+
+        const statsItems=[
+            ['Confidence',decision.confidence!=null?Number(decision.confidence).toFixed(1)+'%':'—'],
+            ['Evidence',decision.evidence!=null?Number(decision.evidence).toFixed(1)+'%':'—'],
+            ['Robustness',decision.robustness!=null?Number(decision.robustness).toFixed(1)+'%':'—'],
+            ['Robustness-nivå',decision.robustness_level||'—'],
+            ['Consensus',intelligence.agreement!=null?Number(intelligence.agreement).toFixed(1)+'%':'—'],
+            ['Kjøp / Hold / Selg',
+                (intelligence.buy_count!=null?intelligence.buy_count:'—')+' / '+
+                (intelligence.hold_count!=null?intelligence.hold_count:'—')+' / '+
+                (intelligence.sell_count!=null?intelligence.sell_count:'—')],
+            ['Dominerende handling',decision.dominant_action||'—'],
+            ['Dominerende vekt',decision.dominant_weight!=null?Number(decision.dominant_weight*100).toFixed(1)+'%':'—'],
+            ['Støttende analytiker',decision.action_support_analyst||'—'],
+            ['Støttevekt',decision.action_support_weight!=null?Number(decision.action_support_weight*100).toFixed(1)+'%':'—'],
+            ['Adaptive override',decision.adaptive_override?'Ja':'Nei'],
+            ['Provider',snapshot.provider||'—'],
+            ['Modell',snapshot.model||'—'],
+            ['Analysert',snapshot.timestamp||'—']
+        ];
+        atlasStats.innerHTML=statsItems.map(function(item){
+            return '<div><small>'+escapeHtml(item[0])+'</small><strong>'+escapeHtml(item[1])+'</strong></div>';
+        }).join('');
+
+        const reasoningItems=Array.isArray(decision.reasoning)&&decision.reasoning.length
+            ?decision.reasoning
+            :(Array.isArray(intelligence.reasoning)?intelligence.reasoning:[]);
+        const analystHtml=results.map(function(item){
+            const itemReasoning=Array.isArray(item.reasoning)?item.reasoning.join(' '):'';
+            return '<div class="position-detail-analyst">'+
+                '<div class="position-detail-analyst-head"><strong>'+escapeHtml(item.analyst||'Analytiker')+'</strong>'+
+                '<span>'+escapeHtml(item.action||'—')+'</span></div>'+
+                '<div class="position-detail-analyst-metrics">Confidence '+escapeHtml(item.confidence!=null?Number(item.confidence).toFixed(1)+'%':'—')+
+                ' · Evidence '+escapeHtml(item.evidence!=null?Number(item.evidence).toFixed(1)+'%':'—')+'</div>'+
+                (itemReasoning?'<p>'+escapeHtml(itemReasoning)+'</p>':'')+
+            '</div>';
+        }).join('');
+
+        const newsHtml=(Array.isArray(news)?news.slice(0,6):[]).map(function(item){
+            return '<div class="position-detail-news"><strong>'+escapeHtml(item.title||'Uten tittel')+'</strong>'+
+                '<span>'+escapeHtml(item.source||'Ukjent kilde')+'</span></div>';
+        }).join('');
+
+        reasoning.innerHTML=
+            '<div class="position-detail-reasoning-block">'+
+            '<strong>ATLAS-konklusjon</strong>'+
+            '<p>'+escapeHtml(reasoningItems.length?reasoningItems.join(' '):'Ingen lagret reasoning.')+'</p>'+
+            '</div>'+
+            (analystHtml?'<div class="position-detail-analysts"><strong>Analytikere</strong>'+analystHtml+'</div>':'')+
+            (newsHtml?'<div class="position-detail-news-list"><strong>Nyhetskontekst</strong>'+newsHtml+'</div>':'')+
+            '<div class="position-detail-trades"><strong>ATLAS-handler for '+escapeHtml(snapshot.symbol||selectedSymbol)+'</strong>'+
+            '<span>'+escapeHtml(String(trades.length))+' registrerte handler</span></div>';
+    }
+
     async function loadAtlasData(){
         if(!selectedSymbol)return;
         try{
-            const response=await fetch('/api/dashboard?symbol='+encodeURIComponent(selectedSymbol)+'&trade_history_period=all');
+            const response=await fetch('/api/position-detail?symbol='+encodeURIComponent(selectedSymbol));
             const data=await response.json();
-            const decision=data.decision||{};
-            const intelligence=data.intelligence||{};
-            const market=(data.market||[]).find(function(item){return item.symbol===selectedSymbol;});
-            if(market&&market.price_usd!=null){
-                price.textContent=Number(market.price_usd).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:4});
+            if(!response.ok)throw new Error(data.error||'Kunne ikke hente posisjonsdata');
+
+            const snapshot=data.analysis_snapshot||null;
+            const decision=snapshot&&snapshot.decision?snapshot.decision:{};
+            const intelligence=snapshot&&snapshot.intelligence?snapshot.intelligence:{};
+
+            if(decision.price_usd!=null){
+                price.textContent=Number(decision.price_usd).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:4});
             }
-            signal.textContent=decision.action||'WAITING';
-            signal.className='overview-action '+String(decision.action||'hold').toLowerCase();
-            atlasStats.innerHTML=[
-                ['Confidence',decision.confidence!=null?Number(decision.confidence).toFixed(1)+'%':'—'],
-                ['Evidence',decision.evidence!=null?Number(decision.evidence).toFixed(1)+'%':'—'],
-                ['Robustness',data.decision_robustness&&data.decision_robustness.robustness!=null?data.decision_robustness.robustness:'—'],
-                ['Consensus',intelligence.agreement!=null?Number(intelligence.agreement).toFixed(1)+'%':'—']
-            ].map(function(item){
-                return '<div><small>'+escapeHtml(item[0])+'</small><strong>'+escapeHtml(item[1])+'</strong></div>';
-            }).join('');
-            const reasons=decision.reasoning&&decision.reasoning.length?decision.reasoning:(intelligence.reasoning||[]);
-            reasoning.textContent=reasons.length?reasons.slice(0,3).join(' '):'Ingen lagret ATLAS-reasoning for dette instrumentet.';
-            positionMarkers=(data.trade_chart&&data.trade_chart.markers||[]).filter(function(marker){return marker.symbol===selectedSymbol;});
+            if(!snapshot){
+                signal.textContent='INGEN DATA';
+                signal.className='overview-action hold';
+            }
+            positionMarkers=Array.isArray(data.trade_markers)?data.trade_markers:[];
+            renderAtlasSnapshot(snapshot,data.news||[],data.trade_history||[]);
+
             if(series){
                 if(markerSeries)markerSeries.setMarkers(markerObjects());
                 else if(positionMarkers.length)markerSeries=LightweightCharts.createSeriesMarkers(series,markerObjects());
             }
         }catch(error){
-            atlasStats.innerHTML='<div class="position-detail-loading">ATLAS-data er ikke tilgjengelig akkurat nå.</div>';
-            reasoning.textContent='Kunne ikke hente siste ATLAS-analyse.';
+            atlasStats.innerHTML='<div class="position-detail-loading">ATLAS-data kunne ikke hentes. Prøv igjen.</div>';
+            reasoning.textContent='Kunne ikke hente ATLAS-data for denne posisjonen.';
+            signal.textContent='FEIL';
+            signal.className='overview-action hold';
         }
     }
 
