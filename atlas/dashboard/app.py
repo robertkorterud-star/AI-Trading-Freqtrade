@@ -319,6 +319,25 @@ async def scanner(request: Request):
     )
 
 
+@app.get("/api/position-detail")
+async def position_detail_api(request: Request):
+    symbol = request.query_params.get("symbol", "").strip()
+    if not symbol:
+        return JSONResponse(content={"error": "Symbol is required."}, status_code=400)
+
+    try:
+        detail = service.data.get_position_detail(
+            service._normalize_dashboard_symbol(symbol)
+        )
+    except Exception as exc:
+        return JSONResponse(
+            content={"error": str(exc)},
+            status_code=500,
+        )
+
+    return JSONResponse(content=detail)
+
+
 @app.get("/api/dashboard")
 async def dashboard_api(request: Request):
     trade_history_period = request.query_params.get("trade_history_period", "1d").strip().lower()
