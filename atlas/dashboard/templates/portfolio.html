@@ -32,7 +32,7 @@
                 <div class="portfolio-table-wrap">
                     <table class="portfolio-table positions-table">
                         <thead><tr><th>{{ t('symbol') }}</th><th>{{ t('value') }}</th><th>P&amp;L</th></tr></thead>
-                        <tbody>{% for position in dashboard.portfolio.positions %}<tr><td><strong>{{ position.symbol }}</strong></td><td>{{ position.market_value_nok }} NOK</td><td class="{% if position.pnl_nok >= 0 %}positive{% elif position.pnl_nok < 0 %}negative{% endif %}">{% if position.pnl_nok >= 0 %}+{% endif %}{{ position.pnl_nok }} NOK</td></tr>{% endfor %}</tbody>
+                        <tbody>{% for position in dashboard.portfolio.positions %}<tr class="position-row" data-symbol="{{ position.symbol }}" tabindex="0" role="button" aria-label="Åpne {{ position.symbol }}"><td><strong>{{ position.symbol }}</strong><span class="position-type">{% if '-USD' in position.symbol %}Krypto{% else %}Aksje{% endif %}</span></td><td>{{ position.quantity }}</td><td>$ {{ "{:,.2f}".format(position.average_price_usd) }}</td><td>$ {{ "{:,.2f}".format(position.current_price_usd) }}</td><td>{{ position.market_value_nok }} NOK</td><td class="{% if position.pnl_nok >= 0 %}positive{% elif position.pnl_nok < 0 %}negative{% endif %}">{% if position.pnl_nok >= 0 %}+{% endif %}{{ position.pnl_nok }} NOK</td><td class="{% if position.pnl_percent >= 0 %}positive{% elif position.pnl_percent < 0 %}negative{% endif %}">{% if position.pnl_percent >= 0 %}+{% endif %}{{ position.pnl_percent }}%</td></tr>{% endfor %}</tbody>
                     </table>
                 </div>
             {% else %}
