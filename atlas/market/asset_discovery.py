@@ -188,8 +188,8 @@ class AssetDiscoveryService:
                 market_context=MarketContextService.build(
                     asset_type=result.asset.asset_type,
                     timestamp=context_timestamp,
-                    change_percent=data_by_symbol[result.symbol].change_percent,
-                    volume_ratio=data_by_symbol[result.symbol].volume_ratio,
+                    change_percent=data_by_symbol[result.symbol].volatility_score / 10.0,
+                    volume_ratio=data_by_symbol[result.symbol].liquidity_score / 50.0,
                 ),
             )
             for result in results
