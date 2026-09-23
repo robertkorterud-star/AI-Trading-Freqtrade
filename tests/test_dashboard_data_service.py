@@ -354,7 +354,7 @@ def test_dashboard_market_scan_reads_current_snapshot_each_time(tmp_path, monkey
 
 def test_dashboard_position_detail_returns_snapshot_trade_context(tmp_path, monkeypatch):
     service = _service_with_snapshot(tmp_path, symbol="MSFT")
-    snapshot = service.snapshot_repository.get_latest_valid("MSFT-USD")
+    snapshot = service.snapshot_repository.get_latest_valid("MSFT")
     trade = TradeRecord(
         "MSFT",
         "BUY",
@@ -383,8 +383,9 @@ def test_dashboard_position_detail_returns_snapshot_trade_context(tmp_path, monk
     assert detail["analysis_snapshot"]["database_id"] == snapshot.database_id
     assert detail["analysis_snapshot"]["decision"]["action"] == "BUY"
     assert detail["analysis_snapshot"]["intelligence"]["agreement"] == 100.0
-    assert detail["trade_history"][0]["symbol"] == "MSFT-USD"
+    assert detail["trade_history"][0]["symbol"] == "MSFT"
     assert detail["trade_markers"][0]["action"] == "BUY"
+    assert detail["trade_markers"][0]["symbol"] == "MSFT"
     assert detail["news"][0]["title"] == "MSFT update"
 
 
