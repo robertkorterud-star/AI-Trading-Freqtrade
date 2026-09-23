@@ -104,7 +104,7 @@
 }
 .overview-conviction:has(.overview-action.buy) .overview-conviction-copy::before { content:"KJØP"; color:#4ade80; background:radial-gradient(circle,#07150d 0 54%,transparent 55%),conic-gradient(#22c55e 0deg,#22c55e 300deg,#12331f 300deg,#12331f 360deg); box-shadow:0 0 0 8px rgba(34,197,94,.05),0 0 38px rgba(34,197,94,.24); }
 .overview-conviction:has(.overview-action.sell) .overview-conviction-copy::before { content:"SELG"; color:#f87171; background:radial-gradient(circle,#19090b 0 54%,transparent 55%),conic-gradient(#ef4444 0deg,#ef4444 300deg,#351216 300deg,#351216 360deg); box-shadow:0 0 0 8px rgba(239,68,68,.05),0 0 38px rgba(239,68,68,.22); }
-.overview-conviction-copy::after { content:"ATLAS BESLUTNING"; position:absolute; left:33px; top:calc(50% + 100px); width:106px; text-align:center; transform:translateY(0); color:#64748b; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.overview-conviction-copy::after { content:"ATLAS BESLUTNING"; position:absolute; left:33px; top:calc(50% + 128px); width:106px; text-align:center; transform:translateY(0); color:#64748b; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
 .overview-conviction-title { display:flex; align-items:center; flex-wrap:wrap; gap:9px; font-size:25px; font-weight:800; }
 .overview-conviction-title > span:first-child { color:#94a3b8; font-size:15px; font-weight:600; }
 .overview-conviction-title .overview-symbol { font-size:25px; }
