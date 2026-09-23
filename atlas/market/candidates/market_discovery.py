@@ -36,11 +36,11 @@ class MarketDiscoverySource:
                 reason="Market discovery score",
                 metadata=(
                     {
-                        "session": result.market_context.session,
-                        "volatility_level": result.market_context.volatility_level,
-                        "liquidity_level": result.market_context.liquidity_level,
+                        "session": market_context.session,
+                        "volatility_level": market_context.volatility_level,
+                        "liquidity_level": market_context.liquidity_level,
                     }
-                    if result.market_context is not None
+                    if (market_context := getattr(result, "market_context", None)) is not None
                     else {}
                 ),
             )
