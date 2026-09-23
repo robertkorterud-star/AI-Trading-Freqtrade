@@ -143,7 +143,7 @@
     content:"ATLAS BESLUTNING";
     position:absolute;
     left:15px;
-    top:calc(50% + 78px);
+    top:calc(50% + 66px);
     width:94px;
     text-align:center;
     color:#64748b;
@@ -290,7 +290,7 @@
     }
     .overview-conviction-copy::after {
         left:50%;
-        top:140px;
+        top:134px;
         transform:translateX(-50%);
     }
     .overview-conviction-title { justify-content:center; }
