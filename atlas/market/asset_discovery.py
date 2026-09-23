@@ -1,8 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import time
 
 from atlas.market.asset import Asset
 from atlas.market.asset_universe import AssetUniverse
+from atlas.market.market_context import MarketContext, MarketContextService
 
 
 @dataclass(slots=True, frozen=True)
@@ -22,6 +24,7 @@ class DiscoveryScore:
 
     asset: Asset
     score: float
+    market_context: MarketContext | None = None
 
     @property
     def symbol(self):
@@ -108,6 +111,7 @@ class AssetDiscoveryService:
         self,
         universe: AssetUniverse,
         limit: int | None = None,
+        timestamp: float | None = None,
     ) -> list[DiscoveryScore]:
         """Build discovery inputs from market data and rank assets."""
 
@@ -117,6 +121,7 @@ class AssetDiscoveryService:
             )
 
         assets = universe.all()
+        context_timestamp = time.time() if timestamp is None else float(timestamp)
         market_data = {}
 
         get_many = getattr(self.market_data, "get_many", None)
@@ -166,11 +171,29 @@ class AssetDiscoveryService:
             assets=available_assets
         )
 
-        return self.rank(
+        results = self.rank(
             available_universe,
             market_data,
             limit=limit,
         )
+
+        data_by_symbol = {
+            asset.symbol: data
+            for asset in available_assets
+        }
+        return [
+            DiscoveryScore(
+                asset=result.asset,
+                score=result.score,
+                market_context=MarketContextService.build(
+                    asset_type=result.asset.asset_type,
+                    timestamp=context_timestamp,
+                    change_percent=data_by_symbol[result.symbol].change_percent,
+                    volume_ratio=data_by_symbol[result.symbol].volume_ratio,
+                ),
+            )
+            for result in results
+        ]
 
     def rank(
         self,
