@@ -3,7 +3,7 @@
 {% block content %}
 {# Existing dashboard data contract: /market/{{ dashboard.intelligence.symbol }} #}
 {% set intelligence_symbol = dashboard.intelligence.symbol|default("BTC-USD", true) %}
-{% set primary_action = dashboard.intelligence.action|default(dashboard.decision.action|default("HOLD", true), true) %}
+{% set primary_action = dashboard.decision.action|default(dashboard.intelligence.action|default("HOLD", true), true) %}
 {% set trade_chart = dashboard.trade_chart|default({}, true) %}
 
 <div class="overview-page">
