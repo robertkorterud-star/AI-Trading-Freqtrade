@@ -178,7 +178,7 @@ class AssetDiscoveryService:
         )
 
         data_by_symbol = {
-            asset.symbol: data
+            asset.symbol: market_data[asset.symbol]
             for asset in available_assets
         }
         return [
