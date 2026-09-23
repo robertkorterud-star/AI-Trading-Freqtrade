@@ -34,15 +34,28 @@ class MarketDiscoverySource:
                 source="market_discovery",
                 score=float(result.score),
                 reason="Market discovery score",
-                metadata=(
-                    {
-                        "session": market_context.session,
-                        "volatility_level": market_context.volatility_level,
-                        "liquidity_level": market_context.liquidity_level,
-                    }
-                    if (market_context := getattr(result, "market_context", None)) is not None
-                    else {}
-                ),
+                metadata={
+                    **(
+                        {
+                            "session": market_context.session,
+                            "volatility_level": market_context.volatility_level,
+                            "liquidity_level": market_context.liquidity_level,
+                        }
+                        if (market_context := getattr(result, "market_context", None)) is not None
+                        else {}
+                    ),
+                    **(
+                        {
+                            "volume_score": result.discovery_input.volume_score,
+                            "momentum_score": result.discovery_input.momentum_score,
+                            "volatility_score": result.discovery_input.volatility_score,
+                            "news_score": result.discovery_input.news_score,
+                            "liquidity_score": result.discovery_input.liquidity_score,
+                        }
+                        if getattr(result, "discovery_input", None) is not None
+                        else {}
+                    ),
+                },
             )
             for result in discovered
             if float(result.score) >= self.minimum_score

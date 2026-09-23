@@ -112,3 +112,44 @@ def test_market_discovery_source_can_return_no_candidates():
     )
 
     assert source.discover() == []
+
+def test_market_discovery_source_carries_discovery_evidence():
+    asset = Asset(
+        symbol="AAPL",
+        name="Apple",
+        asset_type="stock",
+        market="NASDAQ",
+        currency="USD",
+    )
+    universe = AssetUniverse(assets=[asset])
+
+    from atlas.market.asset_discovery import DiscoveryInput
+
+    discovery = FakeDiscovery(
+        [
+            DiscoveryScore(
+                asset=asset,
+                score=82.5,
+                discovery_input=DiscoveryInput(
+                    volume_score=90,
+                    momentum_score=80,
+                    volatility_score=70,
+                    news_score=0,
+                    liquidity_score=95,
+                ),
+            )
+        ]
+    )
+
+    candidate = MarketDiscoverySource(
+        discovery=discovery,
+        universe=universe,
+    ).discover()[0]
+
+    assert candidate.metadata == {
+        "volume_score": 90,
+        "momentum_score": 80,
+        "volatility_score": 70,
+        "news_score": 0,
+        "liquidity_score": 95,
+    }

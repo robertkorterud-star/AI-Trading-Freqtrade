@@ -25,6 +25,7 @@ class DiscoveryScore:
     asset: Asset
     score: float
     market_context: MarketContext | None = None
+    discovery_input: DiscoveryInput | None = None
 
     @property
     def symbol(self):
@@ -191,6 +192,7 @@ class AssetDiscoveryService:
                     change_percent=data_by_symbol[result.symbol].volatility_score / 10.0,
                     volume_ratio=data_by_symbol[result.symbol].liquidity_score / 50.0,
                 ),
+                discovery_input=data_by_symbol[result.symbol],
             )
             for result in results
         ]

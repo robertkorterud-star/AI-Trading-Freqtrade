@@ -261,3 +261,40 @@ def test_discovery_uses_batch_market_data_when_available():
     assert len(results) == universe.count()
     assert market_data.batch_calls == 1
     assert market_data.get_calls == 0
+
+def test_discovery_preserves_normalized_input_as_evidence():
+    asset = Asset(
+        symbol="AAPL",
+        name="Apple",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+
+    class FakeMarketData:
+        def get_many(self, symbols):
+            return {
+                "AAPL": type(
+                    "MarketData",
+                    (),
+                    {
+                        "price": 120.0,
+                        "ma50": 100.0,
+                        "change_percent": 2.0,
+                        "volume_ratio": 2.0,
+                    },
+                )()
+            }
+
+    result = AssetDiscoveryService(
+        market_data=FakeMarketData()
+    ).discover(
+        AssetUniverse(assets=[asset]),
+        timestamp=0,
+    )[0]
+
+    assert result.discovery_input is not None
+    assert result.discovery_input.momentum_score == 100.0
+    assert result.discovery_input.volatility_score == 20.0
+    assert result.discovery_input.volume_score == 100.0
+    assert result.discovery_input.liquidity_score == 100.0
