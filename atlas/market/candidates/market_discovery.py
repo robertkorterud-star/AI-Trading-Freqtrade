@@ -34,6 +34,15 @@ class MarketDiscoverySource:
                 source="market_discovery",
                 score=float(result.score),
                 reason="Market discovery score",
+                metadata=(
+                    {
+                        "session": result.market_context.session,
+                        "volatility_level": result.market_context.volatility_level,
+                        "liquidity_level": result.market_context.liquidity_level,
+                    }
+                    if result.market_context is not None
+                    else {}
+                ),
             )
             for result in discovered
             if float(result.score) >= self.minimum_score
