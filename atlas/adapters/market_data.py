@@ -193,6 +193,10 @@ class YFinanceMarketDataProvider:
             ).dropna(subset=["Open", "High", "Low", "Close"])
 
             if history.empty:
+                if timeframe == interval:
+                    raise ValueError(
+                        f"No market history available for {symbol}"
+                    )
                 raise ValueError(
                     f"No {timeframe} market history available for {symbol}"
                 )
