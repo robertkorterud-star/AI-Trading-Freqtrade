@@ -153,3 +153,40 @@ def test_dry_run_loop_uses_canonical_risk_and_portfolio_managers():
     assert engine.last_risk_assessment is not None
     assert engine.last_portfolio_assessment is not None
     assert result.execution.equity > 0
+
+
+def test_process_binance_uses_trading_horizon_timeframes():
+    from atlas.market.trading_horizon import TradingHorizon
+
+    class FakeBinance:
+        def __init__(self):
+            self.calls = []
+
+        def get_klines(self, **kwargs):
+            self.calls.append(kwargs)
+            return [
+                [
+                    1710000000000 + i * 60000,
+                    str(100 + i * 0.2),
+                    str(101 + i * 0.2),
+                    str(99 + i * 0.2),
+                    str(100.5 + i * 0.2),
+                    "10",
+                ]
+                for i in range(30)
+            ]
+
+    adapter = FakeBinance()
+
+    DryRunLoop(agents=[BullishAgent()]).process_binance(
+        adapter,
+        symbol="BTCUSDT",
+        horizon=TradingHorizon.DAY_TRADE,
+        limit=30,
+    )
+
+    assert [call["interval"] for call in adapter.calls] == [
+        "1h",
+        "15m",
+        "5m",
+    ]
