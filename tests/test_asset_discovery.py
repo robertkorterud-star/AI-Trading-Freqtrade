@@ -298,3 +298,59 @@ def test_discovery_preserves_normalized_input_as_evidence():
     assert result.discovery_input.volatility_score == 20.0
     assert result.discovery_input.volume_score == 100.0
     assert result.discovery_input.liquidity_score == 100.0
+
+
+def test_discovery_score_preserves_horizon_as_ranking_context():
+    from atlas.market.trading_horizon import TradingHorizon
+
+    asset = Asset(
+        symbol="NVDA",
+        name="NVIDIA",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+
+    result = AssetDiscoveryService().score(
+        asset,
+        DiscoveryInput(
+            volume_score=80.0,
+            momentum_score=90.0,
+            volatility_score=70.0,
+            news_score=0.0,
+            liquidity_score=85.0,
+        ),
+        horizon=TradingHorizon.DAY_TRADE,
+    )
+
+    assert result.horizon == TradingHorizon.DAY_TRADE
+    assert result.score == 65.0
+
+
+def test_discovery_rank_preserves_horizon_without_changing_score_formula():
+    from atlas.market.trading_horizon import TradingHorizon
+
+    asset = Asset(
+        symbol="BTC-USD",
+        name="Bitcoin",
+        asset_type=AssetType.CRYPTO,
+        market="crypto",
+        currency="USD",
+    )
+    universe = AssetUniverse([asset])
+    signals = DiscoveryInput(
+        volume_score=90.0,
+        momentum_score=80.0,
+        volatility_score=70.0,
+        news_score=60.0,
+        liquidity_score=100.0,
+    )
+
+    result = AssetDiscoveryService().rank(
+        universe,
+        {"BTC-USD": signals},
+        horizon=TradingHorizon.SWING,
+    )[0]
+
+    assert result.horizon == TradingHorizon.SWING
+    assert result.score == 80.0
