@@ -179,42 +179,57 @@ class YFinanceMarketDataProvider:
         symbol: str,
         interval: str = "1d",
         limit: int = 100,
+        timeframes: tuple[str, ...] = (),
     ) -> "MarketSnapshot":
         """Return normalized ATLAS market data as a MarketSnapshot."""
         from atlas.trading.market_data import Candle, MarketSnapshot
 
         ticker = yf.Ticker(symbol)
-        history = ticker.history(
-            period=self.history_period,
-            interval=interval,
-        ).dropna(subset=["Open", "High", "Low", "Close"])
 
-        if history.empty:
-            raise ValueError(f"No market history available for {symbol}")
+        def load_candles(timeframe: str) -> tuple[Candle, ...]:
+            history = ticker.history(
+                period=self.history_period,
+                interval=timeframe,
+            ).dropna(subset=["Open", "High", "Low", "Close"])
 
-        history = history.tail(limit)
-
-        candles = []
-        for timestamp, row in history.iterrows():
-            volume = row.get("Volume", 0.0)
-            if volume != volume:
-                volume = 0.0
-
-            candles.append(
-                Candle(
-                    timestamp=float(timestamp.timestamp()),
-                    open=float(row["Open"]),
-                    high=float(row["High"]),
-                    low=float(row["Low"]),
-                    close=float(row["Close"]),
-                    volume=float(volume),
+            if history.empty:
+                raise ValueError(
+                    f"No {timeframe} market history available for {symbol}"
                 )
+
+            candles = []
+            for timestamp, row in history.tail(limit).iterrows():
+                volume = row.get("Volume", 0.0)
+                if volume != volume:
+                    volume = 0.0
+
+                candles.append(
+                    Candle(
+                        timestamp=float(timestamp.timestamp()),
+                        open=float(row["Open"]),
+                        high=float(row["High"]),
+                        low=float(row["Low"]),
+                        close=float(row["Close"]),
+                        volume=float(volume),
+                    )
+                )
+
+            return tuple(candles)
+
+        candles = load_candles(interval)
+        timeframe_candles = {
+            timeframe: (
+                candles
+                if timeframe == interval
+                else load_candles(timeframe)
             )
-        candles = tuple(candles)
+            for timeframe in dict.fromkeys(timeframes)
+        }
 
         return MarketSnapshot.from_candles(
             symbol=symbol,
             candles=candles,
+            timeframe_candles=timeframe_candles,
         )
 
 
