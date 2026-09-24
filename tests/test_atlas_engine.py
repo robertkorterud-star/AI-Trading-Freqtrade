@@ -1818,8 +1818,21 @@ def test_analyze_candidates_generates_algorithm_evidence_from_normalized_snapsho
 
     from atlas.core.engine import AtlasEngine
 
+    from atlas.market.asset import Asset
+    from atlas.market.asset_type import AssetType
+
     engine = object.__new__(AtlasEngine)
-    candidate = SimpleNamespace(symbol="NVDA", score=91.0)
+    candidate = SimpleNamespace(
+        symbol="NVDA",
+        score=91.0,
+        asset=Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        ),
+    )
     normalized_snapshot = object()
     technical_snapshot = object()
     algorithm_signals = [object()]
