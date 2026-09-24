@@ -155,6 +155,11 @@ def test_intelligence_source_adapter_adds_sec_research():
         finnhub=FakeFinnhub(),
         transcript=FakeTranscript(),
         sec=FakeSEC(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = adapter.get(
@@ -207,6 +212,11 @@ def test_intelligence_source_adapter_adds_sec_research():
         finnhub=FakeFinnhub(),
         transcript=FakeTranscript(),
         sec=FakeSEC(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = adapter.get(
@@ -263,6 +273,11 @@ def test_intelligence_source_adapter_finds_sec_cik_automatically():
         finnhub=FakeFinnhub(),
         transcript=FakeTranscript(),
         sec=FakeSEC(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = adapter.get(
