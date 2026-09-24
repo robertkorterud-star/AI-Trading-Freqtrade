@@ -1761,3 +1761,53 @@ def test_start_logs_selection_snapshot():
         "ATLAS selection snapshot:" in message
         for message in engine.logger.messages
     )
+
+
+def test_evaluate_candidate_decision_combines_analyst_and_algorithm_evidence_once():
+    from atlas.algorithms.base import AlgorithmSignal
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    engine = object.__new__(AtlasEngine)
+    engine._peak_equity_nok = None
+
+    analyst = AnalysisResult(
+        symbol="NVDA",
+        analyst="Technical Analyst",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+        reasoning=["analyst evidence"],
+    )
+    algorithm = AlgorithmSignal(
+        algorithm="momentum",
+        symbol="NVDA",
+        timeframe="1h",
+        action=Action.BUY,
+        score=80.0,
+        confidence=0.9,
+        reasoning=["algorithm evidence"],
+    )
+
+    captured = {}
+
+    class DecisionEngineStub:
+        def evaluate(self, results):
+            captured["results"] = list(results)
+            return "decision"
+
+    engine.decision_engine = DecisionEngineStub()
+
+    result = engine._evaluate_candidate_decision(
+        [analyst],
+        algorithm_signals=[algorithm],
+    )
+
+    assert result == "decision"
+    assert captured["results"][0] is analyst
+    assert len(captured["results"]) == 2
+    assert captured["results"][1].analyst == "algorithm:momentum"
+    assert captured["results"][1].symbol == "NVDA"
+    assert captured["results"][1].action == Action.BUY
+    assert captured["results"][1].reasoning == ["algorithm evidence"]
