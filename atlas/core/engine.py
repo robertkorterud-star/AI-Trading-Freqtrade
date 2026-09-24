@@ -856,8 +856,20 @@ class AtlasEngine:
     def exchange(self, value):
         self._exchange = value
 
-    def _evaluate_candidate_decision(self, analysis, *, market_snapshot=None):
-        """Invoke `DecisionEngine.evaluate` with runtime context when supported."""
+    def _evaluate_candidate_decision(
+        self,
+        analysis,
+        *,
+        market_snapshot=None,
+        algorithm_signals=None,
+    ):
+        """Invoke `DecisionEngine.evaluate` with combined evidence and runtime context."""
+        combined_analysis = list(analysis)
+        combined_analysis.extend(
+            self.decision_engine._algorithm_signal_to_analysis(signal)
+            for signal in (algorithm_signals or [])
+        )
+
         params = inspect.signature(self.decision_engine.evaluate).parameters
         kwargs = {}
         runtime_context = None
@@ -918,7 +930,7 @@ class AtlasEngine:
         if "current_position" in params or "last_buy_price" in params or "average_price" in params:
             _, portfolio_snapshot = get_runtime_context()
             for p in portfolio_snapshot.get("positions", []):
-                if p.get("symbol") != analysis[0].symbol:
+                if p.get("symbol") != combined_analysis[0].symbol:
                     continue
                 kwargs["current_position"] = float(p.get("quantity", 0.0))
                 kwargs["last_buy_price"] = p.get("last_buy_price_usd")
@@ -926,8 +938,8 @@ class AtlasEngine:
                 break
 
         if kwargs:
-            return self.decision_engine.evaluate(analysis, **kwargs)
-        return self.decision_engine.evaluate(analysis)
+            return self.decision_engine.evaluate(combined_analysis, **kwargs)
+        return self.decision_engine.evaluate(combined_analysis)
 
 
 if __name__ == "__main__":
