@@ -302,6 +302,11 @@ def test_intelligence_sources_includes_web_research():
             {"search": lambda self, symbol: []},
         )(),
         web=FakeWeb(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = service.get("XRP-USD")
