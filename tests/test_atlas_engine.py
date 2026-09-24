@@ -1899,3 +1899,127 @@ def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
     assert results[0]["decision"] == "decision"
     assert captured["analysis"] == ["analyst-evidence"]
     assert captured["algorithm_signals"] is algorithm_signals
+
+
+def test_candidate_algorithm_evidence_uses_fusion_without_double_counting():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.asset import Asset
+    from atlas.market.asset_type import AssetType
+
+    engine = object.__new__(AtlasEngine)
+    candidate = SimpleNamespace(
+        symbol="NVDA",
+        score=91.0,
+        asset=Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        ),
+    )
+    normalized_snapshot = object()
+    technical_snapshot = object()
+    raw_signals = [object(), object()]
+    fusion_result = object()
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: ["analyst-evidence"],
+    )
+    engine.market_data = SimpleNamespace(
+        snapshot=lambda symbol, interval, limit: normalized_snapshot,
+    )
+
+    class AlgorithmPipelineStub:
+        def analyze(self, symbol, snapshot):
+            assert symbol == "NVDA"
+            assert snapshot is normalized_snapshot
+            return fusion_result, raw_signals
+
+    engine.algorithm_pipeline = AlgorithmPipelineStub()
+    engine._get_market_snapshot = lambda symbol: technical_snapshot
+
+    results = engine.analyze_candidates()
+
+    assert results[0]["algorithm_signals"] is raw_signals
+    assert results[0]["fusion_result"] is fusion_result
+
+
+def test_decision_boundary_uses_fusion_instead_of_raw_algorithm_signals():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.base import AlgorithmSignal
+    from atlas.algorithms.fusion import FusionResult
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    engine = object.__new__(AtlasEngine)
+
+    analysis = [
+        AnalysisResult(
+            analyst="Technical Analyst",
+            symbol="NVDA",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            reasoning=["analyst"],
+        )
+    ]
+    raw_signals = [
+        AlgorithmSignal(
+            algorithm="momentum",
+            symbol="NVDA",
+            timeframe="5m",
+            action=Action.BUY,
+            score=80.0,
+            confidence=0.9,
+        ),
+        AlgorithmSignal(
+            algorithm="trend",
+            symbol="NVDA",
+            timeframe="5m",
+            action=Action.SELL,
+            score=20.0,
+            confidence=0.9,
+        ),
+    ]
+    fusion_result = FusionResult(
+        symbol="NVDA",
+        timeframe="5m",
+        action=Action.HOLD,
+        score=50.0,
+        confidence=70.0,
+        agreement=0.5,
+        signals=tuple(raw_signals),
+        reasoning=["No directional consensus reached."],
+    )
+
+    captured = {}
+
+    class DecisionEngineStub:
+        def evaluate(self, results):
+            captured["results"] = results
+            return "decision"
+
+    engine.decision_engine = DecisionEngineStub()
+
+    decision = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=SimpleNamespace(price=100.0),
+        algorithm_signals=raw_signals,
+        fusion_result=fusion_result,
+    )
+
+    assert decision == "decision"
+    assert len(captured["results"]) == 2
+    assert captured["results"][0] is analysis[0]
+    assert captured["results"][1].analyst == "signal_fusion"
+    assert captured["results"][1].action == Action.HOLD
+    assert all(
+        result.analyst not in {"algorithm:momentum", "algorithm:trend"}
+        for result in captured["results"]
+    )
