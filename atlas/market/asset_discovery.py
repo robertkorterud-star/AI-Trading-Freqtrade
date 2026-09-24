@@ -117,6 +117,7 @@ class AssetDiscoveryService:
         universe: AssetUniverse,
         limit: int | None = None,
         timestamp: float | None = None,
+        horizon: TradingHorizon | None = None,
     ) -> list[DiscoveryScore]:
         """Build discovery inputs from market data and rank assets."""
 
@@ -180,6 +181,7 @@ class AssetDiscoveryService:
             available_universe,
             market_data,
             limit=limit,
+            horizon=horizon,
         )
 
         data_by_symbol = {
@@ -197,6 +199,7 @@ class AssetDiscoveryService:
                     volume_ratio=data_by_symbol[result.symbol].liquidity_score / 50.0,
                 ),
                 discovery_input=data_by_symbol[result.symbol],
+                horizon=result.horizon,
             )
             for result in results
         ]
