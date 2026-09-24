@@ -151,3 +151,34 @@ def test_market_snapshot_fetches_requested_timeframes():
         call.kwargs["interval"]
         for call in ticker.history.call_args_list
     ] == ["1d", "1h", "15m"]
+
+
+def test_market_data_adapter_delegates_snapshot_with_timeframes():
+    provider = type(
+        "SnapshotProvider",
+        (),
+        {
+            "snapshot": lambda self, symbol, interval="1d", limit=100, timeframes=(): {
+                "symbol": symbol,
+                "interval": interval,
+                "limit": limit,
+                "timeframes": timeframes,
+            }
+        },
+    )()
+
+    adapter = MarketDataAdapter(provider=provider)
+
+    result = adapter.snapshot(
+        "NVDA",
+        interval="1d",
+        limit=50,
+        timeframes=("1h", "15m"),
+    )
+
+    assert result == {
+        "symbol": "NVDA",
+        "interval": "1d",
+        "limit": 50,
+        "timeframes": ("1h", "15m"),
+    }
