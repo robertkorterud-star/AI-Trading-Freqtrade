@@ -13,6 +13,16 @@ from atlas.agents.news_analyst import NewsAnalyst
 
 from atlas.decision.engine import DecisionEngine
 from atlas.algorithms.position_exit import PositionExitEngine
+from atlas.algorithms.pipeline import AlgorithmPipeline
+from atlas.algorithms.registry import AlgorithmRegistry
+from atlas.algorithms import (
+    IntradayMomentumAlgorithm,
+    IntradayTrendAlgorithm,
+    IntradayBreakoutAlgorithm,
+    IntradayMeanReversionAlgorithm,
+    IntradayVWAPAlgorithm,
+    IntradayValueZoneAlgorithm,
+)
 
 from atlas.report.report_builder import ReportBuilder
 
@@ -147,6 +157,18 @@ class AtlasEngine:
         self.candidate_decision_ranker = (
             CandidateDecisionRanker()
         )
+
+        algorithm_registry = AlgorithmRegistry()
+        for algorithm in (
+            IntradayMomentumAlgorithm(),
+            IntradayTrendAlgorithm(),
+            IntradayBreakoutAlgorithm(),
+            IntradayMeanReversionAlgorithm(),
+            IntradayVWAPAlgorithm(),
+            IntradayValueZoneAlgorithm(),
+        ):
+            algorithm_registry.register(algorithm)
+        self.algorithm_pipeline = AlgorithmPipeline(algorithm_registry)
 
         self.decision_engine = DecisionEngine()
 
