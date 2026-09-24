@@ -11,7 +11,7 @@ from atlas.trading.market_data import Candle, MarketSnapshot
 def snapshot():
     return MarketSnapshot(
         symbol="BTC-USD",
-        timestamp=4,
+        timestamp=23,
         price=108.0,
         candles=tuple(
             Candle(
@@ -118,7 +118,7 @@ def test_pipeline_can_process_multiple_cycles():
 
     second_snapshot = MarketSnapshot(
         symbol="BTC-USD",
-        timestamp=5,
+        timestamp=24,
         price=112.0,
         candles=(
             *snapshot().candles,
