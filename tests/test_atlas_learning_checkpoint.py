@@ -11,7 +11,7 @@ from atlas.trading.market_data import Candle, MarketSnapshot
 def snapshot(price=106):
     return MarketSnapshot(
         symbol="BTC-USD",
-        timestamp=3,
+        timestamp=23,
         price=price,
         candles=tuple(
             Candle(
