@@ -182,3 +182,45 @@ def test_market_data_adapter_delegates_snapshot_with_timeframes():
         "limit": 50,
         "timeframes": ("1h", "15m"),
     }
+
+
+def test_market_data_adapter_fetches_snapshot_for_trading_horizon():
+    from atlas.market.trading_horizon import TradingHorizon
+
+    calls = []
+
+    class SnapshotProvider:
+        def snapshot(
+            self,
+            symbol,
+            interval="1d",
+            limit=100,
+            timeframes=(),
+        ):
+            calls.append(
+                {
+                    "symbol": symbol,
+                    "interval": interval,
+                    "limit": limit,
+                    "timeframes": timeframes,
+                }
+            )
+            return "snapshot"
+
+    adapter = MarketDataAdapter(provider=SnapshotProvider())
+
+    result = adapter.snapshot_for_horizon(
+        "NVDA",
+        TradingHorizon.DAY_TRADE,
+        limit=75,
+    )
+
+    assert result == "snapshot"
+    assert calls == [
+        {
+            "symbol": "NVDA",
+            "interval": "1h",
+            "limit": 75,
+            "timeframes": ("15m", "5m"),
+        }
+    ]
