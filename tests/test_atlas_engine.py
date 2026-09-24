@@ -1852,9 +1852,9 @@ def test_analyze_candidates_generates_algorithm_evidence_from_normalized_snapsho
     calls = []
 
     class AlgorithmPipelineStub:
-        def generate_signals(self, symbol, snapshot):
+        def analyze(self, symbol, snapshot):
             calls.append((symbol, snapshot))
-            return algorithm_signals
+            return None, algorithm_signals
 
     engine.algorithm_pipeline = AlgorithmPipelineStub()
     engine._get_market_snapshot = lambda symbol: technical_snapshot
@@ -1886,10 +1886,17 @@ def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
 
     captured = {}
 
-    def evaluate(analysis, *, market_snapshot=None, algorithm_signals=None):
+    def evaluate(
+        analysis,
+        *,
+        market_snapshot=None,
+        algorithm_signals=None,
+        fusion_result=None,
+    ):
         captured["analysis"] = analysis
         captured["market_snapshot"] = market_snapshot
         captured["algorithm_signals"] = algorithm_signals
+        captured["fusion_result"] = fusion_result
         return "decision"
 
     engine._evaluate_candidate_decision = evaluate
@@ -1899,6 +1906,7 @@ def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
     assert results[0]["decision"] == "decision"
     assert captured["analysis"] == ["analyst-evidence"]
     assert captured["algorithm_signals"] is algorithm_signals
+    assert captured["fusion_result"] is None
 
 
 def test_candidate_algorithm_evidence_uses_fusion_without_double_counting():
