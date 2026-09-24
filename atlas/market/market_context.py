@@ -89,6 +89,30 @@ class MarketContextService:
         return cls._us_session(timestamp)
 
     @classmethod
+    def data_freshness(
+        cls,
+        *,
+        asset_type: AssetType,
+        now_timestamp: float,
+        latest_candle_timestamp: float,
+        expected_interval_seconds: float,
+    ) -> str:
+        """Classify candle freshness while respecting closed market sessions."""
+        if expected_interval_seconds <= 0:
+            raise ValueError("expected_interval_seconds must be greater than zero")
+        if latest_candle_timestamp > now_timestamp:
+            return "FUTURE"
+
+        if cls.session(asset_type, now_timestamp) == "CLOSED":
+            return "NOT_APPLICABLE"
+
+        age = float(now_timestamp) - float(latest_candle_timestamp)
+        if age > float(expected_interval_seconds) * 2:
+            return "STALE"
+
+        return "FRESH"
+
+    @classmethod
     def build(
         cls,
         *,
