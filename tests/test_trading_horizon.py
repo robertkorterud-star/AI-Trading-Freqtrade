@@ -1,7 +1,5 @@
-from atlas.market.trading_horizon import (
-    TradingHorizon,
-    timeframes_for_horizon,
-)
+from atlas.algorithms.multi_horizon import TradingHorizon
+from atlas.market.trading_horizon import timeframes_for_horizon
 
 
 def test_trading_horizons_cover_professional_atlas_contexts():
