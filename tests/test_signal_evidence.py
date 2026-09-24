@@ -191,3 +191,19 @@ def test_signal_evidence_does_not_generate_trade_signal():
         result,
         "decision",
     )
+
+
+def test_signal_evidence_marks_stale_market_data_poor():
+
+    indicators = IndicatorEngine().calculate(
+        _candles()
+    )
+
+    result = SignalEvidenceAnalyzer().analyze(
+        indicators,
+        _mtf(),
+        data_freshness="STALE",
+    )
+
+    assert result.technical_quality == "GOOD"
+    assert result.evidence_quality == "POOR"
