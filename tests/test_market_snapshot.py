@@ -104,3 +104,24 @@ def test_market_snapshot_rejects_duplicate_timeframe_timestamps():
         raise AssertionError(
             "Expected duplicate timeframe timestamps to be rejected."
         )
+
+
+def test_market_snapshot_rejects_timestamp_older_than_latest_candle():
+    candles = (
+        _candle(100, 100),
+        _candle(200, 101),
+    )
+
+    try:
+        MarketSnapshot(
+            symbol="BTC-USD",
+            timestamp=150,
+            price=101,
+            candles=candles,
+        )
+    except ValueError as error:
+        assert "latest candle" in str(error)
+    else:
+        raise AssertionError(
+            "Expected a stale snapshot timestamp to be rejected."
+        )
