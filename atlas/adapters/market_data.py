@@ -27,14 +27,6 @@ class MarketDataProvider(Protocol):
         """Return the latest normalized market snapshot for ``symbol``."""
         ...
 
-    def _history_period_for_interval(self, interval: str) -> str:
-        """Return a conservative Yahoo-compatible period for an interval."""
-        if interval == "1m":
-            return "5d"
-        if interval in {"2m", "5m", "15m", "30m", "90m"}:
-            return "1mo"
-        return self.history_period
-
     def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
         """Return normalized market snapshots for multiple symbols."""
         ...
@@ -58,6 +50,14 @@ class YFinanceMarketDataProvider:
 
     def __init__(self, history_period: str = "3mo") -> None:
         self.history_period = history_period
+
+    def _history_period_for_interval(self, interval: str) -> str:
+        """Return a conservative Yahoo-compatible period for an interval."""
+        if interval == "1m":
+            return "5d"
+        if interval in {"2m", "5m", "15m", "30m", "90m"}:
+            return "1mo"
+        return self.history_period
 
     def get(self, symbol: str) -> MarketData:
         ticker = yf.Ticker(symbol)
