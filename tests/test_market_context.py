@@ -65,3 +65,41 @@ def test_context_is_not_a_trading_decision():
     assert context.session
     assert context.volatility_level == "HIGH"
     assert context.liquidity_level == "HIGH"
+
+
+def test_us_equity_weekend_is_closed_even_during_session_hours():
+    saturday = datetime(
+        2026,
+        9,
+        19,
+        14,
+        0,
+        tzinfo=timezone.utc,
+    ).timestamp()
+
+    assert (
+        MarketContextService.session(
+            AssetType.STOCK,
+            saturday,
+        )
+        == "CLOSED"
+    )
+
+
+def test_crypto_remains_open_on_weekends():
+    saturday = datetime(
+        2026,
+        9,
+        19,
+        14,
+        0,
+        tzinfo=timezone.utc,
+    ).timestamp()
+
+    assert (
+        MarketContextService.session(
+            AssetType.CRYPTO,
+            saturday,
+        )
+        == "CRYPTO_24_7"
+    )
