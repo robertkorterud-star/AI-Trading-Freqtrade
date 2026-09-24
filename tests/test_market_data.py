@@ -270,3 +270,45 @@ def test_market_snapshot_uses_interval_compatible_history_periods():
     assert calls["15m"] == "1mo"
     assert calls["5m"] == "1mo"
     assert calls["1m"] == "5d"
+
+
+def test_market_data_adapter_classifies_stock_snapshot_freshness_from_asset_universe():
+    from atlas.market.asset_type import AssetType
+    from atlas.market.asset_universe import AssetUniverse
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    candles = (
+        Candle(
+            timestamp=1790260200.0,
+            open=100.0,
+            high=102.0,
+            low=99.0,
+            close=101.0,
+            volume=1000.0,
+        ),
+    )
+
+    class SnapshotProvider:
+        def snapshot(
+            self,
+            symbol,
+            interval="1d",
+            limit=100,
+            timeframes=(),
+        ):
+            return MarketSnapshot.from_candles(
+                symbol,
+                candles,
+            )
+
+    adapter = MarketDataAdapter(provider=SnapshotProvider())
+    asset = AssetUniverse().get("NVDA")
+
+    freshness = adapter.snapshot_freshness(
+        asset,
+        interval="1h",
+        now_timestamp=1790263800.0,
+    )
+
+    assert asset.asset_type == AssetType.STOCK
+    assert freshness == "FRESH"
