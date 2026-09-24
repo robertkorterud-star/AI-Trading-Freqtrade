@@ -103,3 +103,61 @@ def test_crypto_remains_open_on_weekends():
         )
         == "CRYPTO_24_7"
     )
+
+
+def test_crypto_freshness_marks_old_data_stale_while_market_is_open():
+    now = datetime(
+        2026,
+        9,
+        24,
+        16,
+        0,
+        tzinfo=timezone.utc,
+    ).timestamp()
+    latest_candle = datetime(
+        2026,
+        9,
+        24,
+        15,
+        50,
+        tzinfo=timezone.utc,
+    ).timestamp()
+
+    assert (
+        MarketContextService.data_freshness(
+            asset_type=AssetType.CRYPTO,
+            now_timestamp=now,
+            latest_candle_timestamp=latest_candle,
+            expected_interval_seconds=60,
+        )
+        == "STALE"
+    )
+
+
+def test_closed_us_equity_session_does_not_mark_last_candle_stale():
+    saturday = datetime(
+        2026,
+        9,
+        19,
+        14,
+        0,
+        tzinfo=timezone.utc,
+    ).timestamp()
+    friday_close = datetime(
+        2026,
+        9,
+        18,
+        20,
+        0,
+        tzinfo=timezone.utc,
+    ).timestamp()
+
+    assert (
+        MarketContextService.data_freshness(
+            asset_type=AssetType.STOCK,
+            now_timestamp=saturday,
+            latest_candle_timestamp=friday_close,
+            expected_interval_seconds=60,
+        )
+        == "NOT_APPLICABLE"
+    )
