@@ -3,6 +3,7 @@
 from atlas.market.asset_discovery import AssetDiscoveryService
 from atlas.market.asset_universe import AssetUniverse
 from atlas.market.candidates.source import Candidate
+from atlas.market.trading_horizon import TradingHorizon
 
 
 class MarketDiscoverySource:
@@ -14,11 +15,13 @@ class MarketDiscoverySource:
         universe: AssetUniverse,
         limit: int | None = None,
         minimum_score: float = 0.0,
+        horizon: TradingHorizon | None = None,
     ):
         self.discovery = discovery
         self.universe = universe
         self.limit = limit
         self.minimum_score = float(minimum_score)
+        self.horizon = horizon
 
     def discover(self) -> list[Candidate]:
         """Discover and normalize market candidates."""
@@ -26,6 +29,7 @@ class MarketDiscoverySource:
         discovered = self.discovery.discover(
             self.universe,
             limit=self.limit,
+            horizon=self.horizon,
         )
 
         return [
@@ -42,6 +46,11 @@ class MarketDiscoverySource:
                             "liquidity_level": market_context.liquidity_level,
                         }
                         if (market_context := getattr(result, "market_context", None)) is not None
+                        else {}
+                    ),
+                    **(
+                        {"horizon": result.horizon.value}
+                        if getattr(result, "horizon", None) is not None
                         else {}
                     ),
                     **(
