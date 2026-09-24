@@ -66,7 +66,18 @@ class MarketSnapshot:
         }
         if any(not candles for candles in normalized.values()):
             raise ValueError("timeframe candles must not be empty")
+        self._validate_chronology(self.candles)
+        for candles in normalized.values():
+            self._validate_chronology(candles)
         object.__setattr__(self, "timeframe_candles", MappingProxyType(normalized))
+
+    @staticmethod
+    def _validate_chronology(candles: Sequence[Candle]) -> None:
+        if any(
+            current.timestamp <= previous.timestamp
+            for previous, current in zip(candles, candles[1:])
+        ):
+            raise ValueError("candle timestamps must be strictly increasing")
 
     @classmethod
     def from_candles(
