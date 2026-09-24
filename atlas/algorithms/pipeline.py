@@ -24,14 +24,24 @@ class AlgorithmPipeline:
     def generate_signals(
         self,
         symbol: str,
-        market_data: dict,
+        market_data,
     ) -> list[AlgorithmSignal]:
         """Generate signals from every registered algorithm."""
-        candles = market_data.get("candles", [])
+        if isinstance(market_data, dict):
+            base_candles = market_data.get("candles", [])
+            timeframe_candles = {}
+        else:
+            base_candles = market_data.candles
+            timeframe_candles = market_data.timeframe_candles
 
         signals: list[AlgorithmSignal] = []
 
         for algorithm in self.registry.all():
+            candles = timeframe_candles.get(
+                getattr(algorithm, "timeframe", None),
+                base_candles,
+            )
+
             try:
                 signal = algorithm.generate_signal(
                     symbol,
@@ -55,7 +65,7 @@ class AlgorithmPipeline:
     def analyze(
         self,
         symbol: str,
-        market_data: dict,
+        market_data,
     ):
         """Generate algorithm signals and fuse them."""
         signals = self.generate_signals(symbol, market_data)
