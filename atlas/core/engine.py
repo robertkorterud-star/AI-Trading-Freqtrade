@@ -866,7 +866,7 @@ class AtlasEngine:
         """Invoke `DecisionEngine.evaluate` with combined evidence and runtime context."""
         combined_analysis = list(analysis)
         combined_analysis.extend(
-            self.decision_engine._algorithm_signal_to_analysis(signal)
+            DecisionEngine._algorithm_signal_to_analysis(signal)
             for signal in (algorithm_signals or [])
         )
 
