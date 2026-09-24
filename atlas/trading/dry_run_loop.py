@@ -29,6 +29,8 @@ from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.trading.indicator_engine import IndicatorEngine
 from atlas.trading.market_data import MarketSnapshot
+from atlas.market.asset_type import AssetType
+from atlas.market.market_context import MarketContextService
 from atlas.market.trading_horizon import TradingHorizon, timeframes_for_horizon
 from atlas.trading.multi_timeframe_analysis import (
     MultiTimeframeAnalysis,
@@ -109,7 +111,12 @@ class DryRunLoop:
             registry.register(algorithm)
         return AlgorithmPipeline(registry)
 
-    def process(self, snapshot: MarketSnapshot) -> DryRunCycleResult:
+    def process(
+        self,
+        snapshot: MarketSnapshot,
+        *,
+        data_freshness: str | None = None,
+    ) -> DryRunCycleResult:
         observations = tuple(self._observe_agent(agent, snapshot) for agent in self.agents)
         intelligence = self.intelligence.analyze(snapshot.symbol, list(observations))
         fusion_result, algorithm_signals = self.algorithm_pipeline.analyze(
@@ -120,6 +127,7 @@ class DryRunLoop:
         prediction_signal = self._prediction_signal(
             snapshot,
             timeframe=(algorithm_signals[0].timeframe if algorithm_signals else None),
+            data_freshness=data_freshness,
         )
         if prediction_signal is not None:
             algorithm_signals = [*algorithm_signals, prediction_signal]
@@ -202,7 +210,13 @@ class DryRunLoop:
         )
         return equity, exposure_pct, drawdown_pct, positions
 
-    def _prediction_signal(self, snapshot: MarketSnapshot, *, timeframe: str | None = None):
+    def _prediction_signal(
+        self,
+        snapshot: MarketSnapshot,
+        *,
+        timeframe: str | None = None,
+        data_freshness: str | None = None,
+    ):
         if self.prediction_signal_service is None:
             return None
 
@@ -223,7 +237,11 @@ class DryRunLoop:
             snapshot.symbol,
             timeframe_data,
         )
-        evidence = self.signal_evidence_analyzer.analyze(indicators, multi_timeframe)
+        evidence = self.signal_evidence_analyzer.analyze(
+            indicators,
+            multi_timeframe,
+            data_freshness=data_freshness,
+        )
 
         return self.prediction_signal_service.predict(
             evidence,
@@ -288,7 +306,30 @@ class DryRunLoop:
             limit=limit,
             timeframes=timeframes,
         )
-        return self.process(snapshot)
+        freshness = MarketContextService.data_freshness(
+            asset_type=AssetType.CRYPTO,
+            now_timestamp=snapshot.timestamp,
+            latest_candle_timestamp=snapshot.candles[-1].timestamp,
+            expected_interval_seconds=self._interval_seconds(base_interval),
+        )
+        return self.process(
+            snapshot,
+            data_freshness=freshness,
+        )
+
+    @staticmethod
+    def _interval_seconds(interval: str) -> float:
+        """Convert Binance interval notation to seconds for freshness checks."""
+        unit_seconds = {
+            "m": 60.0,
+            "h": 3600.0,
+            "d": 86400.0,
+            "w": 604800.0,
+        }
+        try:
+            return float(interval[:-1]) * unit_seconds[interval[-1]]
+        except (KeyError, ValueError):
+            raise ValueError(f"Unsupported Binance interval: {interval}") from None
 
     def _estimate_expected_return(self, symbol: str, decision) -> float | None:
         if self.expected_return_service is None:
