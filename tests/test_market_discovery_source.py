@@ -153,3 +153,42 @@ def test_market_discovery_source_carries_discovery_evidence():
         "news_score": 0,
         "liquidity_score": 95,
     }
+
+
+def test_market_discovery_source_forwards_and_carries_horizon_context():
+    from atlas.market.trading_horizon import TradingHorizon
+
+    asset = Asset(
+        symbol="NVDA",
+        name="NVIDIA",
+        asset_type="stock",
+        market="NASDAQ",
+        currency="USD",
+    )
+    universe = AssetUniverse(assets=[asset])
+
+    class HorizonDiscovery:
+        def __init__(self):
+            self.received_horizon = None
+
+        def discover(self, universe, limit=None, horizon=None):
+            self.received_horizon = horizon
+            return [
+                DiscoveryScore(
+                    asset=asset,
+                    score=88.0,
+                    horizon=horizon,
+                )
+            ]
+
+    discovery = HorizonDiscovery()
+    source = MarketDiscoverySource(
+        discovery=discovery,
+        universe=universe,
+        horizon=TradingHorizon.DAY_TRADE,
+    )
+
+    candidate = source.discover()[0]
+
+    assert discovery.received_horizon == TradingHorizon.DAY_TRADE
+    assert candidate.metadata["horizon"] == TradingHorizon.DAY_TRADE.value
