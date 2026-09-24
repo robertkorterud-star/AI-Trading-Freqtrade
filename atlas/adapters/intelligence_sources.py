@@ -42,6 +42,7 @@ class IntelligenceSourceAdapter:
         transcript=None,
         sec=None,
         web=None,
+        direct_publishers=None,
     ) -> None:
 
         self.youtube = (
@@ -71,7 +72,9 @@ class IntelligenceSourceAdapter:
         self.web = web
 
         self.direct_publishers = (
-            DirectPublisherNewsAdapter()
+            direct_publishers
+            if direct_publishers is not None
+            else DirectPublisherNewsAdapter()
         )
 
     @staticmethod
