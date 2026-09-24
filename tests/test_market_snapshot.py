@@ -61,3 +61,46 @@ def test_market_snapshot_rejects_empty_timeframe_candles():
         raise AssertionError(
             "Expected empty timeframe candles to be rejected."
         )
+
+
+def test_market_snapshot_rejects_non_chronological_base_candles():
+    candles = (
+        _candle(2, 101),
+        _candle(1, 100),
+    )
+
+    try:
+        MarketSnapshot.from_candles(
+            symbol="NVDA",
+            candles=candles,
+        )
+    except ValueError as error:
+        assert "strictly increasing" in str(error)
+    else:
+        raise AssertionError(
+            "Expected non-chronological base candles to be rejected."
+        )
+
+
+def test_market_snapshot_rejects_duplicate_timeframe_timestamps():
+    candles = (
+        _candle(1, 100),
+        _candle(2, 101),
+    )
+    hourly = (
+        _candle(3, 102),
+        _candle(3, 103),
+    )
+
+    try:
+        MarketSnapshot.from_candles(
+            symbol="NVDA",
+            candles=candles,
+            timeframe_candles={"1h": hourly},
+        )
+    except ValueError as error:
+        assert "strictly increasing" in str(error)
+    else:
+        raise AssertionError(
+            "Expected duplicate timeframe timestamps to be rejected."
+        )
