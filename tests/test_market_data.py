@@ -224,3 +224,49 @@ def test_market_data_adapter_fetches_snapshot_for_trading_horizon():
             "timeframes": ("15m", "5m"),
         }
     ]
+
+
+def test_market_snapshot_uses_interval_compatible_history_periods():
+    from atlas.adapters.market_data import YFinanceMarketDataProvider
+
+    index = pd.to_datetime(
+        [
+            "2026-09-22T14:00:00Z",
+            "2026-09-22T15:00:00Z",
+        ]
+    )
+    history = pd.DataFrame(
+        {
+            "Open": [100.0, 101.0],
+            "High": [102.0, 103.0],
+            "Low": [99.0, 100.0],
+            "Close": [101.0, 102.0],
+            "Volume": [1_000.0, 1_100.0],
+        },
+        index=index,
+    )
+
+    with patch(
+        "atlas.adapters.market_data.yf.Ticker"
+    ) as mock_ticker:
+        ticker = mock_ticker.return_value
+        ticker.history.return_value = history
+
+        YFinanceMarketDataProvider(
+            history_period="3mo"
+        ).snapshot(
+            "NVDA",
+            interval="1d",
+            timeframes=("1h", "15m", "5m", "1m"),
+        )
+
+    calls = {
+        call.kwargs["interval"]: call.kwargs["period"]
+        for call in ticker.history.call_args_list
+    }
+
+    assert calls["1d"] == "3mo"
+    assert calls["1h"] == "3mo"
+    assert calls["15m"] == "1mo"
+    assert calls["5m"] == "1mo"
+    assert calls["1m"] == "5d"
