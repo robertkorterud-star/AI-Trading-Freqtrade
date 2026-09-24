@@ -5,6 +5,7 @@ import time
 from atlas.market.asset import Asset
 from atlas.market.asset_universe import AssetUniverse
 from atlas.market.market_context import MarketContext, MarketContextService
+from atlas.market.trading_horizon import TradingHorizon
 
 
 @dataclass(slots=True, frozen=True)
@@ -26,6 +27,7 @@ class DiscoveryScore:
     score: float
     market_context: MarketContext | None = None
     discovery_input: DiscoveryInput | None = None
+    horizon: TradingHorizon | None = None
 
     @property
     def symbol(self):
@@ -59,6 +61,7 @@ class AssetDiscoveryService:
         self,
         asset: Asset,
         signals: DiscoveryInput,
+        horizon: TradingHorizon | None = None,
     ) -> DiscoveryScore:
         """Calculate a normalized discovery score."""
 
@@ -78,6 +81,7 @@ class AssetDiscoveryService:
         return DiscoveryScore(
             asset=asset,
             score=round(score, 2),
+            horizon=horizon,
         )
 
     def _market_input_from_data(self, asset: Asset, data) -> DiscoveryInput:
@@ -202,6 +206,7 @@ class AssetDiscoveryService:
         universe: AssetUniverse,
         market_data: dict[str, DiscoveryInput],
         limit: int | None = None,
+        horizon: TradingHorizon | None = None,
     ) -> list[DiscoveryScore]:
         """Rank all active assets by discovery score."""
 
@@ -212,6 +217,7 @@ class AssetDiscoveryService:
                     asset.symbol,
                     DiscoveryInput(),
                 ),
+                horizon=horizon,
             )
             for asset in universe.all()
         ]
