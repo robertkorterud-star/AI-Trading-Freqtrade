@@ -27,24 +27,6 @@ class MarketDataProvider(Protocol):
         """Return the latest normalized market snapshot for ``symbol``."""
         ...
 
-    def snapshot_for_horizon(
-        self,
-        symbol: str,
-        horizon,
-        limit: int = 100,
-    ):
-        """Fetch the normalized candle snapshot for an analysis horizon."""
-        from atlas.market.trading_horizon import timeframes_for_horizon
-
-        timeframes = timeframes_for_horizon(horizon)
-
-        return self.snapshot(
-            symbol,
-            interval=timeframes[0],
-            limit=limit,
-            timeframes=timeframes[1:],
-        )
-
     def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
         """Return normalized market snapshots for multiple symbols."""
         ...
@@ -277,6 +259,24 @@ class MarketDataAdapter:
             interval=interval,
             limit=limit,
             timeframes=timeframes,
+        )
+
+    def snapshot_for_horizon(
+        self,
+        symbol: str,
+        horizon,
+        limit: int = 100,
+    ):
+        """Fetch the normalized candle snapshot for an analysis horizon."""
+        from atlas.market.trading_horizon import timeframes_for_horizon
+
+        timeframes = timeframes_for_horizon(horizon)
+
+        return self.snapshot(
+            symbol,
+            interval=timeframes[0],
+            limit=limit,
+            timeframes=timeframes[1:],
         )
 
     def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
