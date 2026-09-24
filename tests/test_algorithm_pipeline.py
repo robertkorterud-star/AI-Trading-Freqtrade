@@ -185,3 +185,66 @@ def test_pipeline_does_not_hide_unrelated_value_errors():
             "BTC-USD",
             {"candles": [{"close": -1.0}]},
         )
+
+
+def test_pipeline_uses_candles_matching_each_algorithm_timeframe():
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    class CapturingAlgorithm:
+        def __init__(self, name, timeframe):
+            self.name = name
+            self.timeframe = timeframe
+            self.received_candles = None
+
+        def generate_signal(self, symbol, candles):
+            from atlas.algorithms.base import AlgorithmSignal
+            from atlas.models.action import Action
+
+            self.received_candles = candles
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe=self.timeframe,
+                action=Action.HOLD,
+                score=50.0,
+                confidence=50.0,
+            )
+
+    def candle(timestamp, close):
+        return Candle(
+            timestamp=timestamp,
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=1.0,
+        )
+
+    base = (candle(1.0, 100.0),)
+    five_minute = (candle(2.0, 101.0),)
+    fifteen_minute = (candle(3.0, 102.0),)
+
+    snapshot = MarketSnapshot.from_candles(
+        "BTC-USD",
+        base,
+        timeframe_candles={
+            "5m": five_minute,
+            "15m": fifteen_minute,
+        },
+    )
+
+    five = CapturingAlgorithm("five", "5m")
+    fifteen = CapturingAlgorithm("fifteen", "15m")
+
+    registry = AlgorithmRegistry()
+    registry.register(five)
+    registry.register(fifteen)
+
+    signals = AlgorithmPipeline(registry).generate_signals(
+        "BTC-USD",
+        snapshot,
+    )
+
+    assert len(signals) == 2
+    assert five.received_candles == five_minute
+    assert fifteen.received_candles == fifteen_minute
