@@ -27,6 +27,56 @@ class MarketDataProvider(Protocol):
         """Return the latest normalized market snapshot for ``symbol``."""
         ...
 
+    def snapshot_freshness(
+        self,
+        asset,
+        interval: str = "1d",
+        limit: int = 100,
+        now_timestamp: float | None = None,
+    ) -> str:
+        """Classify freshness for a normalized snapshot using asset identity."""
+        import time
+
+        from atlas.market.market_context import MarketContextService
+
+        snapshot = self.snapshot(
+            asset.symbol,
+            interval=interval,
+            limit=limit,
+        )
+
+        observed_at = (
+            time.time()
+            if now_timestamp is None
+            else float(now_timestamp)
+        )
+
+        return MarketContextService.data_freshness(
+            asset_type=asset.asset_type,
+            now_timestamp=observed_at,
+            latest_candle_timestamp=snapshot.candles[-1].timestamp,
+            expected_interval_seconds=self._interval_seconds(interval),
+        )
+
+    @staticmethod
+    def _interval_seconds(interval: str) -> float:
+        """Convert normalized market-data interval notation to seconds."""
+        unit_seconds = {
+            "m": 60.0,
+            "h": 3600.0,
+            "d": 86400.0,
+            "wk": 604800.0,
+        }
+
+        for unit in ("wk", "m", "h", "d"):
+            if interval.endswith(unit):
+                try:
+                    return float(interval[:-len(unit)]) * unit_seconds[unit]
+                except ValueError:
+                    break
+
+        raise ValueError(f"Unsupported market-data interval: {interval}")
+
     def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
         """Return normalized market snapshots for multiple symbols."""
         ...
