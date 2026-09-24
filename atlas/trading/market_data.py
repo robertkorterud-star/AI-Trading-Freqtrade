@@ -67,6 +67,8 @@ class MarketSnapshot:
         if any(not candles for candles in normalized.values()):
             raise ValueError("timeframe candles must not be empty")
         self._validate_chronology(self.candles)
+        if self.candles and self.timestamp < self.candles[-1].timestamp:
+            raise ValueError("snapshot timestamp must not be older than latest candle")
         for candles in normalized.values():
             self._validate_chronology(candles)
         object.__setattr__(self, "timeframe_candles", MappingProxyType(normalized))
