@@ -138,3 +138,52 @@ def test_pipeline_can_process_multiple_cycles():
     assert first.symbol == second.symbol == "BTC-USD"
     assert second.price == 112.0
     assert second.execution.equity > 0.0
+
+
+def test_dry_run_loop_routes_snapshot_timeframes_to_algorithms():
+    from atlas.algorithms import AlgorithmSignal
+    from atlas.algorithms.pipeline import AlgorithmPipeline
+    from atlas.algorithms.registry import AlgorithmRegistry
+    from atlas.models.action import Action
+
+    class CapturingAlgorithm:
+        name = "capturing"
+        timeframe = "5m"
+
+        def __init__(self):
+            self.received_candles = None
+
+        def generate_signal(self, symbol, candles):
+            self.received_candles = candles
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe=self.timeframe,
+                action=Action.HOLD,
+                score=50.0,
+                confidence=50.0,
+            )
+
+    algorithm = CapturingAlgorithm()
+    registry = AlgorithmRegistry()
+    registry.register(algorithm)
+
+    base = snapshot()
+    five_minute = tuple(reversed(base.candles))
+
+    multi_timeframe_snapshot = MarketSnapshot(
+        symbol=base.symbol,
+        timestamp=base.timestamp,
+        price=base.price,
+        candles=base.candles,
+        timeframe_candles={"5m": five_minute},
+    )
+
+    loop = DryRunLoop(
+        agents=agents(),
+        algorithm_pipeline=AlgorithmPipeline(registry),
+    )
+
+    loop.process(multi_timeframe_snapshot)
+
+    assert algorithm.received_candles == five_minute
