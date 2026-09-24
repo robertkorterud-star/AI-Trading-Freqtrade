@@ -864,11 +864,13 @@ class AtlasEngine:
         algorithm_signals=None,
     ):
         """Invoke `DecisionEngine.evaluate` with combined evidence and runtime context."""
-        combined_analysis = list(analysis)
-        combined_analysis.extend(
-            DecisionEngine._algorithm_signal_to_analysis(signal)
-            for signal in (algorithm_signals or [])
-        )
+        combined_analysis = analysis
+        if algorithm_signals:
+            combined_analysis = list(analysis)
+            combined_analysis.extend(
+                DecisionEngine._algorithm_signal_to_analysis(signal)
+                for signal in algorithm_signals
+            )
 
         params = inspect.signature(self.decision_engine.evaluate).parameters
         kwargs = {}
