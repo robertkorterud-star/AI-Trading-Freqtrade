@@ -8,7 +8,7 @@ from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.trading.market_data import Candle, MarketSnapshot
 
 
-def snapshot(price=106, timestamp=3):
+def snapshot(price=106, timestamp=23):
     return MarketSnapshot(
         symbol="BTC-USD",
         timestamp=timestamp,
@@ -48,9 +48,9 @@ def agents():
 def test_learning_feedback_pipeline_can_run_multiple_cycles():
     loop = DryRunLoop(agents=agents())
 
-    first = loop.process(snapshot(price=106, timestamp=3))
-    second = loop.process(snapshot(price=108, timestamp=4))
-    third = loop.process(snapshot(price=104, timestamp=5))
+    first = loop.process(snapshot(price=106, timestamp=23))
+    second = loop.process(snapshot(price=108, timestamp=23))
+    third = loop.process(snapshot(price=104, timestamp=23))
 
     assert first.symbol == "BTC-USD"
     assert second.symbol == "BTC-USD"
