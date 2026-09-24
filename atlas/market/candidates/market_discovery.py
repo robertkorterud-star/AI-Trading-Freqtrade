@@ -26,11 +26,17 @@ class MarketDiscoverySource:
     def discover(self) -> list[Candidate]:
         """Discover and normalize market candidates."""
 
-        discovered = self.discovery.discover(
-            self.universe,
-            limit=self.limit,
-            horizon=self.horizon,
-        )
+        if self.horizon is None:
+            discovered = self.discovery.discover(
+                self.universe,
+                limit=self.limit,
+            )
+        else:
+            discovered = self.discovery.discover(
+                self.universe,
+                limit=self.limit,
+                horizon=self.horizon,
+            )
 
         return [
             Candidate(
