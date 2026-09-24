@@ -111,24 +111,9 @@ class DryRunLoop:
     def process(self, snapshot: MarketSnapshot) -> DryRunCycleResult:
         observations = tuple(self._observe_agent(agent, snapshot) for agent in self.agents)
         intelligence = self.intelligence.analyze(snapshot.symbol, list(observations))
-        market_data = {
-            "price": snapshot.price,
-            "candles": [
-                {
-                    "timestamp": candle.timestamp,
-                    "open": candle.open,
-                    "high": candle.high,
-                    "low": candle.low,
-                    "close": candle.close,
-                    "volume": candle.volume,
-                }
-                for candle in snapshot.candles
-            ],
-        }
-
         fusion_result, algorithm_signals = self.algorithm_pipeline.analyze(
             snapshot.symbol,
-            market_data,
+            snapshot,
         )
 
         prediction_signal = self._prediction_signal(
