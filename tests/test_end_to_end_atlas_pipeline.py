@@ -123,7 +123,7 @@ def test_pipeline_can_process_multiple_cycles():
         candles=(
             *snapshot().candles,
             Candle(
-                timestamp=5,
+                timestamp=24,
                 open=108,
                 high=113,
                 low=107,
@@ -169,7 +169,17 @@ def test_dry_run_loop_routes_snapshot_timeframes_to_algorithms():
     registry.register(algorithm)
 
     base = snapshot()
-    five_minute = tuple(reversed(base.candles))
+    five_minute = tuple(
+        Candle(
+            timestamp=candle.timestamp,
+            open=candle.open,
+            high=candle.high,
+            low=candle.low,
+            close=candle.close,
+            volume=candle.volume + 1,
+        )
+        for candle in base.candles
+    )
 
     multi_timeframe_snapshot = MarketSnapshot(
         symbol=base.symbol,
