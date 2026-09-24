@@ -419,13 +419,14 @@ class AtlasEngine:
             )
 
             algorithm_signals = None
+            fusion_result = None
             if getattr(candidate, "asset", None) is not None:
                 normalized_snapshot = self.market_data.snapshot(
                     candidate.symbol,
                     interval="5m",
                     limit=100,
                 )
-                algorithm_signals = self.algorithm_pipeline.generate_signals(
+                fusion_result, algorithm_signals = self.algorithm_pipeline.analyze(
                     candidate.symbol,
                     normalized_snapshot,
                 )
@@ -440,6 +441,7 @@ class AtlasEngine:
                     "discovery_score": candidate.score,
                     "analysis": analysis,
                     "algorithm_signals": algorithm_signals,
+                    "fusion_result": fusion_result,
                     "market_snapshot": market_snapshot,
                 }
             )
@@ -506,6 +508,7 @@ class AtlasEngine:
                 item["analysis"],
                 market_snapshot=item.get("market_snapshot"),
                 algorithm_signals=item.get("algorithm_signals"),
+                fusion_result=item.get("fusion_result"),
             )
 
             regime = getattr(
@@ -898,10 +901,16 @@ class AtlasEngine:
         *,
         market_snapshot=None,
         algorithm_signals=None,
+        fusion_result=None,
     ):
         """Invoke `DecisionEngine.evaluate` with combined evidence and runtime context."""
         combined_analysis = analysis
-        if algorithm_signals:
+        if fusion_result is not None:
+            combined_analysis = list(analysis)
+            combined_analysis.append(
+                DecisionEngine._fusion_result_to_analysis(fusion_result)
+            )
+        elif algorithm_signals:
             combined_analysis = list(analysis)
             combined_analysis.extend(
                 DecisionEngine._algorithm_signal_to_analysis(signal)
