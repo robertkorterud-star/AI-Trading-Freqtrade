@@ -44,6 +44,7 @@ class SignalEvidenceAnalyzer:
         self,
         indicators: IndicatorSnapshot,
         multi_timeframe: MultiTimeframeAnalysis,
+        data_freshness: str | None = None,
     ) -> SignalEvidence:
 
         trend = self._trend(indicators)
@@ -83,6 +84,7 @@ class SignalEvidenceAnalyzer:
         evidence_quality = self._quality(
             indicators,
             multi_timeframe,
+            data_freshness=data_freshness,
         )
 
         return SignalEvidence(
@@ -272,7 +274,11 @@ class SignalEvidenceAnalyzer:
     def _quality(
         indicators: IndicatorSnapshot,
         multi_timeframe: MultiTimeframeAnalysis,
+        data_freshness: str | None = None,
     ) -> str:
+
+        if data_freshness == "STALE":
+            return "POOR"
 
         if (
             indicators.data_quality == "MISSING"
