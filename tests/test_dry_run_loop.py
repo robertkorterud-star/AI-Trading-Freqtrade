@@ -1,7 +1,10 @@
 from datetime import datetime
 from unittest.mock import Mock
 
+import pytest
+
 from atlas.agents.base import AgentObservation
+from atlas.market.asset_type import AssetType
 from atlas.trading.dry_run_loop import DryRunLoop
 from atlas.trading.market_data import Candle, MarketSnapshot
 from atlas.trading.ml_baseline import LogisticRegressionBaseline
@@ -9,6 +12,7 @@ from atlas.trading.ml_signal import MLPredictionSignal
 from atlas.trading.multi_timeframe_analysis import MultiTimeframeAnalyzer
 from atlas.trading.prediction_signal_service import PredictionSignalService
 from atlas.trading.prediction_training_dataset import PredictionTrainingExample
+from atlas.trading.signal_evidence import SignalEvidenceAnalyzer
 
 
 class BullishAgent:
@@ -190,3 +194,56 @@ def test_process_binance_uses_trading_horizon_timeframes():
         "15m",
         "5m",
     ]
+
+
+def test_process_binance_passes_crypto_freshness_into_prediction_evidence(monkeypatch):
+    from atlas.market.market_context import MarketContextService
+
+    class FakeBinance:
+        def get_klines(self, **kwargs):
+            return [
+                [
+                    1710000000000 + i * 60000,
+                    str(100 + i * 0.2),
+                    str(101 + i * 0.2),
+                    str(99 + i * 0.2),
+                    str(100.5 + i * 0.2),
+                    "10",
+                ]
+                for i in range(250)
+            ]
+
+    service = PredictionSignalService(signal=MLPredictionSignal(_model()))
+    analyzer = Mock(wraps=SignalEvidenceAnalyzer())
+    loop = DryRunLoop(
+        agents=[BullishAgent()],
+        prediction_signal_service=service,
+        signal_evidence_analyzer=analyzer,
+    )
+
+    monkeypatch.setattr(
+        MarketContextService,
+        "data_freshness",
+        Mock(return_value="STALE"),
+    )
+
+    loop.process_binance(
+        FakeBinance(),
+        symbol="BTCUSDT",
+        interval="1m",
+        limit=250,
+    )
+
+    prediction_call = next(
+        call
+        for call in analyzer.analyze.call_args_list
+        if call.kwargs.get("data_freshness") is not None
+    )
+
+    assert prediction_call.kwargs["data_freshness"] == "STALE"
+    MarketContextService.data_freshness.assert_called_once_with(
+        asset_type=AssetType.CRYPTO,
+        now_timestamp=pytest.approx(1710014940.0),
+        latest_candle_timestamp=pytest.approx(1710014940.0),
+        expected_interval_seconds=60.0,
+    )
