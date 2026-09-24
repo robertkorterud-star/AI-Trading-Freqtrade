@@ -246,6 +246,21 @@ class MarketDataAdapter:
     def get(self, symbol: str) -> MarketData:
         return self.provider.get(symbol)
 
+    def snapshot(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        limit: int = 100,
+        timeframes: tuple[str, ...] = (),
+    ):
+        """Delegate normalized candle snapshots to the configured provider."""
+        return self.provider.snapshot(
+            symbol,
+            interval=interval,
+            limit=limit,
+            timeframes=timeframes,
+        )
+
     def get_many(self, symbols: list[str]) -> dict[str, MarketData]:
         """Return batch market data while preserving per-symbol fallback behavior."""
         normalized = [symbol for symbol in symbols if symbol]
