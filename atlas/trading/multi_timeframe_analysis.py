@@ -246,6 +246,12 @@ class MultiTimeframeAnalyzer:
             signals
         )
 
+        if (
+            data_quality == "GOOD"
+            and len(signals) < len(self.TIMEFRAMES)
+        ):
+            data_quality = "PARTIAL"
+
         return MultiTimeframeAnalysis(
             symbol=symbol,
             timeframes=signals,
