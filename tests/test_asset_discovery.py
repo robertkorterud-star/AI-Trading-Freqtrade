@@ -354,3 +354,42 @@ def test_discovery_rank_preserves_horizon_without_changing_score_formula():
 
     assert result.horizon == TradingHorizon.SWING
     assert result.score == 80.0
+
+
+def test_discovery_preserves_horizon_through_market_context_enrichment():
+    from atlas.market.trading_horizon import TradingHorizon
+
+    asset = Asset(
+        symbol="NVDA",
+        name="NVIDIA",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+
+    class FakeMarketData:
+        def get_many(self, symbols):
+            return {
+                "NVDA": type(
+                    "MarketData",
+                    (),
+                    {
+                        "price": 120.0,
+                        "ma50": 100.0,
+                        "change_percent": 2.0,
+                        "volume_ratio": 2.0,
+                    },
+                )()
+            }
+
+    result = AssetDiscoveryService(
+        market_data=FakeMarketData()
+    ).discover(
+        AssetUniverse(assets=[asset]),
+        timestamp=0,
+        horizon=TradingHorizon.DAY_TRADE,
+    )[0]
+
+    assert result.horizon == TradingHorizon.DAY_TRADE
+    assert result.market_context is not None
+    assert result.discovery_input is not None
