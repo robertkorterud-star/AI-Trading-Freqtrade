@@ -92,3 +92,26 @@ def test_multi_timeframe_handles_missing_timeframes():
 
     assert result.overall_signal == "WAIT"
     assert len(result.timeframes) == 2
+
+
+def test_multi_timeframe_quality_reflects_missing_expected_timeframes():
+
+    data = {
+        "4h": {
+            "trend": "BULLISH",
+            "momentum": "POSITIVE",
+            "data_quality": "GOOD",
+        },
+        "1h": {
+            "trend": "BULLISH",
+            "momentum": "POSITIVE",
+            "data_quality": "GOOD",
+        },
+    }
+
+    result = MultiTimeframeAnalyzer().analyze(
+        "XRP-USD",
+        data,
+    )
+
+    assert result.data_quality == "PARTIAL"
