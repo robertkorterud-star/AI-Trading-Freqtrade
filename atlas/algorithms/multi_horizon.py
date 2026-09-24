@@ -1,17 +1,8 @@
 """ATLAS multi-horizon decision engine."""
 
 from dataclasses import dataclass
-from enum import Enum
-
+from atlas.market.trading_horizon import TradingHorizon
 from atlas.models.action import Action
-
-
-class TradingHorizon(str, Enum):
-    """Supported trading horizons."""
-
-    INTRADAY = "intraday"
-    SWING = "swing"
-    POSITION = "position"
 
 
 @dataclass(frozen=True, slots=True)
