@@ -418,15 +418,17 @@ class AtlasEngine:
                 candidate.symbol
             )
 
-            normalized_snapshot = self.market_data.snapshot(
-                candidate.symbol,
-                interval="5m",
-                limit=100,
-            )
-            algorithm_signals = self.algorithm_pipeline.generate_signals(
-                candidate.symbol,
-                normalized_snapshot,
-            )
+            algorithm_signals = None
+            if getattr(candidate, "asset", None) is not None:
+                normalized_snapshot = self.market_data.snapshot(
+                    candidate.symbol,
+                    interval="5m",
+                    limit=100,
+                )
+                algorithm_signals = self.algorithm_pipeline.generate_signals(
+                    candidate.symbol,
+                    normalized_snapshot,
+                )
 
             market_snapshot = self._get_market_snapshot(
                 candidate.symbol
