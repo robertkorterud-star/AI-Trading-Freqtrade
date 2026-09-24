@@ -1811,3 +1811,78 @@ def test_evaluate_candidate_decision_combines_analyst_and_algorithm_evidence_onc
     assert captured["results"][1].symbol == "NVDA"
     assert captured["results"][1].action == Action.BUY
     assert captured["results"][1].reasoning == ["algorithm evidence"]
+
+
+def test_analyze_candidates_generates_algorithm_evidence_from_normalized_snapshot():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+
+    engine = object.__new__(AtlasEngine)
+    candidate = SimpleNamespace(symbol="NVDA", score=91.0)
+    normalized_snapshot = object()
+    technical_snapshot = object()
+    algorithm_signals = [object()]
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: ["analyst-evidence"],
+    )
+    engine.market_data = SimpleNamespace(
+        snapshot=lambda symbol, interval, limit: (
+            normalized_snapshot
+            if (symbol, interval, limit) == ("NVDA", "5m", 100)
+            else None
+        ),
+    )
+
+    calls = []
+
+    class AlgorithmPipelineStub:
+        def generate_signals(self, symbol, snapshot):
+            calls.append((symbol, snapshot))
+            return algorithm_signals
+
+    engine.algorithm_pipeline = AlgorithmPipelineStub()
+    engine._get_market_snapshot = lambda symbol: technical_snapshot
+
+    results = engine.analyze_candidates()
+
+    assert calls == [("NVDA", normalized_snapshot)]
+    assert results[0]["analysis"] == ["analyst-evidence"]
+    assert results[0]["market_snapshot"] is technical_snapshot
+    assert results[0]["algorithm_signals"] is algorithm_signals
+
+
+def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+
+    engine = object.__new__(AtlasEngine)
+    algorithm_signals = [object()]
+    engine.analyze_candidates = lambda **kwargs: [
+        {
+            "symbol": "NVDA",
+            "discovery_score": 91.0,
+            "analysis": ["analyst-evidence"],
+            "algorithm_signals": algorithm_signals,
+            "market_snapshot": SimpleNamespace(regime=None),
+        }
+    ]
+
+    captured = {}
+
+    def evaluate(analysis, *, market_snapshot=None, algorithm_signals=None):
+        captured["analysis"] = analysis
+        captured["market_snapshot"] = market_snapshot
+        captured["algorithm_signals"] = algorithm_signals
+        return "decision"
+
+    engine._evaluate_candidate_decision = evaluate
+
+    results = engine.decide_candidates()
+
+    assert results[0]["decision"] == "decision"
+    assert captured["analysis"] == ["analyst-evidence"]
+    assert captured["algorithm_signals"] is algorithm_signals
