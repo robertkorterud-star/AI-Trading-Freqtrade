@@ -57,6 +57,10 @@ class MarketContextService:
             float(timestamp),
             tz=timezone.utc,
         ).astimezone(cls.US_EASTERN)
+
+        if local.weekday() >= 5:
+            return "CLOSED"
+
         minutes = local.hour * 60 + local.minute
 
         if minutes < 4 * 60:
