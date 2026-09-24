@@ -16,6 +16,10 @@ class TradingHorizon(str, Enum):
     DAY_TRADE = "day_trade"
     SCALP = "scalp"
 
+    # Compatibility aliases for the legacy multi-horizon signal path.
+    INTRADAY = DAY_TRADE
+    POSITION = LONG_TERM
+
 
 _TIMEFRAMES_BY_HORIZON = {
     TradingHorizon.LONG_TERM: ("1wk", "1d"),
