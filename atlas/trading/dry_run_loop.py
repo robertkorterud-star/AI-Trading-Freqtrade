@@ -29,6 +29,7 @@ from atlas.trading.dry_run_trader import DryRunResult, DryRunTrader
 from atlas.trading.expected_return_service import ExpectedReturnService
 from atlas.trading.indicator_engine import IndicatorEngine
 from atlas.trading.market_data import MarketSnapshot
+from atlas.market.trading_horizon import TradingHorizon, timeframes_for_horizon
 from atlas.trading.multi_timeframe_analysis import (
     MultiTimeframeAnalysis,
     MultiTimeframeAnalyzer,
@@ -263,14 +264,29 @@ class DryRunLoop:
             }
         return result
 
-    def process_binance(self, adapter, symbol: str, interval: str = "1m", limit: int = 100):
-        """Fetch a Binance snapshot with all configured MTF candles and process it."""
+    def process_binance(
+        self,
+        adapter,
+        symbol: str,
+        interval: str = "1m",
+        limit: int = 100,
+        horizon: TradingHorizon | None = None,
+    ):
+        """Fetch a Binance snapshot with the requested analysis timeframes."""
+        if horizon is None:
+            base_interval = interval
+            timeframes = self.multi_timeframe_analyzer.TIMEFRAMES
+        else:
+            horizon_timeframes = timeframes_for_horizon(horizon)
+            base_interval = horizon_timeframes[0]
+            timeframes = horizon_timeframes[1:]
+
         market_data = BinanceMarketData(adapter)
         snapshot = market_data.snapshot(
             symbol=symbol,
-            interval=interval,
+            interval=base_interval,
             limit=limit,
-            timeframes=self.multi_timeframe_analyzer.TIMEFRAMES,
+            timeframes=timeframes,
         )
         return self.process(snapshot)
 
