@@ -516,13 +516,21 @@ class AtlasEngine:
         self,
         limit: int = 3,
         minimum_score: float = 0.0,
+        horizon: TradingHorizon | None = None,
     ):
         'Create a DecisionResult for each analyzed candidate.'
 
-        analyzed = self.analyze_candidates(
-            limit=limit,
-            minimum_score=minimum_score,
-        )
+        if horizon is None:
+            analyzed = self.analyze_candidates(
+                limit=limit,
+                minimum_score=minimum_score,
+            )
+        else:
+            analyzed = self.analyze_candidates(
+                limit=limit,
+                minimum_score=minimum_score,
+                horizon=horizon,
+            )
 
         results = []
 
