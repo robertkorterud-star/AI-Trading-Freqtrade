@@ -145,12 +145,22 @@ class AlphaVantageNewsAdapter:
                     "url": str(
                         article.get("url", "")
                     ).strip(),
-                    "sentiment": str(
-                        article.get(
-                            "overall_sentiment_label",
-                            "neutral",
-                        )
-                    ).strip().lower(),
+                    "sentiment": {
+                        "bullish": "positive",
+                        "somewhat-bullish": "positive",
+                        "positive": "positive",
+                        "bearish": "negative",
+                        "somewhat-bearish": "negative",
+                        "negative": "negative",
+                    }.get(
+                        str(
+                            article.get(
+                                "overall_sentiment_label",
+                                "neutral",
+                            )
+                        ).strip().lower(),
+                        "neutral",
+                    ),
                     "published_at": str(
                         article.get("time_published", "")
                     ).strip(),
