@@ -1034,17 +1034,34 @@ class AtlasEngine:
                 usd_nok = float(exchange.rate)
                 if usd_nok <= 0.0:
                     raise RuntimeError("Invalid USD/NOK rate from ExchangeRateService")
+                prices = {}
                 if (
                     market_snapshot is not None
                     and getattr(market_snapshot, "price", None) is not None
                 ):
-                    self.portfolio_service.update_prices(
-                        {
-                            combined_analysis[0].symbol: float(
-                                market_snapshot.price
-                            )
-                        }
+                    prices[combined_analysis[0].symbol] = float(
+                        market_snapshot.price
                     )
+
+                portfolio_snapshot = self.portfolio_service.as_dict(
+                    usd_nok
+                )
+                open_symbols = [
+                    position.get("symbol")
+                    for position in portfolio_snapshot.get("positions", [])
+                    if position.get("symbol")
+                    and position.get("symbol") not in prices
+                ]
+                if open_symbols and hasattr(self.market_data, "get_many"):
+                    market_prices = self.market_data.get_many(open_symbols)
+                    for symbol, snapshot in market_prices.items():
+                        price = getattr(snapshot, "price", None)
+                        if price is not None:
+                            prices[symbol] = float(price)
+
+                if prices:
+                    self.portfolio_service.update_prices(prices)
+
                 runtime_context = (
                     usd_nok,
                     self.portfolio_service.as_dict(usd_nok),
