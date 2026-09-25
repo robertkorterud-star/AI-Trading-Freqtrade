@@ -37,6 +37,21 @@ class CandidateSelectionReport:
             f"Final ranking score: {evidence.final_score:.4f}.",
         ]
 
+        if (
+            evidence.expected_return != 0.0
+            or evidence.net_expected_return != 0.0
+            or evidence.risk_adjusted_net_return != 0.0
+        ):
+            result.extend(
+                [
+                    f"Expected gross return: {evidence.expected_return * 100:.2f}%.",
+                    f"Expected net return after trading costs: "
+                    f"{evidence.net_expected_return * 100:.2f}%.",
+                    f"Risk-adjusted net return: "
+                    f"{evidence.risk_adjusted_net_return * 100:.2f}%.",
+                ]
+            )
+
         if evidence.regime:
             result.append(
                 f"Market regime: {evidence.regime}."
@@ -93,6 +108,9 @@ class CandidateSelectionReport:
                 "base_score": evidence.base_score,
                 "regime_fit": evidence.regime_fit,
                 "final_score": evidence.final_score,
+                "expected_return": evidence.expected_return,
+                "net_expected_return": evidence.net_expected_return,
+                "risk_adjusted_net_return": evidence.risk_adjusted_net_return,
                 "regime": evidence.regime,
                 "strategy": evidence.strategy,
                 "regime_confidence": evidence.regime_confidence,
