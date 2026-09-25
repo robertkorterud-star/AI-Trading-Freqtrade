@@ -421,8 +421,8 @@ def test_atlas_engine_start_evaluates_previous_predictions(
 
     monkeypatch.setattr(
         engine,
-        "get_regime_memory_decision",
-        lambda symbol, regime: None,
+        "integrate_regime_decision",
+        lambda decision, regime_decision: decision,
     )
 
     engine.start()
