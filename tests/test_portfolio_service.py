@@ -128,3 +128,23 @@ def test_portfolio_restores_position_and_cash_from_persisted_trades():
     assert result["position_count"] == 1
     assert result["positions"][0]["quantity"] == 0.01
     assert result["positions"][0]["average_price_usd"] == 62500.0
+
+
+
+def test_position_tracks_peak_price_across_market_updates():
+    portfolio = PortfolioService(5000)
+    portfolio.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+
+    portfolio.update_prices({"BTC-USD": 120.0})
+    portfolio.update_prices({"BTC-USD": 110.0})
+
+    result = portfolio.as_dict(10.0)
+    position = result["positions"][0]
+
+    assert position["current_price_usd"] == 110.0
+    assert position["peak_price_usd"] == 120.0
