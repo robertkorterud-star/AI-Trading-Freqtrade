@@ -38,3 +38,31 @@ class PaperAccountStateRepository:
                 (value,),
             )
             connection.commit()
+
+
+    def get_position_peak_price_usd(self, symbol):
+        with self.database.connect() as connection:
+            row = connection.execute(
+                "SELECT peak_price_usd FROM paper_position_state WHERE symbol = ?",
+                (str(symbol),),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return float(row["peak_price_usd"])
+
+    def set_position_peak_price_usd(self, symbol, peak_price_usd):
+        value = float(peak_price_usd)
+
+        with self.database.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO paper_position_state (symbol, peak_price_usd)
+                VALUES (?, ?)
+                ON CONFLICT(symbol) DO UPDATE SET
+                    peak_price_usd = excluded.peak_price_usd
+                """,
+                (str(symbol), value),
+            )
+            connection.commit()
