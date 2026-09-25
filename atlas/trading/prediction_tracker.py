@@ -78,6 +78,7 @@ class PredictionTracker:
             evidence=decision.evidence,
             price_usd=price_usd,
             timestamp=datetime.now(),
+            analysis_snapshot_id=decision.analysis_snapshot_id,
             analysts=list(decision.analysts),
             reason=reason,
         )
