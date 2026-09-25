@@ -762,3 +762,36 @@ def test_decision_engine_blocks_repeated_buy_until_accumulation_drop():
     assert first.action is Action.BUY
     assert repeated.action is Action.HOLD
     assert accumulated.action is Action.BUY
+
+
+
+def test_decision_engine_applies_position_exit_engine_to_sell():
+    from atlas.algorithms.position_exit import PositionExitEngine
+    from atlas.models.analysis_result import AnalysisResult
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.SELL,
+        confidence=50.0,
+        evidence=50.0,
+        reasoning=["Moderate SELL."],
+    )
+
+    engine = DecisionEngine(
+        position_exit_engine=PositionExitEngine(
+            entry_confidence=0.65,
+            reduce_confidence=0.45,
+            exit_confidence=0.30,
+        )
+    )
+
+    decision = engine.evaluate(
+        [result],
+        price=100.0,
+        current_position=1.0,
+        last_buy_price=100.0,
+        average_price=100.0,
+    )
+
+    assert decision.action is Action.HOLD
