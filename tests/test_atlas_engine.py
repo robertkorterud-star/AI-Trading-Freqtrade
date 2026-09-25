@@ -2719,3 +2719,102 @@ def test_decision_runtime_marks_existing_positions_to_market_before_risk():
     assert result == "decision"
     assert updated_prices == [{"BTC-USD": 200.0}]
     assert captured["current_exposure_pct"] == 20.0
+
+
+def test_decision_runtime_marks_all_open_positions_to_market_before_risk():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    engine = object.__new__(AtlasEngine)
+    analysis = [
+        AnalysisResult(
+            analyst="Technical Analyst",
+            symbol="BTC-USD",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+        )
+    ]
+
+    requested_symbols = []
+    updated_prices = []
+    engine._get_usd_nok_rate = lambda: SimpleNamespace(rate=10.0)
+    engine._peak_equity_nok = None
+
+    class PortfolioServiceStub:
+        def update_prices(self, prices):
+            updated_prices.append(dict(prices))
+
+        def as_dict(self, usd_nok):
+            eth_price = 100.0
+            for prices in updated_prices:
+                eth_price = prices.get("ETH-USD", eth_price)
+            return {
+                "total_equity_nok": 1000.0 + 200.0 * 10.0 + eth_price * 10.0,
+                "positions_value_nok": 200.0 * 10.0 + eth_price * 10.0,
+                "positions": [
+                    {
+                        "symbol": "BTC-USD",
+                        "quantity": 1.0,
+                        "market_value_nok": 2000.0,
+                        "last_buy_price_usd": 100.0,
+                        "average_price_usd": 100.0,
+                    },
+                    {
+                        "symbol": "ETH-USD",
+                        "quantity": 1.0,
+                        "market_value_nok": eth_price * 10.0,
+                        "last_buy_price_usd": 100.0,
+                        "average_price_usd": 100.0,
+                    },
+                ],
+            }
+
+    engine.portfolio_service = PortfolioServiceStub()
+
+    def get_many(symbols):
+        requested_symbols.append(list(symbols))
+        return {
+            "ETH-USD": SimpleNamespace(price=300.0),
+        }
+
+    engine.market_data = SimpleNamespace(get_many=get_many)
+
+    captured = {}
+
+    class DecisionEngineStub:
+        def evaluate(
+            self,
+            results,
+            *,
+            price=None,
+            equity=None,
+            current_exposure_pct=0.0,
+            drawdown_pct=0.0,
+            portfolio_positions=(),
+            current_position=0.0,
+            last_buy_price=None,
+            average_price=None,
+        ):
+            captured["current_exposure_pct"] = current_exposure_pct
+            return "decision"
+
+    engine.decision_engine = DecisionEngineStub()
+
+    result = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=SimpleNamespace(price=200.0),
+    )
+
+    assert result == "decision"
+    assert requested_symbols == [["ETH-USD"]]
+    assert updated_prices == [
+        {
+            "BTC-USD": 200.0,
+            "ETH-USD": 300.0,
+        }
+    ]
+    assert captured["current_exposure_pct"] == 83.33333333333334
