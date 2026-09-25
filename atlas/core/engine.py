@@ -437,11 +437,18 @@ class AtlasEngine:
             algorithm_signals = None
             fusion_result = None
             if getattr(candidate, "asset", None) is not None:
-                normalized_snapshot = self.market_data.snapshot(
-                    candidate.symbol,
-                    interval="5m",
-                    limit=100,
-                )
+                if horizon is None:
+                    normalized_snapshot = self.market_data.snapshot(
+                        candidate.symbol,
+                        interval="5m",
+                        limit=100,
+                    )
+                else:
+                    normalized_snapshot = self.market_data.snapshot_for_horizon(
+                        candidate.symbol,
+                        horizon,
+                        limit=100,
+                    )
                 fusion_result, algorithm_signals = self.algorithm_pipeline.analyze(
                     candidate.symbol,
                     normalized_snapshot,
