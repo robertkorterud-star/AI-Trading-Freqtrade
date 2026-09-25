@@ -1223,7 +1223,12 @@ class AtlasEngine:
                 market_value_usd = mv_nok / usd_nok if usd_nok else 0.0
                 portfolio_positions.append(PortfolioPosition(symbol=p.get("symbol", ""), market_value=market_value_usd))
             kwargs["portfolio_positions"] = portfolio_positions
-        if "current_position" in params or "last_buy_price" in params or "average_price" in params:
+        if (
+            "current_position" in params
+            or "last_buy_price" in params
+            or "average_price" in params
+            or "peak_price" in params
+        ):
             _, portfolio_snapshot = get_runtime_context()
             for p in portfolio_snapshot.get("positions", []):
                 if p.get("symbol") != combined_analysis[0].symbol:
@@ -1231,6 +1236,7 @@ class AtlasEngine:
                 kwargs["current_position"] = float(p.get("quantity", 0.0))
                 kwargs["last_buy_price"] = p.get("last_buy_price_usd")
                 kwargs["average_price"] = p.get("average_price_usd")
+                kwargs["peak_price"] = p.get("peak_price_usd")
                 break
 
         if kwargs:
