@@ -587,6 +587,9 @@ class AtlasEngine:
                     "horizon": item.get(
                         "horizon"
                     ),
+                    "analysis": item.get(
+                        "analysis"
+                    ),
                     "decision": decision,
                     "regime_decision": regime_decision,
                 }
