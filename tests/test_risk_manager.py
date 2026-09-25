@@ -25,11 +25,14 @@ def test_position_is_capped_by_max_position_pct():
     assert result.position_size == pytest.approx(10.0)
 
 
-def test_sell_uses_inverse_stop_and_target():
+def test_sell_without_open_position_is_blocked():
     result = RiskManager().assess(Action.SELL, price=100.0, equity=10_000.0)
 
-    assert result.stop_loss_price == pytest.approx(102.0)
-    assert result.take_profit_price == pytest.approx(96.0)
+    assert result.allowed is False
+    assert result.position_size == 0.0
+    assert result.stop_loss_price is None
+    assert result.take_profit_price is None
+    assert result.reasons == ("No open position available to sell.",)
 
 
 def test_drawdown_limit_blocks_new_exposure():
