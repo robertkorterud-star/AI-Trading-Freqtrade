@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     analysts TEXT NOT NULL,
     reason TEXT NOT NULL,
     features TEXT NOT NULL DEFAULT '{}',
+    analysis_snapshot_id INTEGER,
     evaluated INTEGER NOT NULL DEFAULT 0,
     correct INTEGER,
     evaluated_price_usd REAL,
@@ -253,6 +254,14 @@ def initialize_database(database: Database):
                 ALTER TABLE predictions
                 ADD COLUMN features TEXT
                 NOT NULL DEFAULT '{}'
+                """
+            )
+
+        if "analysis_snapshot_id" not in columns:
+            connection.execute(
+                """
+                ALTER TABLE predictions
+                ADD COLUMN analysis_snapshot_id INTEGER
                 """
             )
 
