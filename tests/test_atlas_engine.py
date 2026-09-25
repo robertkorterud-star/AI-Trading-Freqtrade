@@ -2888,3 +2888,44 @@ def test_decision_runtime_preserves_historical_peak_equity_across_restart():
 
     assert result == "decision"
     assert engine.decision_engine.drawdown_pct == 20.0
+
+
+
+def test_select_best_candidate_prioritizes_sell_exit_over_new_buy():
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = AtlasEngine()
+
+    candidates = [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 95.0,
+            "decision": DecisionResult(
+                symbol="BTC-USD",
+                action=Action.BUY,
+                confidence=95.0,
+                evidence=95.0,
+                robustness=95.0,
+                decision_margin=40.0,
+            ),
+        },
+        {
+            "symbol": "ETH-USD",
+            "discovery_score": 80.0,
+            "decision": DecisionResult(
+                symbol="ETH-USD",
+                action=Action.SELL,
+                confidence=90.0,
+                evidence=90.0,
+                robustness=90.0,
+                decision_margin=30.0,
+            ),
+        },
+    ]
+
+    selected = engine.select_best_candidate(candidates)
+
+    assert selected is not None
+    assert selected["symbol"] == "ETH-USD"
+    assert selected["decision"].action is Action.SELL
