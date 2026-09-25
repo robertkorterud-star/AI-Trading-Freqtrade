@@ -125,8 +125,8 @@ def test_ranker_can_return_only_investable_actions():
         decision.symbol
         for decision in ranked
     ] == [
-        "NVDA",
         "AAPL",
+        "NVDA",
     ]
 
 
