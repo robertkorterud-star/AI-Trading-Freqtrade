@@ -3033,3 +3033,29 @@ def test_decision_runtime_persists_new_position_peak_price():
 
     assert result == "decision"
     assert persisted == [("BTC-USD", 120.0)]
+
+
+
+def test_engine_clears_persisted_peak_after_full_paper_sell():
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+
+    deleted = []
+    engine = object.__new__(AtlasEngine)
+    engine.portfolio_service = SimpleNamespace(
+        as_dict=lambda usd_nok: {
+            "positions": [],
+        }
+    )
+    engine.paper_account_state_repository = SimpleNamespace(
+        delete_position_peak_price_usd=lambda symbol: deleted.append(symbol),
+    )
+
+    engine._sync_position_peak_after_execution(
+        symbol="BTC-USD",
+        action=Action.SELL,
+        usd_nok=10.0,
+    )
+
+    assert deleted == ["BTC-USD"]
