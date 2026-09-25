@@ -1014,6 +1014,23 @@ class AtlasEngine:
     def exchange(self, value):
         self._exchange = value
 
+    def restore_paper_portfolio(self):
+        """Restore paper positions and durable per-position state."""
+        self.portfolio_service.restore_from_trades(
+            self.trading_service._history
+        )
+
+        for position in self.portfolio_service._positions.values():
+            persisted_peak = (
+                self.paper_account_state_repository
+                .get_position_peak_price_usd(position.symbol)
+            )
+            if persisted_peak is not None:
+                position.peak_price_usd = max(
+                    position.peak_price_usd,
+                    persisted_peak,
+                )
+
     def _evaluate_candidate_decision(
         self,
         analysis,
