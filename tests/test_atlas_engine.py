@@ -509,6 +509,48 @@ def test_atlas_engine_discovers_and_selects_top_candidates(
     ]
 
 
+def test_atlas_engine_discovery_forwards_horizon_context(monkeypatch):
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryScore
+    from atlas.market.asset_type import AssetType
+    from atlas.market.trading_horizon import TradingHorizon
+
+    engine = AtlasEngine()
+
+    asset = Asset(
+        symbol="NVDA",
+        name="NVIDIA",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+    received = {}
+
+    def fake_discover(universe, limit=None, horizon=None):
+        received["horizon"] = horizon
+        return [
+            DiscoveryScore(
+                asset=asset,
+                score=95.0,
+                horizon=horizon,
+            )
+        ]
+
+    monkeypatch.setattr(
+        engine.asset_discovery,
+        "discover",
+        fake_discover,
+    )
+
+    selected = engine.discover_candidates(
+        limit=1,
+        horizon=TradingHorizon.SWING,
+    )
+
+    assert received["horizon"] == TradingHorizon.SWING
+    assert selected[0].horizon == TradingHorizon.SWING
+
+
 def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
     from atlas.market.asset import Asset
     from atlas.market.asset_discovery import DiscoveryScore
