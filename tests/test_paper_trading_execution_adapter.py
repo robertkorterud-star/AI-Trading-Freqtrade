@@ -72,9 +72,8 @@ def test_paper_adapter_sell_respects_portfolio_service_contract():
     portfolio = PortfolioService(1000000)
     trading = TradingService()
 
-    # Pre-populate position via portfolio.buy so average price and quantity exist
-    # amount_nok chosen so resulting quantity >= 2.5 units
-    portfolio.buy(symbol="BTC-USD", amount_nok=500000.0, price_usd=20000.0, usd_nok=10.0)
+    # Pre-populate 5.0 units so selling 2.5 exercises a true partial close.
+    portfolio.buy(symbol="BTC-USD", amount_nok=1000000.0, price_usd=20000.0, usd_nok=10.0)
 
     class FakeExchange:
         def get_rate(self, base, target):
