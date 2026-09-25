@@ -1995,6 +1995,31 @@ def test_analyze_candidates_generates_algorithm_evidence_from_normalized_snapsho
     assert results[0]["algorithm_signals"] is algorithm_signals
 
 
+def test_decide_candidates_forwards_horizon_to_candidate_analysis():
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.trading_horizon import TradingHorizon
+
+    engine = object.__new__(AtlasEngine)
+    received = {}
+
+    def fake_analyze_candidates(
+        limit=3,
+        minimum_score=0.0,
+        horizon=None,
+    ):
+        received["horizon"] = horizon
+        return []
+
+    engine.analyze_candidates = fake_analyze_candidates
+
+    result = engine.decide_candidates(
+        horizon=TradingHorizon.SWING,
+    )
+
+    assert result == []
+    assert received["horizon"] == TradingHorizon.SWING
+
+
 def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
     from types import SimpleNamespace
 
