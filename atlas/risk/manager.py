@@ -66,6 +66,7 @@ class RiskManager:
         equity: float,
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
+        current_position: float = 0.0,
     ) -> RiskAssessment:
         """Assess whether a decision may expose capital."""
         if not isinstance(action, Action):
@@ -76,13 +77,14 @@ class RiskManager:
             "equity": equity,
             "current_exposure_pct": current_exposure_pct,
             "drawdown_pct": drawdown_pct,
+            "current_position": current_position,
         }
         if any(not math.isfinite(value) for value in numeric.values()):
             raise ValueError("risk inputs must be finite")
         if price <= 0 or equity <= 0:
             raise ValueError("price and equity must be greater than zero")
-        if current_exposure_pct < 0 or drawdown_pct < 0:
-            raise ValueError("exposure and drawdown must be non-negative")
+        if current_exposure_pct < 0 or drawdown_pct < 0 or current_position < 0:
+            raise ValueError("exposure, drawdown, and current position must be non-negative")
 
         reasons: list[str] = []
         if action is Action.HOLD or action is Action.WATCH:
@@ -95,6 +97,30 @@ class RiskManager:
                 stop_loss_price=None,
                 take_profit_price=None,
                 reasons=("No new market exposure requested.",),
+            )
+
+        if action is Action.SELL:
+            if current_position <= 0.0:
+                return RiskAssessment(
+                    action=action,
+                    allowed=False,
+                    risk_level="BLOCKED",
+                    position_size=0.0,
+                    position_value=0.0,
+                    stop_loss_price=None,
+                    take_profit_price=None,
+                    reasons=("No open position available to sell.",),
+                )
+
+            return RiskAssessment(
+                action=action,
+                allowed=True,
+                risk_level="LOW",
+                position_size=current_position,
+                position_value=current_position * price,
+                stop_loss_price=None,
+                take_profit_price=None,
+                reasons=("SELL reduces the existing long position.",),
             )
 
         if drawdown_pct >= self.max_drawdown_pct:
