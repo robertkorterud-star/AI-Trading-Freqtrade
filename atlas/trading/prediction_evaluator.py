@@ -13,6 +13,9 @@ from atlas.trading.agent_performance_tracker import (
 from atlas.trading.outcome_tracker import OutcomeTracker
 from atlas.trading.prediction_tracker import PredictionTracker
 from atlas.database.outcome_repository import OutcomeRepository
+from atlas.database.analysis_snapshot_repository import (
+    AnalysisSnapshotRepository,
+)
 from atlas.database.prediction_repository import PredictionRepository
 
 
@@ -38,6 +41,7 @@ class PredictionEvaluator:
         )
 
         self.prediction_repository = None
+        self.analysis_snapshot_repository = None
 
         if (
             self.predictions.repository is not None
@@ -45,6 +49,11 @@ class PredictionEvaluator:
         ):
             self.prediction_repository = (
                 PredictionRepository(
+                    self.predictions.database
+                )
+            )
+            self.analysis_snapshot_repository = (
+                AnalysisSnapshotRepository(
                     self.predictions.database
                 )
             )
@@ -65,6 +74,25 @@ class PredictionEvaluator:
             self.agent_performance.rebuild_from_predictions(
                 evaluated_predictions
             )
+
+    def analysis_snapshot_for(self, prediction):
+        """Return the original analysis snapshot for a prediction."""
+
+        snapshot_id = getattr(
+            prediction,
+            "analysis_snapshot_id",
+            None,
+        )
+
+        if (
+            snapshot_id is None
+            or self.analysis_snapshot_repository is None
+        ):
+            return None
+
+        return self.analysis_snapshot_repository.get_by_id(
+            snapshot_id
+        )
 
     def ready_predictions(
         self,
