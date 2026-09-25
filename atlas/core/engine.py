@@ -259,6 +259,19 @@ class AtlasEngine:
         self.execution_engine = ExecutionEngine(paper_adapter)
         self.decision_execution_service = DecisionExecutionService(self.execution_engine)
 
+        # The paper adapter restores positions from persisted trades. Overlay
+        # durable per-position state only after that reconstruction is complete.
+        for position in self.portfolio_service._positions.values():
+            persisted_peak = (
+                self.paper_account_state_repository
+                .get_position_peak_price_usd(position.symbol)
+            )
+            if persisted_peak is not None:
+                position.peak_price_usd = max(
+                    position.peak_price_usd,
+                    persisted_peak,
+                )
+
         self.prediction_tracker = PredictionTracker(
             storage_path=self.config.database_path
         )
