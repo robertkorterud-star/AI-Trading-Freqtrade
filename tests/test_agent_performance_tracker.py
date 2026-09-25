@@ -281,3 +281,46 @@ def test_action_performance_survives_restart(tmp_path):
 
     assert performance.action_accuracy["BUY"] == 100.0
     assert performance.action_accuracy["SELL"] == 0.0
+
+
+
+def test_rebuild_from_predictions_excludes_hold_from_directional_performance():
+
+    from atlas.trading.prediction_record import PredictionRecord
+    from datetime import datetime
+
+    tracker = AgentPerformanceTracker()
+
+    tracker.rebuild_from_predictions(
+        [
+            PredictionRecord(
+                symbol="BTC-USD",
+                action="HOLD",
+                confidence=80.0,
+                evidence=75.0,
+                price_usd=65000.0,
+                timestamp=datetime.now(),
+                analysts=["Technical Analyst"],
+                evaluated=True,
+                correct=True,
+            ),
+            PredictionRecord(
+                symbol="BTC-USD",
+                action="BUY",
+                confidence=90.0,
+                evidence=90.0,
+                price_usd=65000.0,
+                timestamp=datetime.now(),
+                analysts=["Technical Analyst"],
+                evaluated=True,
+                correct=True,
+            ),
+        ]
+    )
+
+    performance = tracker.get("Technical Analyst")
+
+    assert performance.predictions == 2
+    assert performance.correct == 2
+    assert performance.action_predictions == {"BUY": 1}
+    assert performance.action_correct == {"BUY": 1}
