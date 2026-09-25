@@ -107,3 +107,35 @@ def test_snapshot_builder_keeps_reference_to_decision_for_trade_linkage():
 
     assert snapshot.decision_ref is decision
     assert decision.analysis_snapshot_id is None
+
+
+def test_snapshot_builder_preserves_algorithm_signal_metadata():
+    decision = make_decision()
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="algorithm:intraday_momentum",
+        action=Action.BUY,
+        confidence=82.0,
+        evidence=70.0,
+        reasoning=["Momentum is positive."],
+        signal_confidence=82.0,
+        metadata={
+            "algorithm": "intraday_momentum",
+            "timeframe": "5m",
+            "score": 85.0,
+            "expected_edge": 0.02,
+        },
+    )
+
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=[result],
+        decision=decision,
+    )
+
+    assert snapshot.results[0]["metadata"] == {
+        "algorithm": "intraday_momentum",
+        "timeframe": "5m",
+        "score": 85.0,
+        "expected_edge": 0.02,
+    }
