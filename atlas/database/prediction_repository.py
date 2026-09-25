@@ -33,13 +33,14 @@ class PredictionRepository:
                     analysts,
                     reason,
                     features,
+                    analysis_snapshot_id,
                     evaluated,
                     correct,
                     evaluated_price_usd,
                     price_change_percent,
                     evaluated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     prediction.symbol,
@@ -59,6 +60,7 @@ class PredictionRepository:
                         prediction.features,
                         ensure_ascii=False,
                     ),
+                    prediction.analysis_snapshot_id,
                     int(prediction.evaluated),
                     (
                         int(prediction.correct)
@@ -245,6 +247,11 @@ class PredictionRepository:
             features=json.loads(
                 row["features"]
                 or "{}"
+            ),
+            analysis_snapshot_id=(
+                int(row["analysis_snapshot_id"])
+                if row["analysis_snapshot_id"] is not None
+                else None
             ),
             evaluated=bool(row["evaluated"]),
             correct=(
