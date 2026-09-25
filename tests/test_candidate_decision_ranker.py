@@ -54,8 +54,8 @@ def test_ranker_prefers_strong_buy():
         decision.symbol
         for decision in ranked
     ] == [
-        "AAPL",
         "NVDA",
+        "AAPL",
     ]
 
 
