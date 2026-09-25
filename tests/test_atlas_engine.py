@@ -2929,3 +2929,39 @@ def test_select_best_candidate_prioritizes_sell_exit_over_new_buy():
     assert selected is not None
     assert selected["symbol"] == "ETH-USD"
     assert selected["decision"].action is Action.SELL
+
+
+
+def test_atlas_engine_restores_persisted_position_peak_across_restart(tmp_path):
+    from atlas.config import AtlasConfig
+    from atlas.core.engine import AtlasEngine
+
+    config = AtlasConfig(database_path=str(tmp_path / "atlas.db"))
+
+    first = AtlasEngine(config)
+    first.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    first.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+    first.portfolio_service.update_prices({"BTC-USD": 120.0})
+    first.paper_account_state_repository.set_position_peak_price_usd(
+        "BTC-USD",
+        120.0,
+    )
+
+    restarted = AtlasEngine(config)
+    restarted.portfolio_service.restore_from_trades(
+        restarted.trading_service._history
+    )
+
+    position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
+
+    assert position["peak_price_usd"] == 120.0
