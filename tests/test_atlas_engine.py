@@ -2960,3 +2960,76 @@ def test_atlas_engine_restores_persisted_position_peak_across_restart(tmp_path):
     position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
 
     assert position["peak_price_usd"] == 120.0
+
+
+
+def test_decision_runtime_persists_new_position_peak_price():
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    analysis = [
+        AnalysisResult(
+            analyst="Technical Analyst",
+            symbol="BTC-USD",
+            action=Action.HOLD,
+            confidence=90.0,
+            evidence=90.0,
+        )
+    ]
+
+    class PortfolioServiceStub:
+        def __init__(self):
+            self.peak = 100.0
+
+        def update_prices(self, prices):
+            self.peak = max(self.peak, prices["BTC-USD"])
+
+        def as_dict(self, usd_nok):
+            return {
+                "total_equity_nok": 10000.0,
+                "positions_value_nok": 1200.0,
+                "positions": [
+                    {
+                        "symbol": "BTC-USD",
+                        "quantity": 1.0,
+                        "market_value_nok": 1200.0,
+                        "last_buy_price_usd": 100.0,
+                        "average_price_usd": 100.0,
+                        "peak_price_usd": self.peak,
+                    }
+                ],
+            }
+
+    class DecisionEngineStub:
+        def evaluate(
+            self,
+            results,
+            *,
+            current_position=0.0,
+            last_buy_price=None,
+            average_price=None,
+        ):
+            return "decision"
+
+    persisted = []
+    engine = object.__new__(AtlasEngine)
+    engine._get_usd_nok_rate = lambda: SimpleNamespace(rate=10.0)
+    engine.portfolio_service = PortfolioServiceStub()
+    engine.market_data = SimpleNamespace()
+    engine.decision_engine = DecisionEngineStub()
+    engine.paper_account_state_repository = SimpleNamespace(
+        get_position_peak_price_usd=lambda symbol: 100.0,
+        set_position_peak_price_usd=lambda symbol, peak: persisted.append(
+            (symbol, peak)
+        ),
+    )
+
+    result = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=SimpleNamespace(price=120.0),
+    )
+
+    assert result == "decision"
+    assert persisted == [("BTC-USD", 120.0)]
