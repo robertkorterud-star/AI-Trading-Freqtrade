@@ -2645,3 +2645,77 @@ def test_decide_candidates_preserves_algorithm_lineage():
 
     assert results[0]["algorithm_signals"] is algorithm_signals
     assert results[0]["fusion_result"] is fusion_result
+
+def test_decision_runtime_marks_existing_positions_to_market_before_risk():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    engine = object.__new__(AtlasEngine)
+    analysis = [
+        AnalysisResult(
+            analyst="Technical Analyst",
+            symbol="BTC-USD",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+        )
+    ]
+
+    updated_prices = []
+    engine._get_usd_nok_rate = lambda: SimpleNamespace(rate=10.0)
+    engine._get_market_snapshot = lambda symbol: SimpleNamespace(price=200.0)
+    engine._peak_equity_nok = None
+
+    class PortfolioServiceStub:
+        def update_prices(self, prices):
+            updated_prices.append(dict(prices))
+
+        def as_dict(self, usd_nok):
+            return {
+                "total_equity_nok": 10000.0,
+                "positions_value_nok": 2000.0,
+                "positions": [
+                    {
+                        "symbol": "BTC-USD",
+                        "quantity": 1.0,
+                        "market_value_nok": 2000.0,
+                        "last_buy_price_usd": 100.0,
+                        "average_price_usd": 100.0,
+                    }
+                ],
+            }
+
+    engine.portfolio_service = PortfolioServiceStub()
+
+    captured = {}
+
+    class DecisionEngineStub:
+        def evaluate(
+            self,
+            results,
+            *,
+            price=None,
+            equity=None,
+            current_exposure_pct=0.0,
+            drawdown_pct=0.0,
+            portfolio_positions=(),
+            current_position=0.0,
+            last_buy_price=None,
+            average_price=None,
+        ):
+            captured["current_exposure_pct"] = current_exposure_pct
+            return "decision"
+
+    engine.decision_engine = DecisionEngineStub()
+
+    result = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=SimpleNamespace(price=200.0),
+    )
+
+    assert result == "decision"
+    assert updated_prices == [{"BTC-USD": 200.0}]
+    assert captured["current_exposure_pct"] == 20.0
