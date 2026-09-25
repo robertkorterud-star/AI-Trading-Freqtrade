@@ -296,6 +296,10 @@ class PortfolioService:
 
             existing.current_price_usd = price_usd
             existing.last_buy_price_usd = price_usd
+            existing.peak_price_usd = max(
+                existing.peak_price_usd,
+                price_usd,
+            )
 
         else:
 
