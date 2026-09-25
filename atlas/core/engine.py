@@ -581,6 +581,12 @@ class AtlasEngine:
                     "discovery_score": item[
                         "discovery_score"
                     ],
+                    "discovery_input": item.get(
+                        "discovery_input"
+                    ),
+                    "horizon": item.get(
+                        "horizon"
+                    ),
                     "decision": decision,
                     "regime_decision": regime_decision,
                 }
