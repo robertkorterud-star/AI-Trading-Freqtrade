@@ -2418,3 +2418,43 @@ def test_decide_candidates_preserves_market_regime_for_snapshot_lineage():
 
     assert result["market_snapshot"] is market_snapshot
     assert result["market_snapshot"].regime == "LOW_VOLATILITY"
+
+
+def test_analyze_candidates_classifies_regime_from_normalized_market_data():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+
+    engine = object.__new__(AtlasEngine)
+    candidate = SimpleNamespace(
+        symbol="BTC-USD",
+        score=91.0,
+        asset=object(),
+        discovery_input=None,
+        horizon=None,
+    )
+    normalized_snapshot = SimpleNamespace(
+        candles=[{"close": 100.0}] * 21,
+    )
+    regime_result = SimpleNamespace(regime="sideways")
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: [],
+    )
+    engine.market_data = SimpleNamespace(
+        snapshot=lambda *args, **kwargs: normalized_snapshot,
+    )
+    engine.algorithm_pipeline = SimpleNamespace(
+        analyze=lambda *args, **kwargs: (None, []),
+    )
+    engine.market_regime_engine = SimpleNamespace(
+        analyze=lambda symbol, candles: regime_result,
+    )
+    engine._get_market_snapshot = lambda symbol: SimpleNamespace(
+        price=100.0,
+    )
+
+    result = engine.analyze_candidates()[0]
+
+    assert result["market_regime"] is regime_result
