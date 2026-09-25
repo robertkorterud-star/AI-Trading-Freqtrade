@@ -1,3 +1,5 @@
+import pytest
+
 from atlas.agents.news_analyst import NewsAnalyst
 from atlas.decision.engine import DecisionEngine
 from atlas.models.action import Action
@@ -794,7 +796,7 @@ def test_decision_engine_applies_position_exit_engine_to_sell():
         average_price=100.0,
     )
 
-    assert decision.action is Action.HOLD
+    assert decision.action is Action.SELL
 
 
 
