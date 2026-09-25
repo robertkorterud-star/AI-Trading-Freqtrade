@@ -66,3 +66,11 @@ class PaperAccountStateRepository:
                 (str(symbol), value),
             )
             connection.commit()
+
+    def delete_position_peak_price_usd(self, symbol):
+        with self.database.connect() as connection:
+            connection.execute(
+                "DELETE FROM paper_position_state WHERE symbol = ?",
+                (str(symbol),),
+            )
+            connection.commit()
