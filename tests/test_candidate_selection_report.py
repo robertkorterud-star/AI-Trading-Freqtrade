@@ -279,3 +279,31 @@ def test_candidate_selection_report_selection_snapshot_is_independent():
     snapshot["reasoning"].append("extra")
 
     assert "extra" not in report.reasoning
+
+
+def test_candidate_selection_report_preserves_cost_adjusted_return_evidence():
+    evidence = CandidateRankingEvidence(
+        symbol="NVDA",
+        base_score=88.0,
+        regime_fit=75.0,
+        final_score=85.4,
+        expected_return=0.02,
+        net_expected_return=0.0176,
+        risk_adjusted_net_return=0.01408,
+    )
+
+    report = CandidateSelectionReport(
+        symbol="NVDA",
+        action="BUY",
+        ranking_evidence=evidence,
+    )
+
+    ranking = report.to_dict()["ranking_evidence"]
+
+    assert ranking["expected_return"] == 0.02
+    assert ranking["net_expected_return"] == 0.0176
+    assert ranking["risk_adjusted_net_return"] == 0.01408
+    assert any(
+        "Expected net return after trading costs" in line
+        for line in report.reasoning
+    )
