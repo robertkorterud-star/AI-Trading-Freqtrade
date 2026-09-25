@@ -23,12 +23,16 @@ class CandidateResearchContext:
             source = article.get("source", "")
             published_at = article.get("published_at", "")
             summary = article.get("summary", "")
+            url = article.get("url", "")
+            sentiment = article.get("sentiment", "")
 
             lines.append(
                 f"SOURCE: {source}\n"
                 f"PUBLISHED: {published_at}\n"
                 f"TITLE: {title}\n"
-                f"SUMMARY: {summary[:1500]}"
+                f"SUMMARY: {summary[:1500]}\n"
+                f"URL: {url}\n"
+                f"SENTIMENT: {sentiment}"
             )
 
         return "\n\n".join(lines)
