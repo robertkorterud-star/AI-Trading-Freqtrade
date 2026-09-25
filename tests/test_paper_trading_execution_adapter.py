@@ -99,8 +99,14 @@ def test_paper_adapter_sell_respects_portfolio_service_contract():
     # ExecutionResult quantity should reflect sold units
     assert result.quantity == 2.5
 
+    snapshot = portfolio.as_dict(usd_nok=10.0)
+    position = next(p for p in snapshot["positions"] if p["symbol"] == "BTC-USD")
+    assert position["quantity"] == 2.5
+
     # trading history should contain one sell
     assert trading.count() == 1
+    trade = trading.history()[0]
+    assert trade.quantity == 2.5
 
 
 def test_paper_adapter_executes_approved_repeated_buy_requests():
