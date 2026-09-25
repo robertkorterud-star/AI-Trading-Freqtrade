@@ -12,6 +12,7 @@ from atlas.core.analysis_service import AnalysisService
 from atlas.agents.news_analyst import NewsAnalyst
 
 from atlas.decision.engine import DecisionEngine
+from atlas.models.action import Action
 from atlas.algorithms.position_exit import PositionExitEngine
 from atlas.algorithms.regime import MarketRegimeEngine
 from atlas.algorithms.pipeline import AlgorithmPipeline
