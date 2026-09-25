@@ -458,10 +458,14 @@ class AtlasEngine:
                     candidate.symbol,
                     normalized_snapshot,
                 )
-                market_regime = self.market_regime_engine.analyze(
-                    candidate.symbol,
-                    list(normalized_snapshot.candles),
-                )
+                if (
+                    hasattr(self, "market_regime_engine")
+                    and hasattr(normalized_snapshot, "candles")
+                ):
+                    market_regime = self.market_regime_engine.analyze(
+                        candidate.symbol,
+                        list(normalized_snapshot.candles),
+                    )
 
             market_snapshot = self._get_market_snapshot(
                 candidate.symbol
@@ -568,6 +572,12 @@ class AtlasEngine:
                 "regime",
                 None,
             )
+            if regime is None:
+                regime = getattr(
+                    item.get("market_snapshot"),
+                    "regime",
+                    None,
+                )
             if hasattr(regime, "value"):
                 regime = regime.value
 
