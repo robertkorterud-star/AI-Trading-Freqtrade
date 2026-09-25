@@ -148,3 +148,33 @@ def test_position_tracks_peak_price_across_market_updates():
 
     assert position["current_price_usd"] == 110.0
     assert position["peak_price_usd"] == 120.0
+
+
+
+def test_position_peak_tracks_accumulation_without_regressing():
+    portfolio = PortfolioService(5000)
+    portfolio.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    portfolio.update_prices({"BTC-USD": 120.0})
+
+    portfolio.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=110.0,
+        usd_nok=10.0,
+    )
+    position = portfolio.as_dict(10.0)["positions"][0]
+    assert position["peak_price_usd"] == 120.0
+
+    portfolio.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=130.0,
+        usd_nok=10.0,
+    )
+    position = portfolio.as_dict(10.0)["positions"][0]
+    assert position["peak_price_usd"] == 130.0
