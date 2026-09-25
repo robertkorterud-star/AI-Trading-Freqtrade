@@ -15,6 +15,17 @@ class RecordingExecutionEngine:
         return request
 
 
+def sell_result():
+    return AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.SELL,
+        confidence=100.0,
+        evidence=100.0,
+        reasoning=["Strong SELL signal."],
+    )
+
+
 def buy_result():
     return AnalysisResult(
         symbol="BTC-USD",
@@ -124,3 +135,29 @@ def test_execution_service_does_not_execute_blocked_decision():
 
     assert result is None
     assert recorder.requests == []
+
+
+def test_sell_execution_quantity_is_capped_to_existing_long_position():
+    engine = DecisionEngine(
+        risk_manager=RiskManager(
+            risk_per_trade_pct=100.0,
+            max_position_pct=100.0,
+        ),
+    )
+    decision = engine.evaluate(
+        [sell_result()],
+        price=100.0,
+        equity=10_000.0,
+        current_exposure_pct=50.0,
+        current_position=2.5,
+    )
+    recorder = RecordingExecutionEngine()
+    service = DecisionExecutionService(recorder)
+
+    result = service.execute(decision, price=100.0)
+
+    assert decision.action is Action.SELL
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.position_size == 2.5
+    assert result is recorder.requests[0]
+    assert result.quantity == 2.5
