@@ -1233,10 +1233,14 @@ class AtlasEngine:
             for p in portfolio_snapshot.get("positions", []):
                 if p.get("symbol") != combined_analysis[0].symbol:
                     continue
-                kwargs["current_position"] = float(p.get("quantity", 0.0))
-                kwargs["last_buy_price"] = p.get("last_buy_price_usd")
-                kwargs["average_price"] = p.get("average_price_usd")
-                kwargs["peak_price"] = p.get("peak_price_usd")
+                if "current_position" in params:
+                    kwargs["current_position"] = float(p.get("quantity", 0.0))
+                if "last_buy_price" in params:
+                    kwargs["last_buy_price"] = p.get("last_buy_price_usd")
+                if "average_price" in params:
+                    kwargs["average_price"] = p.get("average_price_usd")
+                if "peak_price" in params:
+                    kwargs["peak_price"] = p.get("peak_price_usd")
                 break
 
         if kwargs:
