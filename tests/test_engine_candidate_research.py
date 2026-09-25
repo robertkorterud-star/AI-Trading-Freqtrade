@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 from atlas.core.engine import AtlasEngine
+from atlas.market.asset import Asset
+from atlas.market.asset_type import AssetType
 from atlas.market.candidates.source import Candidate
 from atlas.market.candidates.research_context import CandidateResearchContext
 
@@ -22,10 +24,34 @@ class FakeAIProvider:
 
 
 class FakeDiscovery:
+    def __init__(self):
+        self.nvda = Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        )
+        self.amd = Asset(
+            symbol="AMD",
+            name="AMD",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        )
+
     def discover(self, universe, limit=None):
         return [
-            SimpleNamespace(symbol="NVDA", score=80),
-            SimpleNamespace(symbol="AMD", score=70),
+            SimpleNamespace(
+                symbol="NVDA",
+                score=80,
+                asset=self.nvda,
+            ),
+            SimpleNamespace(
+                symbol="AMD",
+                score=70,
+                asset=self.amd,
+            ),
         ]
 
 
