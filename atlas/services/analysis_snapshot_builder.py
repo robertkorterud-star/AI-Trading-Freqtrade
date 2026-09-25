@@ -115,6 +115,17 @@ class AnalysisSnapshotBuilder:
             "reasoning": list(
                 decision.reasoning
             ),
+            "expected_return": float(
+                decision.expected_return
+            ),
+            "ensemble_action": (
+                decision.ensemble_action.value
+                if decision.ensemble_action
+                else None
+            ),
+            "ensemble_confidence": float(
+                decision.ensemble_confidence
+            ),
             "risk_assessment": (
                 {
                     "allowed": bool(risk_assessment.allowed),
