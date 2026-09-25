@@ -881,3 +881,36 @@ def test_decision_engine_protective_exit_overrides_hold_signal():
     )
 
     assert decision.action is Action.SELL
+
+
+
+def test_decision_engine_uses_position_peak_for_trailing_stop():
+    from atlas.algorithms.position_exit import PositionExitEngine
+    from atlas.models.analysis_result import AnalysisResult
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.HOLD,
+        confidence=90.0,
+        evidence=90.0,
+        reasoning=["No directional change."],
+    )
+
+    engine = DecisionEngine(
+        position_exit_engine=PositionExitEngine(
+            stop_loss=0.20,
+            trailing_stop=0.08,
+        )
+    )
+
+    decision = engine.evaluate(
+        [result],
+        price=110.0,
+        current_position=1.0,
+        last_buy_price=100.0,
+        average_price=100.0,
+        peak_price=120.0,
+    )
+
+    assert decision.action is Action.SELL
