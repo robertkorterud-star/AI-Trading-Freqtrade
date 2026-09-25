@@ -767,6 +767,39 @@ def test_decision_engine_blocks_repeated_buy_until_accumulation_drop():
 
 
 
+def test_decision_engine_preserves_weak_buy_reduction_quantity():
+    from atlas.algorithms.position_exit import PositionExitEngine
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.risk.manager import RiskManager
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.BUY,
+        confidence=40.0,
+        evidence=40.0,
+        reasoning=["Weak BUY with an existing position."],
+    )
+
+    engine = DecisionEngine(
+        risk_manager=RiskManager(),
+        position_exit_engine=PositionExitEngine(),
+    )
+
+    decision = engine.evaluate(
+        [result],
+        price=100.0,
+        equity=10_000.0,
+        current_position=0.8,
+        last_buy_price=100.0,
+        average_price=100.0,
+    )
+
+    assert decision.action is Action.SELL
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.position_size == pytest.approx(0.2)
+
+
 def test_decision_engine_applies_position_exit_engine_to_sell():
     from atlas.algorithms.position_exit import PositionExitEngine
     from atlas.models.analysis_result import AnalysisResult
