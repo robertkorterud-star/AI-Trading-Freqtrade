@@ -611,6 +611,12 @@ class AtlasEngine:
                     "analysis": item.get(
                         "analysis"
                     ),
+                    "algorithm_signals": item.get(
+                        "algorithm_signals"
+                    ),
+                    "fusion_result": item.get(
+                        "fusion_result"
+                    ),
                     "market_snapshot": item.get(
                         "market_snapshot"
                     ),
