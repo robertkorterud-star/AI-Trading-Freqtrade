@@ -2607,3 +2607,41 @@ def test_start_persists_fusion_evidence_used_by_decision():
         result.analyst == "signal_fusion"
         for result in persisted_results
     )
+
+
+def test_decide_candidates_preserves_algorithm_lineage():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    algorithm_signals = [SimpleNamespace(algorithm="intraday_momentum")]
+    fusion_result = SimpleNamespace(symbol="BTC-USD")
+    analyzed = [{
+        "symbol": "BTC-USD",
+        "discovery_score": 90.0,
+        "discovery_input": None,
+        "horizon": None,
+        "analysis": [],
+        "algorithm_signals": algorithm_signals,
+        "fusion_result": fusion_result,
+        "market_snapshot": SimpleNamespace(regime=None),
+        "market_regime": None,
+    }]
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.HOLD,
+        confidence=70.0,
+        evidence=70.0,
+    )
+
+    engine.analyze_candidates = lambda **kwargs: analyzed
+    engine._evaluate_candidate_decision = lambda *args, **kwargs: decision
+
+    results = engine.decide_candidates()
+
+    assert results[0]["algorithm_signals"] is algorithm_signals
+    assert results[0]["fusion_result"] is fusion_result
