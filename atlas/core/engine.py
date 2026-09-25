@@ -969,6 +969,11 @@ class AtlasEngine:
             exec_result = self.decision_execution_service.execute(
                 decision,
                 price=snapshot.price,
+                analysis_snapshot_id=getattr(
+                    decision,
+                    "analysis_snapshot_id",
+                    None,
+                ),
             )
 
             if exec_result is not None:
