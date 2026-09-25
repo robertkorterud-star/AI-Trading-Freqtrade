@@ -3209,3 +3209,77 @@ def test_atlas_engine_constructor_restores_persisted_position_peak(tmp_path):
     position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
     assert position["symbol"] == "BTC-USD"
     assert position["peak_price_usd"] == 120.0
+
+
+
+def test_decision_runtime_passes_position_peak_to_decision_engine():
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    analysis = [
+        AnalysisResult(
+            analyst="Technical Analyst",
+            symbol="BTC-USD",
+            action=Action.HOLD,
+            confidence=90.0,
+            evidence=90.0,
+        )
+    ]
+
+    engine = object.__new__(AtlasEngine)
+    engine._peak_equity_nok = None
+    engine._get_usd_nok_rate = lambda: SimpleNamespace(rate=10.0)
+
+    class PortfolioServiceStub:
+        def update_prices(self, prices):
+            pass
+
+        def as_dict(self, usd_nok):
+            return {
+                "total_equity_nok": 10000.0,
+                "positions_value_nok": 1100.0,
+                "positions": [
+                    {
+                        "symbol": "BTC-USD",
+                        "quantity": 1.0,
+                        "market_value_nok": 1100.0,
+                        "last_buy_price_usd": 100.0,
+                        "average_price_usd": 100.0,
+                        "peak_price_usd": 120.0,
+                    }
+                ],
+            }
+
+    engine.portfolio_service = PortfolioServiceStub()
+    engine.market_data = SimpleNamespace()
+    engine.paper_account_state_repository = SimpleNamespace(
+        get_position_peak_price_usd=lambda symbol: 120.0,
+        set_position_peak_price_usd=lambda symbol, peak: None,
+    )
+
+    captured = {}
+
+    class DecisionEngineStub:
+        def evaluate(
+            self,
+            results,
+            *,
+            current_position=0.0,
+            last_buy_price=None,
+            average_price=None,
+            peak_price=None,
+        ):
+            captured["peak_price"] = peak_price
+            return "decision"
+
+    engine.decision_engine = DecisionEngineStub()
+
+    result = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=SimpleNamespace(price=110.0),
+    )
+
+    assert result == "decision"
+    assert captured["peak_price"] == 120.0
