@@ -464,3 +464,40 @@ def test_evaluator_resolves_original_analysis_snapshot(tmp_path):
 
     assert resolved.database_id == snapshot.database_id
     assert resolved.results == snapshot.results
+
+
+
+def test_hold_prediction_learning_does_not_train_directional_agent_weights():
+    predictions = PredictionTracker()
+    outcomes = OutcomeTracker()
+    performance = AgentPerformanceTracker()
+
+    decision = DecisionResult(
+        symbol="NVDA",
+        action=Action.HOLD,
+        confidence=88.0,
+        evidence=85.0,
+        analysts=["Technical Analyst"],
+    )
+
+    prediction = predictions.record(
+        decision=decision,
+        price_usd=180.0,
+    )
+
+    evaluator = PredictionEvaluator(
+        predictions=predictions,
+        outcomes=outcomes,
+        agent_performance=performance,
+    )
+
+    evaluator.evaluate(
+        prediction=prediction,
+        current_price_usd=180.5,
+    )
+
+    technical = performance.get("Technical Analyst")
+
+    assert technical is not None
+    assert technical.predictions == 1
+    assert technical.action_predictions.get("HOLD", 0) == 0
