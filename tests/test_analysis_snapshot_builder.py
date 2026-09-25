@@ -151,11 +151,19 @@ def test_snapshot_builder_preserves_final_risk_and_portfolio_decision_context():
         position_size=0.25,
         position_value=2500.0,
         risk_level="LOW",
+        stop_loss_price=None,
+        take_profit_price=None,
         reasons=["Within risk limits."],
     )
     decision.portfolio_assessment = SimpleNamespace(
         allowed=True,
+        requested_value=2500.0,
         approved_value=2500.0,
+        current_exposure_value=0.0,
+        resulting_exposure_value=2500.0,
+        current_exposure_pct=0.0,
+        resulting_exposure_pct=25.0,
+        available_capacity_value=2500.0,
         reasons=["Within portfolio limits."],
     )
 
@@ -171,11 +179,19 @@ def test_snapshot_builder_preserves_final_risk_and_portfolio_decision_context():
         "position_size": 0.25,
         "position_value": 2500.0,
         "risk_level": "LOW",
+        "stop_loss_price": None,
+        "take_profit_price": None,
         "reasons": ["Within risk limits."],
     }
     assert snapshot.decision["portfolio_assessment"] == {
         "allowed": True,
+        "requested_value": 2500.0,
         "approved_value": 2500.0,
+        "current_exposure_value": 0.0,
+        "resulting_exposure_value": 2500.0,
+        "current_exposure_pct": 0.0,
+        "resulting_exposure_pct": 25.0,
+        "available_capacity_value": 2500.0,
         "reasons": ["Within portfolio limits."],
     }
 
