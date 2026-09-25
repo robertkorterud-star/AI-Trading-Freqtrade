@@ -464,6 +464,16 @@ class AtlasEngine:
                 {
                     "symbol": candidate.symbol,
                     "discovery_score": candidate.score,
+                    "discovery_input": getattr(
+                        candidate,
+                        "discovery_input",
+                        None,
+                    ),
+                    "horizon": getattr(
+                        candidate,
+                        "horizon",
+                        None,
+                    ),
                     "analysis": analysis,
                     "algorithm_signals": algorithm_signals,
                     "fusion_result": fusion_result,
