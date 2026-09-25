@@ -2234,3 +2234,48 @@ def test_atlas_engine_analysis_preserves_discovery_evidence():
 
     assert result["discovery_input"] is discovery_input
     assert result["horizon"] == TradingHorizon.DAY_TRADE
+
+
+def test_atlas_engine_decision_preserves_discovery_evidence():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.asset_discovery import DiscoveryInput
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+    discovery_input = DiscoveryInput(
+        volume_score=80.0,
+        momentum_score=90.0,
+        volatility_score=70.0,
+        news_score=60.0,
+        liquidity_score=85.0,
+    )
+    decision = DecisionResult(
+        symbol="NVDA",
+        action=Action.HOLD,
+        confidence=70.0,
+        evidence=70.0,
+    )
+    engine.analyze_candidates = lambda **kwargs: [
+        {
+            "symbol": "NVDA",
+            "discovery_score": 77.0,
+            "discovery_input": discovery_input,
+            "horizon": TradingHorizon.DAY_TRADE,
+            "analysis": [],
+            "algorithm_signals": [],
+            "fusion_result": None,
+            "market_snapshot": SimpleNamespace(regime=None),
+        }
+    ]
+    engine._evaluate_candidate_decision = lambda *args, **kwargs: decision
+
+    result = engine.decide_candidates(
+        horizon=TradingHorizon.DAY_TRADE,
+    )[0]
+
+    assert result["discovery_input"] is discovery_input
+    assert result["horizon"] == TradingHorizon.DAY_TRADE
