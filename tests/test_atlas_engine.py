@@ -2511,3 +2511,95 @@ def test_decide_candidates_uses_classified_market_regime_for_strategy_memory():
     assert calls == [("BTC-USD", MarketRegime.SIDEWAYS.value)]
     assert result["market_regime"] is market_regime
     assert result["regime_decision"] is regime_decision
+
+
+def test_start_persists_fusion_evidence_used_by_decision():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    analyst_result = AnalysisResult(
+        analyst="Technical Analyst",
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=80.0,
+        evidence=80.0,
+    )
+    fusion_result = SimpleNamespace(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=0.9,
+        score=0.8,
+        timeframe="5m",
+        reasoning=["Fusion confirms BUY."],
+    )
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+    )
+    selected = {
+        "symbol": "BTC-USD",
+        "analysis": [analyst_result],
+        "fusion_result": fusion_result,
+        "decision": decision,
+    }
+    captured = {}
+
+    engine.logger = SimpleNamespace(info=lambda *args, **kwargs: None)
+    engine.config = SimpleNamespace(
+        version="test",
+        trading_mode="advisor",
+        capital_limit=5000.0,
+        ai_provider="test",
+    )
+    engine.prediction_evaluator = SimpleNamespace(
+        evaluate_ready=lambda **kwargs: [],
+    )
+    engine.prediction_tracker = SimpleNamespace(
+        record=lambda **kwargs: None,
+    )
+    engine.event_repository = SimpleNamespace(
+        publish=lambda *args, **kwargs: None,
+    )
+    engine.decide_candidates = lambda **kwargs: [selected]
+    engine.select_best_candidate = lambda candidates: selected
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: (_ for _ in ()).throw(
+            AssertionError("analysis should be reused")
+        ),
+    )
+    engine._get_market_snapshot = lambda symbol: SimpleNamespace(
+        price=100.0,
+    )
+    engine.decision_engine = SimpleNamespace(
+        last_intelligence=None,
+    )
+    engine.analysis_snapshot_builder = SimpleNamespace(
+        build=lambda **kwargs: captured.update(kwargs)
+        or SimpleNamespace(),
+    )
+    engine.analysis_snapshot_repository = SimpleNamespace(
+        save=lambda snapshot: 1,
+    )
+    engine.report = SimpleNamespace(
+        print_decision=lambda decision: None,
+    )
+    engine._execute_paper_decision = lambda **kwargs: None
+    engine._get_prediction_evaluation_prices = lambda: {}
+
+    engine.start()
+
+    persisted_results = captured["results"]
+
+    assert analyst_result in persisted_results
+    assert any(
+        result.analyst == "algorithm:fusion"
+        for result in persisted_results
+    )
