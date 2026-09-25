@@ -116,3 +116,26 @@ def test_blocked_risk_cannot_reach_execution() -> None:
         service.execute(decision)
 
     assert adapter.requests == []
+
+
+def test_partial_sell_quantity_reaches_execution_request() -> None:
+    adapter = DryRunExecutionAdapter()
+    service = DecisionExecutionService(ExecutionEngine(adapter))
+    decision = approved_decision(Action.SELL)
+    decision.risk_assessment = RiskAssessment(
+        action=Action.SELL,
+        allowed=True,
+        risk_level="LOW",
+        position_size=0.5,
+        position_value=50.0,
+        stop_loss_price=None,
+        take_profit_price=None,
+        reasons=("partial reduction approved",),
+    )
+
+    result = service.execute(decision, price=100.0)
+
+    assert result is not None
+    assert adapter.requests[0].action is Action.SELL
+    assert adapter.requests[0].quantity == pytest.approx(0.5)
+
