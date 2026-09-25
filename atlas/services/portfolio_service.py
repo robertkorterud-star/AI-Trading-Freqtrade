@@ -17,10 +17,13 @@ class Position:
     average_price_usd: float
     current_price_usd: float
     last_buy_price_usd: float | None = None
+    peak_price_usd: float | None = None
 
     def __post_init__(self):
         if self.last_buy_price_usd is None:
             self.last_buy_price_usd = self.average_price_usd
+        if self.peak_price_usd is None:
+            self.peak_price_usd = self.current_price_usd
 
     @property
     def invested_usd(self):
@@ -220,8 +223,11 @@ class PortfolioService:
 
             if symbol in prices_usd:
 
-                position.current_price_usd = float(
-                    prices_usd[symbol]
+                price_usd = float(prices_usd[symbol])
+                position.current_price_usd = price_usd
+                position.peak_price_usd = max(
+                    position.peak_price_usd,
+                    price_usd,
                 )
 
     # -------------------------------------------------
@@ -473,6 +479,11 @@ class PortfolioService:
 
                     "current_price_usd": round(
                         position.current_price_usd,
+                        2,
+                    ),
+
+                    "peak_price_usd": round(
+                        position.peak_price_usd,
                         2,
                     ),
 
