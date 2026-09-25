@@ -257,7 +257,7 @@ class AgentPerformanceTracker:
         if correct:
             performance.correct += 1
 
-        if action:
+        if action in {"BUY", "SELL"}:
             performance.action_predictions[action] = (
                 performance.action_predictions.get(
                     action,
@@ -311,7 +311,7 @@ class AgentPerformanceTracker:
 
                 action = prediction.action
 
-                if action:
+                if action in {"BUY", "SELL"}:
                     performance.action_predictions[action] = (
                         performance.action_predictions.get(
                             action,
