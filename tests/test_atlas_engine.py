@@ -419,6 +419,12 @@ def test_atlas_engine_start_evaluates_previous_predictions(
         fake_print_decision,
     )
 
+    monkeypatch.setattr(
+        engine,
+        "get_regime_memory_decision",
+        lambda symbol, regime: None,
+    )
+
     engine.start()
 
     assert "snapshot" in calls
