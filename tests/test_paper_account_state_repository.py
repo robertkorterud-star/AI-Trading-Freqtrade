@@ -46,3 +46,16 @@ def test_paper_account_state_repository_round_trip_position_peak_price(tmp_path)
 
     assert repository.get_position_peak_price_usd("BTC-USD") == 120.0
     assert repository.get_position_peak_price_usd("ETH-USD") is None
+
+
+
+def test_paper_account_state_repository_deletes_position_peak_price(tmp_path):
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+
+    repository = PaperAccountStateRepository(database)
+
+    repository.set_position_peak_price_usd("BTC-USD", 120.0)
+    repository.delete_position_peak_price_usd("BTC-USD")
+
+    assert repository.get_position_peak_price_usd("BTC-USD") is None
