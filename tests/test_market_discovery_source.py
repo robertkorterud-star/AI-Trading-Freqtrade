@@ -192,3 +192,33 @@ def test_market_discovery_source_forwards_and_carries_horizon_context():
 
     assert discovery.received_horizon == TradingHorizon.DAY_TRADE
     assert candidate.metadata["horizon"] == TradingHorizon.DAY_TRADE.value
+
+
+def test_market_discovery_source_carries_asset_class_context():
+    from atlas.market.asset_type import AssetType
+
+    asset = Asset(
+        symbol="NVDA",
+        name="NVIDIA",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+    universe = AssetUniverse(assets=[asset])
+    discovery = FakeDiscovery(
+        [
+            DiscoveryScore(
+                asset=asset,
+                score=88.0,
+            )
+        ]
+    )
+
+    candidate = MarketDiscoverySource(
+        discovery=discovery,
+        universe=universe,
+    ).discover()[0]
+
+    assert candidate.metadata["asset_type"] == AssetType.STOCK.value
+    assert candidate.metadata["market"] == "US"
+    assert candidate.metadata["currency"] == "USD"
