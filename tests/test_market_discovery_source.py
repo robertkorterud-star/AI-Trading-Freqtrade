@@ -147,6 +147,9 @@ def test_market_discovery_source_carries_discovery_evidence():
     ).discover()[0]
 
     assert candidate.metadata == {
+        "asset_type": "stock",
+        "market": "NASDAQ",
+        "currency": "USD",
         "volume_score": 90,
         "momentum_score": 80,
         "volatility_score": 70,
