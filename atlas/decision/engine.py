@@ -131,6 +131,12 @@ class DecisionEngine:
             evidence=evidence,
             reasoning=list(getattr(signal, "reasoning", [])),
             signal_confidence=confidence,
+            metadata={
+                "algorithm": getattr(signal, "algorithm", "unknown"),
+                "timeframe": getattr(signal, "timeframe", ""),
+                "score": score,
+                "expected_edge": getattr(signal, "expected_edge", None),
+            },
         )
 
     @staticmethod
