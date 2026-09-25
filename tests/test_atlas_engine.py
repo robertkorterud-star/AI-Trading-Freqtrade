@@ -2458,3 +2458,50 @@ def test_analyze_candidates_classifies_regime_from_normalized_market_data():
     result = engine.analyze_candidates()[0]
 
     assert result["market_regime"] is regime_result
+
+
+def test_decide_candidates_uses_classified_market_regime_for_strategy_memory():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.regime import MarketRegime
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+    market_regime = SimpleNamespace(
+        regime=MarketRegime.SIDEWAYS,
+    )
+    regime_decision = object()
+    calls = []
+
+    engine.analyze_candidates = lambda **kwargs: [
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 91.0,
+            "analysis": [],
+            "algorithm_signals": [],
+            "fusion_result": None,
+            "market_regime": market_regime,
+            "market_snapshot": SimpleNamespace(price=100.0),
+        }
+    ]
+    engine._evaluate_candidate_decision = lambda *args, **kwargs: DecisionResult(
+        symbol="BTC-USD",
+        action=Action.HOLD,
+        confidence=50.0,
+        evidence=50.0,
+    )
+
+    def get_regime_memory_decision(symbol, regime):
+        calls.append((symbol, regime))
+        return regime_decision
+
+    engine.get_regime_memory_decision = get_regime_memory_decision
+    engine.integrate_regime_decision = lambda decision, context: decision
+
+    result = engine.decide_candidates()[0]
+
+    assert calls == [("BTC-USD", MarketRegime.SIDEWAYS.value)]
+    assert result["market_regime"] is market_regime
+    assert result["regime_decision"] is regime_decision
