@@ -2559,6 +2559,9 @@ def test_start_persists_fusion_evidence_used_by_decision():
         capital_limit=5000.0,
         ai_provider="test",
     )
+    engine.asset_universe = SimpleNamespace(
+        all=lambda: [],
+    )
     engine.prediction_evaluator = SimpleNamespace(
         evaluate_ready=lambda **kwargs: [],
     )
