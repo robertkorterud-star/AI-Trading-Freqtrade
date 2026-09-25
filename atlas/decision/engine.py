@@ -282,10 +282,13 @@ class DecisionEngine:
             )
             if position_decision.action is PositionAction.EXIT:
                 action = Action.SELL
-            elif position_decision.action in {
-                PositionAction.HOLD,
-                PositionAction.REDUCE,
-            }:
+            elif position_decision.action is PositionAction.REDUCE:
+                action = Action.SELL
+                current_position = max(
+                    0.0,
+                    current_position - position_decision.target_position,
+                )
+            elif position_decision.action is PositionAction.HOLD:
                 action = Action.HOLD
 
         risk_assessment: RiskAssessment | None = None
