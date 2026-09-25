@@ -250,3 +250,21 @@ def test_snapshot_builder_preserves_complete_final_risk_and_portfolio_context():
         "available_capacity_value": 2500.0,
         "reasons": ["Within portfolio limits."],
     }
+
+
+
+def test_snapshot_builder_preserves_final_decision_return_and_ensemble_context():
+    decision = make_decision()
+    decision.expected_return = 0.025
+    decision.ensemble_action = Action.BUY
+    decision.ensemble_confidence = 87.5
+
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=make_results(),
+        decision=decision,
+    )
+
+    assert snapshot.decision["expected_return"] == 0.025
+    assert snapshot.decision["ensemble_action"] == "BUY"
+    assert snapshot.decision["ensemble_confidence"] == 87.5
