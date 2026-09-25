@@ -578,6 +578,65 @@ def test_atlas_engine_analysis_forwards_horizon_to_discovery():
     assert received["horizon"] == TradingHorizon.SWING
 
 
+def test_atlas_engine_analysis_uses_horizon_market_snapshot_for_algorithm_evidence():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.asset import Asset
+    from atlas.market.asset_type import AssetType
+    from atlas.market.trading_horizon import TradingHorizon
+
+    engine = object.__new__(AtlasEngine)
+    candidate = SimpleNamespace(
+        symbol="NVDA",
+        score=91.0,
+        asset=Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        ),
+    )
+    normalized_snapshot = object()
+    received = {}
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: [],
+    )
+
+    def snapshot_for_horizon(symbol, horizon, limit):
+        received["snapshot"] = (symbol, horizon, limit)
+        return normalized_snapshot
+
+    engine.market_data = SimpleNamespace(
+        snapshot_for_horizon=snapshot_for_horizon,
+    )
+
+    class AlgorithmPipelineStub:
+        def analyze(self, symbol, snapshot):
+            received["algorithm"] = (symbol, snapshot)
+            return None, []
+
+    engine.algorithm_pipeline = AlgorithmPipelineStub()
+    engine._get_market_snapshot = lambda symbol: object()
+
+    engine.analyze_candidates(
+        horizon=TradingHorizon.SWING,
+    )
+
+    assert received["snapshot"] == (
+        "NVDA",
+        TradingHorizon.SWING,
+        100,
+    )
+    assert received["algorithm"] == (
+        "NVDA",
+        normalized_snapshot,
+    )
+
+
 def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
     from atlas.market.asset import Asset
     from atlas.market.asset_discovery import DiscoveryScore
