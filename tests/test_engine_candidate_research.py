@@ -285,3 +285,39 @@ def test_engine_research_candidates_includes_market_discovery(monkeypatch):
     symbols = [c.symbol for c in candidates]
     assert "NVDA" in symbols
     assert "AMD" in symbols
+
+
+def test_engine_research_candidates_forwards_horizon_to_market_discovery(monkeypatch):
+    from atlas.market.trading_horizon import TradingHorizon
+
+    engine = object.__new__(AtlasEngine)
+    engine.config = SimpleNamespace(
+        ai_provider="openai",
+        language="en",
+    )
+    engine.asset_universe = object()
+    engine.candidate_research_service = FakeResearchService()
+
+    class HorizonDiscovery:
+        def __init__(self):
+            self.received_horizon = None
+
+        def discover(self, universe, limit=None, horizon=None):
+            self.received_horizon = horizon
+            return []
+
+    discovery = HorizonDiscovery()
+    engine.asset_discovery = discovery
+
+    monkeypatch.setattr(
+        "atlas.core.engine.AIProviderFactory.create",
+        lambda config: FakeAIProvider(),
+    )
+
+    engine.research_candidates(
+        research="Explicit research.",
+        limit=5,
+        horizon=TradingHorizon.SWING,
+    )
+
+    assert discovery.received_horizon == TradingHorizon.SWING
