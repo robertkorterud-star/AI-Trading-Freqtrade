@@ -259,7 +259,7 @@ class DecisionEngine:
             action = dominant_action
             adaptive_override = True
 
-        if action in {Action.BUY, Action.SELL} and self.position_exit_engine is not None:
+        if action in {Action.BUY, Action.HOLD, Action.SELL} and self.position_exit_engine is not None:
             from atlas.algorithms.position_exit import PositionContext, PositionAction
 
             position_decision = self.position_exit_engine.decide(
