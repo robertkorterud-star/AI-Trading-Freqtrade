@@ -273,7 +273,9 @@ class DecisionEngine:
                     risk_score=0.0,
                 ),
             )
-            if position_decision.action in {
+            if position_decision.action is PositionAction.EXIT:
+                action = Action.SELL
+            elif position_decision.action in {
                 PositionAction.HOLD,
                 PositionAction.REDUCE,
             }:
