@@ -139,3 +139,42 @@ def test_snapshot_builder_preserves_algorithm_signal_metadata():
         "score": 85.0,
         "expected_edge": 0.02,
     }
+
+
+def test_snapshot_builder_preserves_final_risk_and_portfolio_decision_context():
+    from types import SimpleNamespace
+
+    decision = make_decision()
+    decision.risk_assessment = SimpleNamespace(
+        allowed=True,
+        action=Action.BUY,
+        position_size=0.25,
+        position_value=2500.0,
+        risk_level="LOW",
+        reasons=["Within risk limits."],
+    )
+    decision.portfolio_assessment = SimpleNamespace(
+        allowed=True,
+        approved_value=2500.0,
+        reasons=["Within portfolio limits."],
+    )
+
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=make_results(),
+        decision=decision,
+    )
+
+    assert snapshot.decision["risk_assessment"] == {
+        "allowed": True,
+        "action": "BUY",
+        "position_size": 0.25,
+        "position_value": 2500.0,
+        "risk_level": "LOW",
+        "reasons": ["Within risk limits."],
+    }
+    assert snapshot.decision["portfolio_assessment"] == {
+        "allowed": True,
+        "approved_value": 2500.0,
+        "reasons": ["Within portfolio limits."],
+    }
