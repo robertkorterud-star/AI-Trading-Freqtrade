@@ -562,11 +562,14 @@ class AtlasEngine:
                 fusion_result=item.get("fusion_result"),
             )
 
+            market_regime = item.get("market_regime")
             regime = getattr(
-                item.get("market_snapshot"),
+                market_regime,
                 "regime",
                 None,
             )
+            if hasattr(regime, "value"):
+                regime = regime.value
 
             regime_decision = None
 
@@ -601,6 +604,7 @@ class AtlasEngine:
                     "market_snapshot": item.get(
                         "market_snapshot"
                     ),
+                    "market_regime": market_regime,
                     "decision": decision,
                     "regime_decision": regime_decision,
                 }
