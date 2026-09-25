@@ -320,3 +320,34 @@ def test_manager_normalizes_article_fields():
             "published_at": "20260914100000",
         }
     ]
+
+
+def test_market_research_normalizes_sentiment_like_symbol_news(monkeypatch):
+    monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "test-key")
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "feed": [
+                    {
+                        "title": "Markets react to new catalyst",
+                        "source": "Example News",
+                        "summary": "Broad market catalyst.",
+                        "url": "https://example.com/market",
+                        "overall_sentiment_label": "Somewhat-Bullish",
+                        "time_published": "20260914100000",
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(
+        "atlas.news.alpha_vantage.requests.get",
+        lambda *args, **kwargs: Response(),
+    )
+
+    result = AlphaVantageNewsAdapter().market_news(limit=10)
+
+    assert result[0]["sentiment"] == "positive"
