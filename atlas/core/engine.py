@@ -348,6 +348,7 @@ class AtlasEngine:
         research: str = "",
         limit: int = 10,
         minimum_score: float = 0.0,
+        horizon: TradingHorizon | None = None,
     ):
         """Discover research candidates using AI and market discovery."""
 
@@ -372,6 +373,7 @@ class AtlasEngine:
             universe=self.asset_universe,
             limit=limit,
             minimum_score=minimum_score,
+            horizon=horizon,
         )
 
         pool = CandidatePool(
