@@ -978,6 +978,13 @@ class AtlasEngine:
             )
 
             if exec_result is not None:
+                usd_nok = self._get_usd_nok_rate().rate
+                self._sync_position_peak_after_execution(
+                    symbol=symbol,
+                    action=decision.action,
+                    usd_nok=usd_nok,
+                )
+
                 self.event_repository.publish(
                     "TRADE_EXECUTED",
                     {
