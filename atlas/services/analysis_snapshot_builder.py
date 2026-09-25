@@ -122,6 +122,16 @@ class AnalysisSnapshotBuilder:
                     "position_size": float(risk_assessment.position_size),
                     "position_value": float(risk_assessment.position_value),
                     "risk_level": risk_assessment.risk_level,
+                    "stop_loss_price": (
+                        float(risk_assessment.stop_loss_price)
+                        if risk_assessment.stop_loss_price is not None
+                        else None
+                    ),
+                    "take_profit_price": (
+                        float(risk_assessment.take_profit_price)
+                        if risk_assessment.take_profit_price is not None
+                        else None
+                    ),
                     "reasons": list(risk_assessment.reasons),
                 }
                 if risk_assessment is not None
@@ -130,7 +140,23 @@ class AnalysisSnapshotBuilder:
             "portfolio_assessment": (
                 {
                     "allowed": bool(portfolio_assessment.allowed),
+                    "requested_value": float(portfolio_assessment.requested_value),
                     "approved_value": float(portfolio_assessment.approved_value),
+                    "current_exposure_value": float(
+                        portfolio_assessment.current_exposure_value
+                    ),
+                    "resulting_exposure_value": float(
+                        portfolio_assessment.resulting_exposure_value
+                    ),
+                    "current_exposure_pct": float(
+                        portfolio_assessment.current_exposure_pct
+                    ),
+                    "resulting_exposure_pct": float(
+                        portfolio_assessment.resulting_exposure_pct
+                    ),
+                    "available_capacity_value": float(
+                        portfolio_assessment.available_capacity_value
+                    ),
                     "reasons": list(portfolio_assessment.reasons),
                 }
                 if portfolio_assessment is not None
