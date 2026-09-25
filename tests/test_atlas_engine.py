@@ -551,6 +551,33 @@ def test_atlas_engine_discovery_forwards_horizon_context(monkeypatch):
     assert selected[0].horizon == TradingHorizon.SWING
 
 
+def test_atlas_engine_analysis_forwards_horizon_to_discovery():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.trading_horizon import TradingHorizon
+
+    engine = object.__new__(AtlasEngine)
+    received = {}
+
+    def fake_discover_candidates(
+        limit=3,
+        minimum_score=0.0,
+        horizon=None,
+    ):
+        received["horizon"] = horizon
+        return []
+
+    engine.discover_candidates = fake_discover_candidates
+
+    result = engine.analyze_candidates(
+        horizon=TradingHorizon.SWING,
+    )
+
+    assert result == []
+    assert received["horizon"] == TradingHorizon.SWING
+
+
 def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
     from atlas.market.asset import Asset
     from atlas.market.asset_discovery import DiscoveryScore
