@@ -2933,9 +2933,6 @@ def test_select_best_candidate_prioritizes_sell_exit_over_new_buy():
 
 
 def test_atlas_engine_restores_persisted_position_peak_across_restart(tmp_path):
-    from atlas.config import AtlasConfig
-    from atlas.core.engine import AtlasEngine
-
     config = AtlasConfig(database_path=str(tmp_path / "atlas.db"))
 
     first = AtlasEngine(config)
