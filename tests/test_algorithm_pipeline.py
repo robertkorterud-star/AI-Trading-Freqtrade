@@ -248,3 +248,53 @@ def test_pipeline_uses_candles_matching_each_algorithm_timeframe():
     assert len(signals) == 2
     assert five.received_candles == five_minute
     assert fifteen.received_candles == fifteen_minute
+
+
+def test_pipeline_does_not_substitute_base_candles_for_missing_explicit_timeframe():
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    class CapturingAlgorithm:
+        name = "five_minute_only"
+        timeframe = "5m"
+
+        def __init__(self):
+            self.calls = []
+
+        def generate_signal(self, symbol, candles):
+            self.calls.append((symbol, candles))
+            raise AssertionError(
+                "5m algorithm must not receive fallback base candles"
+            )
+
+    def candle(timestamp, close):
+        return Candle(
+            timestamp=timestamp,
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=1.0,
+        )
+
+    daily = (candle(1.0, 100.0),)
+    hourly = (candle(2.0, 101.0),)
+
+    snapshot = MarketSnapshot.from_candles(
+        "NVDA",
+        daily,
+        timeframe_candles={
+            "1h": hourly,
+        },
+    )
+
+    algorithm = CapturingAlgorithm()
+    registry = AlgorithmRegistry()
+    registry.register(algorithm)
+
+    signals = AlgorithmPipeline(registry).generate_signals(
+        "NVDA",
+        snapshot,
+    )
+
+    assert signals == []
+    assert algorithm.calls == []
