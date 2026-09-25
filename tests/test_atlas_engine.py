@@ -2818,3 +2818,73 @@ def test_decision_runtime_marks_all_open_positions_to_market_before_risk():
         }
     ]
     assert captured["current_exposure_pct"] == 83.33333333333334
+
+
+def test_decision_runtime_preserves_historical_peak_equity_across_restart():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    analysis = [
+        AnalysisResult(
+            analyst="Technical Analyst",
+            symbol="BTC-USD",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+        )
+    ]
+
+    class PortfolioServiceStub:
+        def update_prices(self, prices):
+            pass
+
+        def as_dict(self, usd_nok):
+            return {
+                "total_equity_nok": 8000.0,
+                "positions_value_nok": 0.0,
+                "positions": [],
+            }
+
+    class DecisionEngineStub:
+        def __init__(self):
+            self.drawdown_pct = None
+
+        def evaluate(
+            self,
+            results,
+            *,
+            price=None,
+            equity=None,
+            current_exposure_pct=0.0,
+            drawdown_pct=0.0,
+            portfolio_positions=(),
+            current_position=0.0,
+            last_buy_price=None,
+            average_price=None,
+        ):
+            self.drawdown_pct = drawdown_pct
+            return "decision"
+
+    engine = object.__new__(AtlasEngine)
+    engine._get_usd_nok_rate = lambda: SimpleNamespace(rate=10.0)
+    engine._peak_equity_nok = None
+    engine.portfolio_service = PortfolioServiceStub()
+    engine.market_data = SimpleNamespace()
+    engine.decision_engine = DecisionEngineStub()
+
+    # A restarted engine must retain the previous paper-account peak rather
+    # than rebasing drawdown to the first post-restart equity observation.
+    engine.paper_account_state_repository = SimpleNamespace(
+        get_peak_equity_nok=lambda: 10000.0,
+    )
+
+    result = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=SimpleNamespace(price=100.0),
+    )
+
+    assert result == "decision"
+    assert engine.decision_engine.drawdown_pct == 20.0
