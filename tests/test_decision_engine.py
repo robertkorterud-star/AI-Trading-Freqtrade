@@ -798,6 +798,43 @@ def test_decision_engine_applies_position_exit_engine_to_sell():
 
 
 
+def test_decision_engine_preserves_partial_reduce_quantity():
+    from atlas.algorithms.position_exit import PositionExitEngine
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.risk.manager import RiskManager
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.SELL,
+        confidence=50.0,
+        evidence=50.0,
+        reasoning=["Moderate SELL."],
+    )
+
+    engine = DecisionEngine(
+        risk_manager=RiskManager(),
+        position_exit_engine=PositionExitEngine(
+            entry_confidence=0.65,
+            reduce_confidence=0.45,
+            exit_confidence=0.30,
+        ),
+    )
+
+    decision = engine.evaluate(
+        [result],
+        price=100.0,
+        equity=10_000.0,
+        current_position=1.0,
+        last_buy_price=100.0,
+        average_price=100.0,
+    )
+
+    assert decision.action is Action.SELL
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.position_size == pytest.approx(0.5)
+
+
 def test_decision_engine_preserves_strong_sell_exit():
     from atlas.algorithms.position_exit import PositionExitEngine
     from atlas.models.analysis_result import AnalysisResult
