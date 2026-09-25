@@ -51,3 +51,27 @@ def test_candidate_research_context_is_bounded():
     assert "Headline 2" in rendered
     assert "Headline 3" not in rendered
     assert len(rendered) < 10000
+
+
+def test_candidate_research_context_preserves_normalized_news_evidence():
+    context = CandidateResearchContext(
+        articles=(
+            {
+                "source": "Reuters",
+                "published_at": "2026-09-14T10:00:00",
+                "title": "Nvidia demand accelerates",
+                "summary": "Strong semiconductor demand.",
+                "url": "https://example.com/nvda",
+                "sentiment": "positive",
+            },
+        )
+    )
+
+    rendered = context.as_text()
+
+    assert "SOURCE: Reuters" in rendered
+    assert "PUBLISHED: 2026-09-14T10:00:00" in rendered
+    assert "TITLE: Nvidia demand accelerates" in rendered
+    assert "SUMMARY: Strong semiconductor demand." in rendered
+    assert "URL: https://example.com/nvda" in rendered
+    assert "SENTIMENT: positive" in rendered
