@@ -66,6 +66,9 @@ from atlas.database.schema import initialize_database
 from atlas.database.outcome_repository import OutcomeRepository
 from atlas.database.prediction_repository import PredictionRepository
 from atlas.database.trade_repository import TradeRepository
+from atlas.database.paper_account_state_repository import (
+    PaperAccountStateRepository,
+)
 from atlas.database.event_repository import AtlasEventRepository
 from atlas.database.strategy_memory_repository import (
     StrategyMemoryRepository,
@@ -236,8 +239,13 @@ class AtlasEngine:
         )
 
 
-        # Track peak equity in NOK for drawdown calculation (mirror DryRunLoop)
-        self._peak_equity_nok: float | None = None
+        # Persist paper-account peak equity so drawdown survives process restarts.
+        self.paper_account_state_repository = PaperAccountStateRepository(
+            self.database
+        )
+        self._peak_equity_nok: float | None = (
+            self.paper_account_state_repository.get_peak_equity_nok()
+        )
 
         # Modern execution wiring: pass ExchangeRateService to adapter so
         # it fetches USD/NOK at execute-time (no frozen rate at init).
@@ -1087,10 +1095,29 @@ class AtlasEngine:
         if "drawdown_pct" in params:
             _, portfolio_snapshot = get_runtime_context()
             total_equity_nok = float(portfolio_snapshot.get("total_equity_nok", 0.0))
-            if self._peak_equity_nok is None:
-                self._peak_equity_nok = total_equity_nok
-            else:
-                self._peak_equity_nok = max(self._peak_equity_nok, total_equity_nok)
+            persisted_peak = None
+            if self._peak_equity_nok is None and hasattr(
+                self, "paper_account_state_repository"
+            ):
+                persisted_peak = (
+                    self.paper_account_state_repository.get_peak_equity_nok()
+                )
+            previous_peak = (
+                self._peak_equity_nok
+                if self._peak_equity_nok is not None
+                else persisted_peak
+            )
+            self._peak_equity_nok = max(
+                previous_peak if previous_peak is not None else total_equity_nok,
+                total_equity_nok,
+            )
+            if (
+                previous_peak is None
+                or self._peak_equity_nok > previous_peak
+            ) and hasattr(self, "paper_account_state_repository"):
+                self.paper_account_state_repository.set_peak_equity_nok(
+                    self._peak_equity_nok
+                )
             drawdown_pct = (
                 max(0.0, (self._peak_equity_nok - total_equity_nok) / self._peak_equity_nok * 100.0)
                 if self._peak_equity_nok and self._peak_equity_nok > 0.0
