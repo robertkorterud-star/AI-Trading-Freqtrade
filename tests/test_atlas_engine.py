@@ -2604,6 +2604,6 @@ def test_start_persists_fusion_evidence_used_by_decision():
 
     assert analyst_result in persisted_results
     assert any(
-        result.analyst == "algorithm:fusion"
+        result.analyst == "signal_fusion"
         for result in persisted_results
     )
