@@ -288,6 +288,7 @@ class DecisionEngine:
                 equity=equity,
                 current_exposure_pct=current_exposure_pct,
                 drawdown_pct=drawdown_pct,
+                current_position=current_position,
             )
             self.last_risk_assessment = risk_assessment
             if not risk_assessment.allowed and action in {Action.BUY, Action.SELL}:
