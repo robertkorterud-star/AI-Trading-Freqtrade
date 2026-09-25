@@ -795,3 +795,60 @@ def test_decision_engine_applies_position_exit_engine_to_sell():
     )
 
     assert decision.action is Action.HOLD
+
+
+
+def test_decision_engine_preserves_strong_sell_exit():
+    from atlas.algorithms.position_exit import PositionExitEngine
+    from atlas.models.analysis_result import AnalysisResult
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.SELL,
+        confidence=90.0,
+        evidence=90.0,
+        reasoning=["Strong SELL."],
+    )
+
+    engine = DecisionEngine(
+        position_exit_engine=PositionExitEngine()
+    )
+
+    decision = engine.evaluate(
+        [result],
+        price=90.0,
+        current_position=1.0,
+        last_buy_price=100.0,
+        average_price=100.0,
+    )
+
+    assert decision.action is Action.SELL
+
+
+def test_decision_engine_protective_exit_overrides_buy_signal():
+    from atlas.algorithms.position_exit import PositionExitEngine
+    from atlas.models.analysis_result import AnalysisResult
+
+    result = AnalysisResult(
+        symbol="BTC-USD",
+        analyst="Technical Analyst",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        reasoning=["Strong BUY despite price decline."],
+    )
+
+    engine = DecisionEngine(
+        position_exit_engine=PositionExitEngine(stop_loss=0.08)
+    )
+
+    decision = engine.evaluate(
+        [result],
+        price=90.0,
+        current_position=1.0,
+        last_buy_price=100.0,
+        average_price=100.0,
+    )
+
+    assert decision.action is Action.SELL
