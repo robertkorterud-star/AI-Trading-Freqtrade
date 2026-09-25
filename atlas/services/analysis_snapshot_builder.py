@@ -60,6 +60,9 @@ class AnalysisSnapshotBuilder:
 
     @staticmethod
     def _serialize_decision(decision):
+        risk_assessment = getattr(decision, "risk_assessment", None)
+        portfolio_assessment = getattr(decision, "portfolio_assessment", None)
+
         return {
             "symbol": decision.symbol,
             "action": decision.action.value,
@@ -111,6 +114,27 @@ class AnalysisSnapshotBuilder:
             ),
             "reasoning": list(
                 decision.reasoning
+            ),
+            "risk_assessment": (
+                {
+                    "allowed": bool(risk_assessment.allowed),
+                    "action": risk_assessment.action.value,
+                    "position_size": float(risk_assessment.position_size),
+                    "position_value": float(risk_assessment.position_value),
+                    "risk_level": risk_assessment.risk_level,
+                    "reasons": list(risk_assessment.reasons),
+                }
+                if risk_assessment is not None
+                else None
+            ),
+            "portfolio_assessment": (
+                {
+                    "allowed": bool(portfolio_assessment.allowed),
+                    "approved_value": float(portfolio_assessment.approved_value),
+                    "reasons": list(portfolio_assessment.reasons),
+                }
+                if portfolio_assessment is not None
+                else None
             ),
         }
 
