@@ -51,8 +51,30 @@ class CandidatePool:
 
                 existing = candidates.get(symbol)
 
-                if existing is None or normalized.score > existing.score:
+                if existing is None:
                     candidates[symbol] = normalized
+                    continue
+
+                if normalized.score > existing.score:
+                    metadata = dict(existing.metadata)
+                    metadata.update(normalized.metadata)
+                    candidates[symbol] = Candidate(
+                        symbol=normalized.symbol,
+                        source=normalized.source,
+                        score=normalized.score,
+                        reason=normalized.reason,
+                        metadata=metadata,
+                    )
+                else:
+                    metadata = dict(normalized.metadata)
+                    metadata.update(existing.metadata)
+                    candidates[symbol] = Candidate(
+                        symbol=existing.symbol,
+                        source=existing.source,
+                        score=existing.score,
+                        reason=existing.reason,
+                        metadata=metadata,
+                    )
 
         return sorted(
             candidates.values(),
