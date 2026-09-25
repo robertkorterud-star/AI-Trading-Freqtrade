@@ -2184,3 +2184,53 @@ def test_decision_boundary_uses_fusion_instead_of_raw_algorithm_signals():
         result.analyst not in {"algorithm:momentum", "algorithm:trend"}
         for result in captured["results"]
     )
+
+
+def test_atlas_engine_analysis_preserves_discovery_evidence():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryInput, DiscoveryScore
+    from atlas.market.asset_type import AssetType
+    from atlas.market.trading_horizon import TradingHorizon
+
+    engine = object.__new__(AtlasEngine)
+    discovery_input = DiscoveryInput(
+        volume_score=80.0,
+        momentum_score=90.0,
+        volatility_score=70.0,
+        news_score=60.0,
+        liquidity_score=85.0,
+    )
+    candidate = DiscoveryScore(
+        asset=Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        ),
+        score=77.0,
+        discovery_input=discovery_input,
+        horizon=TradingHorizon.DAY_TRADE,
+    )
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: [],
+    )
+    engine.market_data = SimpleNamespace(
+        snapshot_for_horizon=lambda symbol, horizon, limit: object(),
+    )
+    engine.algorithm_pipeline = SimpleNamespace(
+        analyze=lambda symbol, snapshot: (None, []),
+    )
+    engine._get_market_snapshot = lambda symbol: object()
+
+    result = engine.analyze_candidates(
+        horizon=TradingHorizon.DAY_TRADE,
+    )[0]
+
+    assert result["discovery_input"] is discovery_input
+    assert result["horizon"] == TradingHorizon.DAY_TRADE
