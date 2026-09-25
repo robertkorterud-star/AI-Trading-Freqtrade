@@ -19,8 +19,10 @@ class CandidateDecisionRanker:
     NET_RETURN_WEIGHT = 0.35
 
     ACTION_PRIORITY = {
-        Action.BUY: 2,
-        Action.SELL: 1,
+        # SELL is a long-position exit in the current execution contract.
+        # Risk-reducing exits must be considered before new BUY exposure.
+        Action.SELL: 2,
+        Action.BUY: 1,
         Action.HOLD: 0,
     }
 
