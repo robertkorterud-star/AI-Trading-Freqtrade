@@ -77,3 +77,25 @@ def test_orchestrator_delegates_final_decision_to_canonical_engine():
     assert result.decision.action.value == "buy"
     assert result.decision.confidence == 0.90
     assert result.decision.score == pytest.approx(0.72)
+
+
+def test_algorithm_signal_adapter_preserves_structured_metadata():
+    signal = AlgorithmSignal(
+        algorithm="trend",
+        symbol="BTC-USD",
+        timeframe="5m",
+        action=Action.BUY,
+        score=90.0,
+        confidence=0.90,
+        expected_edge=0.03,
+        reasoning=["Strong trend confirmation."],
+    )
+
+    result = DecisionEngine._algorithm_signal_to_analysis(signal)
+
+    assert result.metadata == {
+        "algorithm": "trend",
+        "timeframe": "5m",
+        "score": 90.0,
+        "expected_edge": 0.03,
+    }
