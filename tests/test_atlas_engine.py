@@ -3059,3 +3059,88 @@ def test_engine_clears_persisted_peak_after_full_paper_sell():
     )
 
     assert deleted == ["BTC-USD"]
+
+
+
+def test_start_syncs_position_peak_after_executed_paper_sell():
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    class LoggerStub:
+        def info(self, message):
+            pass
+
+    decision = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.SELL,
+        confidence=90.0,
+        evidence=90.0,
+    )
+
+    engine.logger = LoggerStub()
+    engine.config = SimpleNamespace(
+        version="test",
+        trading_mode="paper",
+        capital_limit=5000.0,
+        ai_provider="test",
+        paper_trading=True,
+    )
+    engine.asset_universe = SimpleNamespace(all=lambda: [])
+    engine.prediction_evaluator = SimpleNamespace(
+        evaluate_ready=lambda **kwargs: [],
+    )
+    engine.decide_candidates = lambda **kwargs: [
+        {
+            "symbol": "BTC-USD",
+            "decision": decision,
+            "analysis": [object()],
+        }
+    ]
+    engine.select_best_candidate = lambda candidates: candidates[0]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: [object()],
+    )
+    engine._get_market_snapshot = lambda symbol: SimpleNamespace(
+        price=100.0,
+    )
+    engine.analysis_snapshot_builder = SimpleNamespace(
+        build=lambda **kwargs: SimpleNamespace(database_id=None),
+    )
+    engine.analysis_snapshot_repository = SimpleNamespace(
+        save=lambda snapshot: None,
+    )
+    engine.event_repository = SimpleNamespace(
+        publish=lambda *args, **kwargs: None,
+    )
+    engine.report = SimpleNamespace(
+        print_decision=lambda decision: None,
+    )
+    engine.prediction_tracker = SimpleNamespace(
+        record=lambda **kwargs: None,
+    )
+    engine.decision_engine = SimpleNamespace(
+        last_intelligence=None,
+    )
+    engine.decision_execution_service = SimpleNamespace(
+        execute=lambda *args, **kwargs: {"quantity": 1.0},
+    )
+
+    sync_calls = []
+    engine._get_usd_nok_rate = lambda: SimpleNamespace(rate=10.0)
+    engine._sync_position_peak_after_execution = lambda **kwargs: sync_calls.append(
+        kwargs
+    )
+
+    engine.start()
+
+    assert sync_calls == [
+        {
+            "symbol": "BTC-USD",
+            "action": Action.SELL,
+            "usd_nok": 10.0,
+        }
+    ]
