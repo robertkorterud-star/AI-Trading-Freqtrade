@@ -33,3 +33,16 @@ def test_paper_account_state_repository_updates_peak_equity(tmp_path):
     repository.set_peak_equity_nok(12000.0)
 
     assert repository.get_peak_equity_nok() == 12000.0
+
+
+
+def test_paper_account_state_repository_round_trip_position_peak_price(tmp_path):
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+
+    repository = PaperAccountStateRepository(database)
+
+    repository.set_position_peak_price_usd("BTC-USD", 120.0)
+
+    assert repository.get_position_peak_price_usd("BTC-USD") == 120.0
+    assert repository.get_position_peak_price_usd("ETH-USD") is None
