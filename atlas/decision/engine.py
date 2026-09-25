@@ -85,6 +85,7 @@ class DecisionEngine:
         current_position: float = 0.0,
         last_buy_price: float | None = None,
         average_price: float | None = None,
+        peak_price: float | None = None,
     ) -> DecisionResult:
         """Evaluate algorithm signals through the canonical DecisionEngine.
 
@@ -112,6 +113,7 @@ class DecisionEngine:
             current_position=current_position,
             last_buy_price=last_buy_price,
             average_price=average_price,
+            peak_price=peak_price,
         )
 
     @staticmethod
@@ -176,6 +178,7 @@ class DecisionEngine:
         current_position: float = 0.0,
         last_buy_price: float | None = None,
         average_price: float | None = None,
+        peak_price: float | None = None,
     ) -> DecisionResult:
         if not results:
             raise ValueError("No analysis results provided.")
@@ -268,7 +271,11 @@ class DecisionEngine:
                     current_position=current_position,
                     entry_price=last_buy_price,
                     current_price=price,
-                    peak_price=average_price,
+                    peak_price=(
+                        peak_price
+                        if peak_price is not None
+                        else average_price
+                    ),
                     confidence=summary["confidence"] / 100.0,
                     risk_score=0.0,
                 ),
