@@ -168,3 +168,42 @@ def test_candidate_pool_does_not_mutate_source_metadata():
     result[0].metadata["theme"] = "changed"
 
     assert metadata["theme"] == "semiconductors"
+
+
+def test_candidate_pool_preserves_complementary_metadata_for_duplicate_symbol():
+    market = FakeSource(
+        [
+            Candidate(
+                symbol="NVDA",
+                source="market_discovery",
+                score=70,
+                metadata={
+                    "asset_type": "stock",
+                    "horizon": "day_trade",
+                },
+            )
+        ]
+    )
+    ai = FakeSource(
+        [
+            Candidate(
+                symbol="NVDA",
+                source="ai_research",
+                score=90,
+                reason="Strong AI catalyst",
+                metadata={"theme": "AI infrastructure"},
+            )
+        ]
+    )
+
+    result = CandidatePool([market, ai]).collect()
+
+    assert len(result) == 1
+    assert result[0].score == 90
+    assert result[0].source == "ai_research"
+    assert result[0].reason == "Strong AI catalyst"
+    assert result[0].metadata == {
+        "asset_type": "stock",
+        "horizon": "day_trade",
+        "theme": "AI infrastructure",
+    }
