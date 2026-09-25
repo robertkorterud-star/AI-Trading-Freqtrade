@@ -178,3 +178,59 @@ def test_snapshot_builder_preserves_final_risk_and_portfolio_decision_context():
         "approved_value": 2500.0,
         "reasons": ["Within portfolio limits."],
     }
+
+
+
+def test_snapshot_builder_preserves_complete_final_risk_and_portfolio_context():
+    from types import SimpleNamespace
+
+    decision = make_decision()
+    decision.risk_assessment = SimpleNamespace(
+        allowed=True,
+        action=Action.BUY,
+        position_size=0.25,
+        position_value=2500.0,
+        risk_level="LOW",
+        stop_loss_price=90.0,
+        take_profit_price=120.0,
+        reasons=["Within risk limits."],
+    )
+    decision.portfolio_assessment = SimpleNamespace(
+        allowed=True,
+        requested_value=3000.0,
+        approved_value=2500.0,
+        current_exposure_value=1000.0,
+        resulting_exposure_value=3500.0,
+        current_exposure_pct=10.0,
+        resulting_exposure_pct=35.0,
+        available_capacity_value=2500.0,
+        reasons=["Within portfolio limits."],
+    )
+
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=make_results(),
+        decision=decision,
+    )
+
+    assert snapshot.decision["risk_assessment"] == {
+        "allowed": True,
+        "action": "BUY",
+        "position_size": 0.25,
+        "position_value": 2500.0,
+        "risk_level": "LOW",
+        "stop_loss_price": 90.0,
+        "take_profit_price": 120.0,
+        "reasons": ["Within risk limits."],
+    }
+    assert snapshot.decision["portfolio_assessment"] == {
+        "allowed": True,
+        "requested_value": 3000.0,
+        "approved_value": 2500.0,
+        "current_exposure_value": 1000.0,
+        "resulting_exposure_value": 3500.0,
+        "current_exposure_pct": 10.0,
+        "resulting_exposure_pct": 35.0,
+        "available_capacity_value": 2500.0,
+        "reasons": ["Within portfolio limits."],
+    }
