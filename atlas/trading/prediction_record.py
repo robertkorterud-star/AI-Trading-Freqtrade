@@ -19,6 +19,7 @@ class PredictionRecord:
     price_usd: float
     timestamp: datetime
     database_id: int | None = None
+    analysis_snapshot_id: int | None = None
     analysts: list[str] = field(default_factory=list)
     reason: str = ""
     features: dict[str, float] = field(
@@ -43,6 +44,7 @@ class PredictionRecord:
             "timestamp": self.timestamp.isoformat(
                 timespec="seconds"
             ),
+            "analysis_snapshot_id": self.analysis_snapshot_id,
             "analysts": self.analysts,
             "reason": self.reason,
             "features": self.features,
