@@ -886,6 +886,29 @@ class AtlasEngine:
                 symbol
             )
 
+        fusion_result = selected.get(
+            "fusion_result"
+        )
+        algorithm_signals = selected.get(
+            "algorithm_signals"
+        )
+
+        if fusion_result is not None:
+            results = list(results)
+            results.append(
+                DecisionEngine._fusion_result_to_analysis(
+                    fusion_result
+                )
+            )
+        elif algorithm_signals:
+            results = list(results)
+            results.extend(
+                DecisionEngine._algorithm_signal_to_analysis(
+                    signal
+                )
+                for signal in algorithm_signals
+            )
+
         evaluation_snapshot = self._get_market_snapshot(
             symbol
         )
