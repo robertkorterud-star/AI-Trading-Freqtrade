@@ -1092,9 +1092,33 @@ class AtlasEngine:
                 if prices:
                     self.portfolio_service.update_prices(prices)
 
+                updated_portfolio_snapshot = self.portfolio_service.as_dict(
+                    usd_nok
+                )
+                if hasattr(self, "paper_account_state_repository"):
+                    for position in updated_portfolio_snapshot.get(
+                        "positions", []
+                    ):
+                        symbol = position.get("symbol")
+                        peak_price_usd = position.get("peak_price_usd")
+                        if not symbol or peak_price_usd is None:
+                            continue
+                        persisted_peak = (
+                            self.paper_account_state_repository
+                            .get_position_peak_price_usd(symbol)
+                        )
+                        if (
+                            persisted_peak is None
+                            or float(peak_price_usd) > persisted_peak
+                        ):
+                            self.paper_account_state_repository.set_position_peak_price_usd(
+                                symbol,
+                                float(peak_price_usd),
+                            )
+
                 runtime_context = (
                     usd_nok,
-                    self.portfolio_service.as_dict(usd_nok),
+                    updated_portfolio_snapshot,
                 )
             return runtime_context
 
