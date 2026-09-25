@@ -268,3 +268,57 @@ def test_snapshot_builder_preserves_final_decision_return_and_ensemble_context()
     assert snapshot.decision["expected_return"] == 0.025
     assert snapshot.decision["ensemble_action"] == "BUY"
     assert snapshot.decision["ensemble_confidence"] == 87.5
+
+
+
+def test_complete_final_decision_context_survives_repository_round_trip(tmp_path):
+    from types import SimpleNamespace
+
+    from atlas.database.analysis_snapshot_repository import (
+        AnalysisSnapshotRepository,
+    )
+    from atlas.database.connection import Database
+    from atlas.database.schema import initialize_database
+
+    decision = make_decision()
+    decision.expected_return = 0.025
+    decision.ensemble_action = Action.BUY
+    decision.ensemble_confidence = 87.5
+    decision.risk_assessment = SimpleNamespace(
+        allowed=True,
+        action=Action.BUY,
+        position_size=0.25,
+        position_value=2500.0,
+        risk_level="LOW",
+        stop_loss_price=90.0,
+        take_profit_price=120.0,
+        reasons=["Within risk limits."],
+    )
+    decision.portfolio_assessment = SimpleNamespace(
+        allowed=True,
+        requested_value=3000.0,
+        approved_value=2500.0,
+        current_exposure_value=1000.0,
+        resulting_exposure_value=3500.0,
+        current_exposure_pct=10.0,
+        resulting_exposure_pct=35.0,
+        available_capacity_value=2500.0,
+        reasons=["Within portfolio limits."],
+    )
+
+    snapshot = AnalysisSnapshotBuilder().build(
+        symbol="BTC-USD",
+        results=make_results(),
+        decision=decision,
+    )
+
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+    repository = AnalysisSnapshotRepository(database)
+
+    snapshot_id = repository.save(snapshot)
+    restored = repository.get_by_id(snapshot_id)
+
+    assert restored is not None
+    assert restored.decision == snapshot.decision
+    assert decision.analysis_snapshot_id == snapshot_id
