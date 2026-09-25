@@ -411,13 +411,21 @@ class AtlasEngine:
         self,
         limit: int = 3,
         minimum_score: float = 0.0,
+        horizon: TradingHorizon | None = None,
     ):
         """Analyze the selected discovery candidates."""
 
-        candidates = self.discover_candidates(
-            limit=limit,
-            minimum_score=minimum_score,
-        )
+        if horizon is None:
+            candidates = self.discover_candidates(
+                limit=limit,
+                minimum_score=minimum_score,
+            )
+        else:
+            candidates = self.discover_candidates(
+                limit=limit,
+                minimum_score=minimum_score,
+                horizon=horizon,
+            )
 
         results = []
 
