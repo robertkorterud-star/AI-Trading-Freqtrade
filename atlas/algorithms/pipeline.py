@@ -37,8 +37,18 @@ class AlgorithmPipeline:
         signals: list[AlgorithmSignal] = []
 
         for algorithm in self.registry.all():
+            timeframe = getattr(algorithm, "timeframe", None)
+
+            if (
+                not isinstance(market_data, dict)
+                and timeframe is not None
+                and timeframe_candles
+                and timeframe not in timeframe_candles
+            ):
+                continue
+
             candles = timeframe_candles.get(
-                getattr(algorithm, "timeframe", None),
+                timeframe,
                 base_candles,
             )
 
