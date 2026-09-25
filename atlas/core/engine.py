@@ -13,6 +13,7 @@ from atlas.agents.news_analyst import NewsAnalyst
 
 from atlas.decision.engine import DecisionEngine
 from atlas.algorithms.position_exit import PositionExitEngine
+from atlas.algorithms.regime import MarketRegimeEngine
 from atlas.algorithms.pipeline import AlgorithmPipeline
 from atlas.algorithms.registry import AlgorithmRegistry
 from atlas.algorithms import (
@@ -170,6 +171,7 @@ class AtlasEngine:
         ):
             algorithm_registry.register(algorithm)
         self.algorithm_pipeline = AlgorithmPipeline(algorithm_registry)
+        self.market_regime_engine = MarketRegimeEngine()
 
         self.decision_engine = DecisionEngine()
 
@@ -438,6 +440,7 @@ class AtlasEngine:
 
             algorithm_signals = None
             fusion_result = None
+            market_regime = None
             if getattr(candidate, "asset", None) is not None:
                 if horizon is None:
                     normalized_snapshot = self.market_data.snapshot(
@@ -454,6 +457,10 @@ class AtlasEngine:
                 fusion_result, algorithm_signals = self.algorithm_pipeline.analyze(
                     candidate.symbol,
                     normalized_snapshot,
+                )
+                market_regime = self.market_regime_engine.analyze(
+                    candidate.symbol,
+                    list(normalized_snapshot.candles),
                 )
 
             market_snapshot = self._get_market_snapshot(
@@ -477,6 +484,7 @@ class AtlasEngine:
                     "analysis": analysis,
                     "algorithm_signals": algorithm_signals,
                     "fusion_result": fusion_result,
+                    "market_regime": market_regime,
                     "market_snapshot": market_snapshot,
                 }
             )
