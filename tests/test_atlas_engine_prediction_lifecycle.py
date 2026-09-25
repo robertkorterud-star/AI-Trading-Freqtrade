@@ -67,7 +67,7 @@ def test_atlas_engine_records_prediction_before_modern_execution(monkeypatch):
     monkeypatch.setattr(
         engine.decision_execution_service,
         "execute",
-        lambda decision, price=None: events.append("execution"),
+        lambda decision, price=None, analysis_snapshot_id=None: events.append("execution"),
     )
 
     engine.start()
@@ -121,6 +121,7 @@ def test_atlas_engine_passes_saved_snapshot_id_to_modern_execution(monkeypatch):
 
     def save_snapshot(snapshot):
         snapshot.database_id = 321
+        decision.analysis_snapshot_id = 321
 
     monkeypatch.setattr(
         engine.analysis_snapshot_repository,
