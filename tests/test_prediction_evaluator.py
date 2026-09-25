@@ -406,3 +406,61 @@ def test_evaluator_rebuilds_missing_performance_on_restart(
 
     assert rebuilt_technical.predictions == 1
     assert rebuilt_news.predictions == 1
+
+
+def test_evaluator_resolves_original_analysis_snapshot(tmp_path):
+    from atlas.database.analysis_snapshot_repository import (
+        AnalysisSnapshotRepository,
+    )
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+
+    database_path = tmp_path / "atlas.db"
+    tracker = PredictionTracker(storage_path=database_path)
+    snapshot_repository = AnalysisSnapshotRepository(
+        tracker.database
+    )
+    snapshot = AnalysisSnapshot(
+        database_id=None,
+        symbol="NVDA",
+        timestamp=datetime.now(),
+        provider="test",
+        model="test",
+        results=[{"analyst": "Technical Analyst"}],
+        decision={
+            "action": "BUY",
+            "confidence": 88.0,
+            "evidence": 85.0,
+        },
+        intelligence={
+            "action": "BUY",
+            "buy_count": 1,
+            "hold_count": 0,
+            "sell_count": 0,
+            "agreement": 100.0,
+        },
+    )
+    snapshot_repository.save(snapshot)
+
+    decision = DecisionResult(
+        symbol="NVDA",
+        action=Action.BUY,
+        confidence=88.0,
+        evidence=85.0,
+        analysis_snapshot_id=snapshot.database_id,
+    )
+    prediction = tracker.record(
+        decision=decision,
+        price_usd=180.0,
+    )
+
+    evaluator = PredictionEvaluator(
+        predictions=tracker,
+        outcomes=OutcomeTracker(),
+    )
+
+    resolved = evaluator.analysis_snapshot_for(
+        prediction
+    )
+
+    assert resolved.database_id == snapshot.database_id
+    assert resolved.results == snapshot.results
