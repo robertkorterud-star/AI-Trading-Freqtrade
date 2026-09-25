@@ -79,6 +79,7 @@ from atlas.services.analysis_snapshot_builder import (
 from atlas.market.asset_universe import AssetUniverse
 from atlas.market.asset_discovery import AssetDiscoveryService
 from atlas.market.candidate_selector import CandidateSelector
+from atlas.market.trading_horizon import TradingHorizon
 from atlas.market.candidate_decision_ranker import (
     CandidateDecisionRanker,
 )
@@ -386,12 +387,19 @@ class AtlasEngine:
         self,
         limit: int = 3,
         minimum_score: float = 0.0,
+        horizon: TradingHorizon | None = None,
     ):
         'Discover and select assets for deeper analysis.'
 
-        discovered = self.asset_discovery.discover(
-            self.asset_universe,
-        )
+        if horizon is None:
+            discovered = self.asset_discovery.discover(
+                self.asset_universe,
+            )
+        else:
+            discovered = self.asset_discovery.discover(
+                self.asset_universe,
+                horizon=horizon,
+            )
 
         return self.candidate_selector.select(
             discovered,
