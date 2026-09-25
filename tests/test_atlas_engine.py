@@ -2382,3 +2382,39 @@ def test_start_reuses_selected_analysis_for_persistent_snapshot():
     engine.start()
 
     assert captured["results"] == analysis
+
+
+def test_decide_candidates_preserves_market_regime_for_snapshot_lineage():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+    market_snapshot = SimpleNamespace(regime="LOW_VOLATILITY")
+    regime_decision = object()
+
+    engine.analyze_candidates = lambda **kwargs: [
+        {
+            "symbol": "NVDA",
+            "discovery_score": 91.0,
+            "analysis": [],
+            "algorithm_signals": [],
+            "fusion_result": None,
+            "market_snapshot": market_snapshot,
+        }
+    ]
+    engine._evaluate_candidate_decision = lambda *args, **kwargs: DecisionResult(
+        symbol="NVDA",
+        action=Action.HOLD,
+        confidence=50.0,
+        evidence=50.0,
+    )
+    engine.get_regime_memory_decision = lambda symbol, regime: regime_decision
+    engine.integrate_regime_decision = lambda decision, context: decision
+
+    result = engine.decide_candidates()[0]
+
+    assert result["market_snapshot"] is market_snapshot
+    assert result["market_snapshot"].regime == "LOW_VOLATILITY"
