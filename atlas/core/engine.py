@@ -590,6 +590,9 @@ class AtlasEngine:
                     "analysis": item.get(
                         "analysis"
                     ),
+                    "market_snapshot": item.get(
+                        "market_snapshot"
+                    ),
                     "decision": decision,
                     "regime_decision": regime_decision,
                 }
