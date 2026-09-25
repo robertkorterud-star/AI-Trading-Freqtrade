@@ -183,6 +183,11 @@ CREATE TABLE IF NOT EXISTS paper_account_state (
     peak_equity_nok REAL
 );
 
+CREATE TABLE IF NOT EXISTS paper_position_state (
+    symbol TEXT PRIMARY KEY,
+    peak_price_usd REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS atlas_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_type TEXT NOT NULL,
