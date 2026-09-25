@@ -2313,3 +2313,72 @@ def test_atlas_engine_decision_preserves_analysis_evidence():
     result = engine.decide_candidates()[0]
 
     assert result["analysis"] is analysis
+
+
+def test_start_reuses_selected_analysis_for_persistent_snapshot():
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    class LoggerStub:
+        def info(self, message):
+            pass
+
+    engine.logger = LoggerStub()
+    engine.config = SimpleNamespace(
+        version="test",
+        trading_mode="test",
+        capital_limit=1000,
+        ai_provider="test",
+        paper_trading=False,
+    )
+    engine.asset_universe = SimpleNamespace(all=lambda: [])
+    engine.prediction_evaluator = SimpleNamespace(
+        evaluate_ready=lambda **kwargs: [],
+    )
+
+    analysis = [object()]
+    decision = DecisionResult(
+        symbol="NVDA",
+        action=Action.HOLD,
+        confidence=70.0,
+        evidence=70.0,
+    )
+    engine.decide_candidates = lambda **kwargs: [
+        {
+            "symbol": "NVDA",
+            "decision": decision,
+            "analysis": analysis,
+        }
+    ]
+    engine.select_best_candidate = lambda candidates: candidates[0]
+
+    def fail_reanalysis(symbol):
+        raise AssertionError(
+            "selected analysis must be reused instead of re-running analysis"
+        )
+
+    engine.analysis_service = SimpleNamespace(analyze=fail_reanalysis)
+    engine._get_market_snapshot = lambda symbol: SimpleNamespace(price=100.0)
+
+    captured = {}
+
+    class SnapshotBuilderStub:
+        def build(self, **kwargs):
+            captured["results"] = kwargs["results"]
+            return SimpleNamespace(database_id=None)
+
+    engine.analysis_snapshot_builder = SnapshotBuilderStub()
+    engine.analysis_snapshot_repository = SimpleNamespace(save=lambda snapshot: None)
+    engine.event_repository = SimpleNamespace(publish=lambda *args, **kwargs: None)
+    engine.report = SimpleNamespace(print_decision=lambda decision: None)
+    engine.prediction_tracker = SimpleNamespace(record=lambda **kwargs: None)
+    engine.decision_engine = SimpleNamespace(last_intelligence=None)
+
+    engine.start()
+
+    assert captured["results"] is analysis
