@@ -45,6 +45,13 @@ class MarketDiscoverySource:
                 score=float(result.score),
                 reason="Market discovery score",
                 metadata={
+                    "asset_type": (
+                        result.asset.asset_type.value
+                        if hasattr(result.asset.asset_type, "value")
+                        else str(result.asset.asset_type)
+                    ),
+                    "market": result.asset.market,
+                    "currency": result.asset.currency,
                     **(
                         {
                             "session": market_context.session,
