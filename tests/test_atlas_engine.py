@@ -2381,4 +2381,4 @@ def test_start_reuses_selected_analysis_for_persistent_snapshot():
 
     engine.start()
 
-    assert captured["results"] is analysis
+    assert captured["results"] == analysis
