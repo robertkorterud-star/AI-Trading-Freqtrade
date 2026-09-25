@@ -2955,9 +2955,7 @@ def test_atlas_engine_restores_persisted_position_peak_across_restart(tmp_path):
     )
 
     restarted = AtlasEngine(config)
-    restarted.portfolio_service.restore_from_trades(
-        restarted.trading_service._history
-    )
+    restarted.restore_paper_portfolio()
 
     position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
 
