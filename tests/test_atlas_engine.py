@@ -3213,6 +3213,8 @@ def test_atlas_engine_constructor_restores_persisted_position_peak(tmp_path):
 
 
 def test_new_position_does_not_inherit_peak_from_closed_same_symbol(tmp_path):
+    from atlas.models.action import Action
+
     config = AtlasConfig(database_path=str(tmp_path / "atlas.db"))
     config.trading_mode = "paper"
     config.paper_trading = True
