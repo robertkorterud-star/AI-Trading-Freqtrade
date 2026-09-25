@@ -76,3 +76,17 @@ def test_prediction_tracker_clear():
 
     assert tracker.count() == 0
     assert tracker.history() == []
+
+
+def test_prediction_tracker_preserves_analysis_snapshot_reference():
+    tracker = PredictionTracker()
+
+    decision = make_decision()
+    decision.analysis_snapshot_id = 42
+
+    prediction = tracker.record(
+        decision=decision,
+        price_usd=180.25,
+    )
+
+    assert prediction.analysis_snapshot_id == 42
