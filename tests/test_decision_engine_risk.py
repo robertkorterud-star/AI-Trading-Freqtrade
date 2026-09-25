@@ -6,6 +6,17 @@ from atlas.models.analysis_result import AnalysisResult
 from atlas.risk.manager import RiskManager
 
 
+def _sell_result() -> AnalysisResult:
+    return AnalysisResult(
+        analyst="technical",
+        symbol="EQNR.OL",
+        action=Action.SELL,
+        confidence=90.0,
+        evidence=90.0,
+        reasoning=["Strong bearish exit signal."],
+    )
+
+
 def _buy_result() -> AnalysisResult:
     return AnalysisResult(
         analyst="technical",
@@ -56,3 +67,22 @@ def test_risk_enabled_decision_requires_market_and_account_context():
 
     with pytest.raises(ValueError, match="price and equity"):
         engine.evaluate([_buy_result()])
+
+
+def test_sell_exit_is_allowed_when_max_exposure_is_reached():
+    engine = DecisionEngine(
+        risk_manager=RiskManager(max_exposure_pct=50.0),
+    )
+
+    result = engine.evaluate(
+        [_sell_result()],
+        price=100.0,
+        equity=10_000.0,
+        current_exposure_pct=50.0,
+        current_position=10.0,
+    )
+
+    assert result.action is Action.SELL
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.allowed is True
+    assert result.risk_assessment.position_size == pytest.approx(10.0)
