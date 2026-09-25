@@ -178,6 +178,11 @@ CREATE TABLE IF NOT EXISTS atlas_settings (
     value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS paper_account_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    peak_equity_nok REAL
+);
+
 CREATE TABLE IF NOT EXISTS atlas_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_type TEXT NOT NULL,
