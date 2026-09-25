@@ -105,7 +105,7 @@ def test_paper_adapter_sell_respects_portfolio_service_contract():
     # trading history should contain one sell
     assert trading.count() == 1
     trade = trading.history()[0]
-    assert trade.quantity == 2.5
+    assert trade["quantity"] == 2.5
 
 
 def test_paper_adapter_executes_approved_repeated_buy_requests():
