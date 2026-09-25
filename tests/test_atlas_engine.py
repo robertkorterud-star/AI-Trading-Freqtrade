@@ -3176,3 +3176,36 @@ def test_engine_preserves_persisted_peak_after_partial_paper_sell():
     )
 
     assert deleted == []
+
+
+
+def test_atlas_engine_constructor_restores_persisted_position_peak(tmp_path):
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
+    )
+    config.trading_mode = "paper"
+    config.paper_trading = True
+
+    engine = AtlasEngine(config)
+    engine.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+    engine.paper_account_state_repository.set_position_peak_price_usd(
+        "BTC-USD",
+        120.0,
+    )
+
+    restarted = AtlasEngine(config)
+
+    position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
+    assert position["symbol"] == "BTC-USD"
+    assert position["peak_price_usd"] == 120.0
