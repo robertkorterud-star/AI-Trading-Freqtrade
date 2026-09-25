@@ -1014,6 +1014,27 @@ class AtlasEngine:
     def exchange(self, value):
         self._exchange = value
 
+    def _sync_position_peak_after_execution(
+        self,
+        *,
+        symbol,
+        action,
+        usd_nok,
+    ):
+        """Synchronize durable position peak after paper execution."""
+        if action is not Action.SELL:
+            return
+
+        portfolio_snapshot = self.portfolio_service.as_dict(usd_nok)
+        still_open = any(
+            position.get("symbol") == symbol
+            for position in portfolio_snapshot.get("positions", [])
+        )
+        if not still_open:
+            self.paper_account_state_repository.delete_position_peak_price_usd(
+                symbol
+            )
+
     def restore_paper_portfolio(self):
         """Restore paper positions and durable per-position state."""
         self.portfolio_service.restore_from_trades(
