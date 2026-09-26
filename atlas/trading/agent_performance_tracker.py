@@ -279,10 +279,17 @@ class AgentPerformanceTracker:
 
         return performance
 
-    def rebuild_from_predictions(self, predictions):
+    def rebuild_from_predictions(
+        self,
+        predictions,
+        observations_by_prediction=None,
+    ):
         """Replace performance aggregates from evaluated predictions."""
 
         rebuilt = {}
+        observations_by_prediction = (
+            observations_by_prediction or {}
+        )
 
         for prediction in predictions:
             if (
@@ -292,7 +299,24 @@ class AgentPerformanceTracker:
             ):
                 continue
 
-            for analyst in dict.fromkeys(prediction.analysts):
+            observations = observations_by_prediction.get(
+                prediction.database_id
+            )
+
+            if observations is None:
+                observations = [
+                    (
+                        analyst,
+                        prediction.action,
+                        prediction.correct,
+                    )
+                    for analyst in dict.fromkeys(
+                        prediction.analysts
+                    )
+                    if analyst
+                ]
+
+            for analyst, action, correct in observations:
                 if not analyst:
                     continue
 
@@ -306,10 +330,8 @@ class AgentPerformanceTracker:
 
                 performance.predictions += 1
 
-                if prediction.correct:
+                if correct:
                     performance.correct += 1
-
-                action = prediction.action
 
                 if action in {"BUY", "SELL"}:
                     performance.action_predictions[action] = (
@@ -327,7 +349,7 @@ class AgentPerformanceTracker:
                         )
                     )
 
-                    if prediction.correct:
+                    if correct:
                         performance.action_correct[action] += 1
 
         self._performance = rebuilt
