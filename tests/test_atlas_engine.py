@@ -3390,6 +3390,73 @@ def test_new_position_does_not_inherit_peak_from_closed_same_symbol(tmp_path):
     assert position["peak_price_usd"] == 90.0
 
 
+
+def test_restart_reconciles_stale_peak_before_new_position_same_symbol(tmp_path):
+    config = AtlasConfig(database_path=str(tmp_path / "atlas.db"))
+    config.trading_mode = "paper"
+    config.paper_trading = True
+
+    engine = AtlasEngine(config)
+    engine.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+    engine.paper_account_state_repository.set_position_peak_price_usd(
+        "BTC-USD",
+        120.0,
+    )
+
+    sale = engine.portfolio_service.sell(
+        symbol="BTC-USD",
+        price_usd=110.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_sell(
+        symbol="BTC-USD",
+        quantity=sale["quantity"],
+        price_usd=110.0,
+        amount_nok=sale["sale_value_nok"],
+        realized_pnl_nok=sale["realized_pnl_nok"],
+    )
+
+    assert (
+        engine.paper_account_state_repository
+        .get_position_peak_price_usd("BTC-USD")
+        == 120.0
+    )
+
+    restarted = AtlasEngine(config)
+    assert restarted.portfolio_service.as_dict(10.0)["positions"] == []
+
+    restarted.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=90.0,
+        usd_nok=10.0,
+    )
+    new_position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
+    restarted.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=new_position["quantity"],
+        price_usd=90.0,
+        amount_nok=1000.0,
+    )
+
+    restarted_again = AtlasEngine(config)
+    position = restarted_again.portfolio_service.as_dict(10.0)["positions"][0]
+
+    assert position["symbol"] == "BTC-USD"
+    assert position["peak_price_usd"] == 90.0
+
+
 def test_decision_runtime_passes_position_peak_to_decision_engine():
     from types import SimpleNamespace
 
