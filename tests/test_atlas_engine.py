@@ -3823,3 +3823,98 @@ def test_trade_remains_committed_when_trade_executed_event_publish_fails(monkeyp
     )
     assert position["quantity"] > 0.0
 
+def test_committed_sell_survives_position_peak_cleanup_failure(monkeypatch, tmp_path):
+    import pytest
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+    )
+    config.trading_mode = "paper"
+    config.paper_trading = True
+    config.capital_limit = 1000000.0
+
+    engine = AtlasEngine(config=config)
+    engine.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+    engine.paper_account_state_repository.set_position_peak_price_usd(
+        "BTC-USD",
+        120.0,
+    )
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.SELL,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong SELL signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 110.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        decision = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        selected["decision"] = decision
+        return [selected]
+
+    def fail_peak_cleanup(symbol):
+        raise RuntimeError("position peak cleanup failed")
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(
+        engine.paper_account_state_repository,
+        "delete_position_peak_price_usd",
+        fail_peak_cleanup,
+    )
+
+    with pytest.raises(RuntimeError, match="position peak cleanup failed"):
+        engine.start()
+
+    trades = engine.trading_service.history()
+    assert len(trades) == 2
+    assert trades[-1]["symbol"] == "BTC-USD"
+    assert trades[-1]["action"] == "SELL"
+
+    portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
+    assert not any(
+        position["symbol"] == "BTC-USD"
+        for position in portfolio["positions"]
+    )
+
