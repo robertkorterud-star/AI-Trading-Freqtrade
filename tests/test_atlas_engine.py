@@ -3413,3 +3413,108 @@ def test_atlas_engine_reconciles_stale_agent_performance_from_predictions(
         restarted.decision_engine.agent_weight_engine.performance
         is restarted.agent_performance
     )
+
+
+
+def test_atlas_engine_restart_preserves_original_analyst_directions(tmp_path):
+    from datetime import datetime
+
+    from atlas.database.analysis_snapshot_repository import (
+        AnalysisSnapshotRepository,
+    )
+    from atlas.models.action import Action
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+    from atlas.models.decision_result import DecisionResult
+
+    database_path = tmp_path / "atlas.db"
+    performance_path = tmp_path / "agent_performance.json"
+    config = AtlasConfig(
+        database_path=str(database_path),
+        agent_performance_storage=str(performance_path),
+    )
+
+    first = AtlasEngine(config)
+    snapshot_repository = AnalysisSnapshotRepository(
+        first.database
+    )
+    snapshot = AnalysisSnapshot(
+        database_id=None,
+        symbol="BTC-USD",
+        timestamp=datetime.now(),
+        provider="test",
+        model="test",
+        results=[
+            {
+                "analyst": "Technical Analyst",
+                "symbol": "BTC-USD",
+                "action": "BUY",
+                "confidence": 90.0,
+                "evidence": 90.0,
+                "reasoning": ["Bullish."],
+            },
+            {
+                "analyst": "News Analyst",
+                "symbol": "BTC-USD",
+                "action": "SELL",
+                "confidence": 90.0,
+                "evidence": 90.0,
+                "reasoning": ["Bearish."],
+            },
+        ],
+        decision={
+            "action": "BUY",
+            "confidence": 90.0,
+            "evidence": 90.0,
+        },
+        intelligence={
+            "action": "BUY",
+            "buy_count": 1,
+            "hold_count": 0,
+            "sell_count": 1,
+            "agreement": 50.0,
+        },
+    )
+    snapshot_repository.save(snapshot)
+
+    prediction = first.prediction_tracker.record(
+        decision=DecisionResult(
+            symbol="BTC-USD",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            analysts=[
+                "Technical Analyst",
+                "News Analyst",
+            ],
+            analysis_snapshot_id=snapshot.database_id,
+        ),
+        price_usd=100.0,
+    )
+    first.prediction_evaluator.evaluate(
+        prediction=prediction,
+        current_price_usd=105.0,
+    )
+
+    restarted = AtlasEngine(config)
+
+    technical = restarted.agent_performance.get(
+        "Technical Analyst"
+    )
+    news = restarted.agent_performance.get(
+        "News Analyst"
+    )
+
+    assert technical.predictions == 1
+    assert technical.correct == 1
+    assert technical.action_predictions == {"BUY": 1}
+    assert technical.action_correct == {"BUY": 1}
+
+    assert news.predictions == 1
+    assert news.correct == 0
+    assert news.action_predictions == {"SELL": 1}
+    assert news.action_correct == {"SELL": 0}
+
+    assert (
+        restarted.decision_engine.agent_weight_engine.performance
+        is restarted.agent_performance
+    )
