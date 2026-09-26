@@ -260,31 +260,8 @@ class AtlasEngine:
         self.decision_execution_service = DecisionExecutionService(self.execution_engine)
 
         # The paper adapter restores positions from persisted trades. Reconcile
-        # durable per-position state against that canonical open-position set
-        # before overlaying peaks so closed positions cannot leak stale state
-        # into a later position for the same symbol.
-        open_position_symbols = set(
-            self.portfolio_service._positions
-        )
-        for persisted_symbol in (
-            self.paper_account_state_repository
-            .get_position_peak_symbols()
-        ):
-            if persisted_symbol not in open_position_symbols:
-                self.paper_account_state_repository.delete_position_peak_price_usd(
-                    persisted_symbol
-                )
-
-        for position in self.portfolio_service._positions.values():
-            persisted_peak = (
-                self.paper_account_state_repository
-                .get_position_peak_price_usd(position.symbol)
-            )
-            if persisted_peak is not None:
-                position.peak_price_usd = max(
-                    position.peak_price_usd,
-                    persisted_peak,
-                )
+        # durable per-position state only after that reconstruction is complete.
+        self._reconcile_position_peak_state()
 
         self.prediction_tracker = PredictionTracker(
             storage_path=self.config.database_path
@@ -1070,11 +1047,20 @@ class AtlasEngine:
                 symbol
             )
 
-    def restore_paper_portfolio(self):
-        """Restore paper positions and durable per-position state."""
-        self.portfolio_service.restore_from_trades(
-            self.trading_service._history
+    def _reconcile_position_peak_state(self):
+        """Reconcile durable peaks with the canonical open-position set."""
+        open_position_symbols = set(
+            self.portfolio_service._positions
         )
+
+        for persisted_symbol in (
+            self.paper_account_state_repository
+            .get_position_peak_symbols()
+        ):
+            if persisted_symbol not in open_position_symbols:
+                self.paper_account_state_repository.delete_position_peak_price_usd(
+                    persisted_symbol
+                )
 
         for position in self.portfolio_service._positions.values():
             persisted_peak = (
@@ -1086,6 +1072,13 @@ class AtlasEngine:
                     position.peak_price_usd,
                     persisted_peak,
                 )
+
+    def restore_paper_portfolio(self):
+        """Restore paper positions and durable per-position state."""
+        self.portfolio_service.restore_from_trades(
+            self.trading_service._history
+        )
+        self._reconcile_position_peak_state()
 
     def _evaluate_candidate_decision(
         self,
