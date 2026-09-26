@@ -546,3 +546,67 @@ def test_failed_persistence_keeps_in_memory_prediction_pending(
     assert prediction.evaluated_at is None
     assert evaluator.outcomes.count() == 0
     assert evaluator.outcomes.history() == []
+
+
+
+def test_restart_rebuilds_directional_agent_performance_without_double_counting(
+    tmp_path,
+):
+    database_path = tmp_path / "atlas.db"
+
+    tracker = PredictionTracker(
+        storage_path=database_path,
+    )
+    prediction = tracker.record(
+        decision=FakeDecision(
+            symbol="BTCUSDT",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=85.0,
+            analysts=["Technical Analyst"],
+        ),
+        price_usd=100.0,
+        reason="test",
+    )
+
+    performance = AgentPerformanceTracker()
+    evaluator = PredictionEvaluator(
+        predictions=tracker,
+        outcomes=OutcomeTracker(),
+        agent_performance=performance,
+        outcome_repository=OutcomeRepository(
+            tracker.database
+        ),
+    )
+
+    evaluator.evaluate(
+        prediction=prediction,
+        current_price_usd=105.0,
+    )
+
+    first = performance.get("Technical Analyst")
+    assert first.predictions == 1
+    assert first.correct == 1
+    assert first.action_predictions == {"BUY": 1}
+    assert first.action_correct == {"BUY": 1}
+
+    restarted_tracker = PredictionTracker(
+        storage_path=database_path,
+    )
+    restarted_performance = AgentPerformanceTracker()
+    PredictionEvaluator(
+        predictions=restarted_tracker,
+        outcomes=OutcomeTracker(),
+        agent_performance=restarted_performance,
+        outcome_repository=OutcomeRepository(
+            restarted_tracker.database
+        ),
+    )
+
+    restored = restarted_performance.get(
+        "Technical Analyst"
+    )
+    assert restored.predictions == 1
+    assert restored.correct == 1
+    assert restored.action_predictions == {"BUY": 1}
+    assert restored.action_correct == {"BUY": 1}
