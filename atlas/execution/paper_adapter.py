@@ -25,27 +25,65 @@ class PaperTradingExecutionAdapter:
         portfolio: PortfolioService,
         trading: TradingService | None,
         exchange_service: ExchangeRateService,
+        account_state_repository=None,
     ) -> None:
         self.portfolio = portfolio
         self.trading = trading or TradingService()
         persisted_trades = self.trading.history()
-        if persisted_trades:
+        replay_trades = list(persisted_trades)
+        replay_after = (
+            account_state_repository.get_trade_replay_after()
+            if account_state_repository is not None
+            else None
+        )
+        if replay_after is not None:
+            replay_trades = [
+                trade
+                for trade in replay_trades
+                if self._trade_timestamp(trade) > replay_after
+            ]
+
+        if replay_trades:
             try:
-                self.portfolio.restore_from_trades(persisted_trades)
+                self.portfolio.restore_from_trades(replay_trades)
             except ValueError:
-                # Persisted history can contain legacy/corrupt trades that do
-                # not describe the current paper account. Never let such
-                # history poison the live risk-sizing equity on restart.
                 self.portfolio.reset()
+                self._persist_replay_boundary(
+                    account_state_repository,
+                    replay_trades,
+                )
             else:
                 snapshot = self.portfolio.as_dict(1.0)
                 if snapshot["cash_nok"] < -1e-9:
-                    # A valid paper account cannot spend more cash than its
-                    # configured starting capital. Keep the trade history as
-                    # history, but start the current account safely.
                     self.portfolio.reset()
+                    self._persist_replay_boundary(
+                        account_state_repository,
+                        replay_trades,
+                    )
         # Keep a reference to ExchangeRateService and fetch rate at execute-time.
         self.exchange_service = exchange_service
+
+    @staticmethod
+    def _trade_timestamp(trade):
+        from datetime import datetime
+
+        value = (
+            trade["timestamp"]
+            if isinstance(trade, dict)
+            else trade.timestamp
+        )
+        if isinstance(value, str):
+            return datetime.fromisoformat(value)
+        return value
+
+    @classmethod
+    def _persist_replay_boundary(cls, repository, trades):
+        if repository is None or not trades:
+            return
+
+        repository.set_trade_replay_after(
+            max(cls._trade_timestamp(trade) for trade in trades)
+        )
 
     def execute(self, request: ExecutionRequest) -> ExecutionResult:
         # Validate adapter inputs at this boundary:
