@@ -1,3 +1,6 @@
+from datetime import datetime
+from unittest.mock import patch
+
 from atlas.trading.trading_service import TradingService
 
 
@@ -86,3 +89,36 @@ def test_trading_service_clear():
 
     assert trading.count() == 0
     assert trading.history() == []
+
+
+
+def test_trading_service_history_preserves_subsecond_trade_order():
+    trading = TradingService()
+    buy_time = datetime(2026, 9, 26, 22, 36, 33, 100000)
+    sell_time = datetime(2026, 9, 26, 22, 36, 33, 900000)
+
+    with patch("atlas.trading.trading_service.datetime") as mocked_datetime:
+        mocked_datetime.now.return_value = buy_time
+        trading.record_buy(
+            symbol="BTC-USD",
+            quantity=1.0,
+            price_usd=100.0,
+            amount_nok=1000.0,
+        )
+
+        mocked_datetime.now.return_value = sell_time
+        trading.record_sell(
+            symbol="BTC-USD",
+            quantity=1.0,
+            price_usd=110.0,
+            amount_nok=1100.0,
+            realized_pnl_nok=100.0,
+        )
+
+    history = trading.history()
+
+    assert history[0]["timestamp"] == sell_time.isoformat()
+    assert history[1]["timestamp"] == buy_time.isoformat()
+    assert datetime.fromisoformat(history[0]["timestamp"]) > datetime.fromisoformat(
+        history[1]["timestamp"]
+    )
