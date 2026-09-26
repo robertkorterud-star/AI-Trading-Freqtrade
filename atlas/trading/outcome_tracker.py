@@ -75,27 +75,11 @@ class OutcomeTracker:
             * 100
         )
 
-        if prediction.action == "BUY":
-            correct = (
-                change_percent >= threshold_percent
-            )
-
-        elif prediction.action == "SELL":
-            correct = (
-                change_percent <= -threshold_percent
-            )
-
-        elif prediction.action == "HOLD":
-            correct = (
-                abs(change_percent)
-                < threshold_percent
-            )
-
-        else:
-            raise ValueError(
-                f"Unknown prediction action: "
-                f"{prediction.action}"
-            )
+        correct = self.is_correct(
+            action=prediction.action,
+            change_percent=change_percent,
+            threshold_percent=threshold_percent,
+        )
 
         outcome = OutcomeRecord(
             symbol=prediction.symbol,
@@ -110,6 +94,27 @@ class OutcomeTracker:
         self._outcomes.append(outcome)
 
         return outcome
+
+    @staticmethod
+    def is_correct(
+        action: str,
+        change_percent: float,
+        threshold_percent: float = 1.0,
+    ):
+        """Return whether one action matched the realized move."""
+
+        if action == "BUY":
+            return change_percent >= threshold_percent
+
+        if action == "SELL":
+            return change_percent <= -threshold_percent
+
+        if action == "HOLD":
+            return abs(change_percent) < threshold_percent
+
+        raise ValueError(
+            f"Unknown prediction action: {action}"
+        )
 
     def history(self):
         return [
