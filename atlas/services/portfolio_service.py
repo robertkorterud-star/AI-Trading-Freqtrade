@@ -5,6 +5,7 @@ Paper-trading portfolio calculations.
 No live orders.
 """
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List
@@ -420,6 +421,21 @@ class PortfolioService:
                 2,
             ),
         }
+
+    def snapshot_state(self):
+        """Capture mutable paper-account state for execution rollback."""
+        return (
+            self._cash_nok,
+            self._profit_vault_nok,
+            deepcopy(self._positions),
+        )
+
+    def restore_state(self, state):
+        """Restore a state captured by snapshot_state()."""
+        cash_nok, profit_vault_nok, positions = state
+        self._cash_nok = cash_nok
+        self._profit_vault_nok = profit_vault_nok
+        self._positions = deepcopy(positions)
 
     # -------------------------------------------------
     # RESET
