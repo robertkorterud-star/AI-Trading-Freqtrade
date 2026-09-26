@@ -115,9 +115,7 @@ class PaperTradingExecutionAdapter:
                     analysis_snapshot_id=request.analysis_snapshot_id,
                 )
             except Exception:
-                self.portfolio.restore_from_trades(
-                    self.trading.history()
-                )
+                self.portfolio.restore_state(portfolio_state)
                 raise
 
             return ExecutionResult(
