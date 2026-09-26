@@ -71,9 +71,67 @@ class PredictionEvaluator:
         )
 
         if evaluated_predictions:
+            observations = {
+                prediction.database_id: (
+                    self._analyst_observations(prediction)
+                )
+                for prediction in evaluated_predictions
+            }
             self.agent_performance.rebuild_from_predictions(
-                evaluated_predictions
+                evaluated_predictions,
+                observations_by_prediction=observations,
             )
+
+    def _analyst_observations(self, prediction):
+        """Resolve original analyst actions for learning."""
+
+        snapshot = self.analysis_snapshot_for(prediction)
+
+        if (
+            snapshot is None
+            or prediction.price_change_percent is None
+        ):
+            return [
+                (
+                    analyst,
+                    prediction.action,
+                    prediction.correct,
+                )
+                for analyst in dict.fromkeys(
+                    prediction.analysts
+                )
+                if analyst
+            ]
+
+        observations = []
+        seen = set()
+
+        for result in snapshot.results:
+            analyst = result.get("analyst")
+            action = result.get("action")
+
+            if (
+                not analyst
+                or analyst in seen
+                or action not in {"BUY", "HOLD", "SELL"}
+            ):
+                continue
+
+            seen.add(analyst)
+            observations.append(
+                (
+                    analyst,
+                    action,
+                    OutcomeTracker.is_correct(
+                        action=action,
+                        change_percent=(
+                            prediction.price_change_percent
+                        ),
+                    ),
+                )
+            )
+
+        return observations
 
     def analysis_snapshot_for(self, prediction):
         """Return the original analysis snapshot for a prediction."""
