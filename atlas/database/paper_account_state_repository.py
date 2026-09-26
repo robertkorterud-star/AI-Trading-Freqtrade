@@ -52,6 +52,14 @@ class PaperAccountStateRepository:
 
         return float(row["peak_price_usd"])
 
+    def get_position_peak_symbols(self):
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT symbol FROM paper_position_state"
+            ).fetchall()
+
+        return [str(row["symbol"]) for row in rows]
+
     def set_position_peak_price_usd(self, symbol, peak_price_usd):
         value = float(peak_price_usd)
 
