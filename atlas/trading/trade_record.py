@@ -33,9 +33,7 @@ class TradeRecord:
                 self.realized_pnl_nok,
                 2,
             ),
-            "timestamp": self.timestamp.isoformat(
-                timespec="seconds"
-            ),
+            "timestamp": self.timestamp.isoformat(),
             "reason": self.reason,
             "analysis_snapshot_id": self.analysis_snapshot_id,
         }
