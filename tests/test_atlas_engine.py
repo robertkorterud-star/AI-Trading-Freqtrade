@@ -3909,8 +3909,8 @@ def test_committed_sell_survives_position_peak_cleanup_failure(monkeypatch, tmp_
 
     trades = engine.trading_service.history()
     assert len(trades) == 2
-    assert trades[-1]["symbol"] == "BTC-USD"
-    assert trades[-1]["action"] == "SELL"
+    assert trades[0]["symbol"] == "BTC-USD"
+    assert trades[0]["action"] == "SELL"
 
     portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
     assert not any(
