@@ -110,3 +110,26 @@ def test_prediction_tracker_persists_analysis_snapshot_reference(tmp_path):
     prediction = restarted_tracker.repository.get_all()[0]
 
     assert prediction.analysis_snapshot_id == 42
+
+def test_prediction_tracker_does_not_publish_prediction_when_persistence_fails():
+    import pytest
+
+    class FailingRepository:
+        def get_all(self):
+            return []
+
+        def save(self, prediction):
+            raise RuntimeError("prediction persistence failed")
+
+    tracker = PredictionTracker()
+    tracker.repository = FailingRepository()
+
+    with pytest.raises(RuntimeError, match="prediction persistence failed"):
+        tracker.record(
+            decision=make_decision(),
+            price_usd=180.25,
+        )
+
+    assert tracker.count() == 0
+    assert tracker.history() == []
+
