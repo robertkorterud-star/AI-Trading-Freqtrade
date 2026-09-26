@@ -544,3 +544,5 @@ def test_failed_persistence_keeps_in_memory_prediction_pending(
     assert prediction.evaluated_price_usd is None
     assert prediction.price_change_percent is None
     assert prediction.evaluated_at is None
+    assert evaluator.outcomes.count() == 0
+    assert evaluator.outcomes.history() == []
