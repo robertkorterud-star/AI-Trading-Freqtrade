@@ -1,3 +1,5 @@
+import pytest
+
 from atlas.execution.protocol import ExecutionEngine
 from atlas.execution.service import DecisionExecutionService
 from atlas.execution.paper_adapter import PaperTradingExecutionAdapter
@@ -134,3 +136,36 @@ def test_paper_adapter_executes_approved_repeated_buy_requests():
     assert first_result is not None
     assert repeated_result is not None
     assert trading.count() == 2
+
+def test_paper_adapter_buy_persistence_failure_keeps_account_unchanged():
+    portfolio = PortfolioService(1000000)
+
+    class FailingRepository:
+        def load(self):
+            return []
+
+        def save(self, trade):
+            raise RuntimeError("trade persistence failed")
+
+    trading = TradingService(repository=FailingRepository())
+
+    class FakeExchange:
+        def get_rate(self, base, target):
+            return type("R", (), {"rate": 10.0})()
+
+    adapter = PaperTradingExecutionAdapter(
+        portfolio=portfolio,
+        trading=trading,
+        exchange_service=FakeExchange(),
+    )
+    service = DecisionExecutionService(ExecutionEngine(adapter))
+    decision = _make_decision("BTC-USD", Action.BUY, 0.5)
+
+    before = portfolio.as_dict(usd_nok=10.0)
+
+    with pytest.raises(RuntimeError, match="trade persistence failed"):
+        service.execute(decision, price=20000.0)
+
+    assert trading.history() == []
+    assert portfolio.as_dict(usd_nok=10.0) == before
+
