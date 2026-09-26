@@ -195,6 +195,9 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
     }
 
     calls = []
+    prediction_count_before = len(
+        engine.prediction_tracker.history()
+    )
 
     def fake_decide_candidates(
         limit=3,
@@ -233,7 +236,9 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
         pass
 
     def fake_execute(decision, price=None, **kwargs):
-        assert len(engine.prediction_tracker.history()) == 1
+        assert len(engine.prediction_tracker.history()) == (
+            prediction_count_before + 1
+        )
 
         calls.append({
             "decision": decision,
