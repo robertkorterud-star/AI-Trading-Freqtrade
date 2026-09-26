@@ -30,17 +30,11 @@ class PaperTradingExecutionAdapter:
         self.trading = trading or TradingService()
         persisted_trades = self.trading.history()
         if persisted_trades:
-            self._restore_latest_valid_history(persisted_trades)
-        # Keep a reference to ExchangeRateService and fetch rate at execute-time.
-        self.exchange_service = exchange_service
-
-    def _restore_latest_valid_history(self, persisted_trades):
-        """Restore the newest valid paper-account period from trade history.
-
-        Legacy/corrupt trades remain in TradingService for audit history. If
-        the full ledger cannot describe a valid current account, progressively
-        discard only the oldest replay inputs until the newest valid suffix can
-        be reconstructed.
+            try:
+                self.portfolio.restore_from_trades(persisted_trades)
+            except ValueError:
+                # Persisted history can contain legacy/corrupt trades that do
+  
         """
 
         def value(trade, key):
