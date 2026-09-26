@@ -259,8 +259,22 @@ class AtlasEngine:
         self.execution_engine = ExecutionEngine(paper_adapter)
         self.decision_execution_service = DecisionExecutionService(self.execution_engine)
 
-        # The paper adapter restores positions from persisted trades. Overlay
-        # durable per-position state only after that reconstruction is complete.
+        # The paper adapter restores positions from persisted trades. Reconcile
+        # durable per-position state against that canonical open-position set
+        # before overlaying peaks so closed positions cannot leak stale state
+        # into a later position for the same symbol.
+        open_position_symbols = set(
+            self.portfolio_service._positions
+        )
+        for persisted_symbol in (
+            self.paper_account_state_repository
+            .get_position_peak_symbols()
+        ):
+            if persisted_symbol not in open_position_symbols:
+                self.paper_account_state_repository.delete_position_peak_price_usd(
+                    persisted_symbol
+                )
+
         for position in self.portfolio_service._positions.values():
             persisted_peak = (
                 self.paper_account_state_repository
