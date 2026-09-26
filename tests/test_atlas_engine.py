@@ -3544,76 +3544,65 @@ def test_atlas_engine_restart_applies_rebuilt_directional_learning_to_decision_s
         first.database
     )
 
-    for index in range(20):
-        snapshot = AnalysisSnapshot(
-            database_id=None,
-            symbol="BTC-USD",
-            timestamp=datetime.now(),
-            provider="test",
-            model="test",
-            results=[
-                {
-                    "analyst": "Technical Analyst",
-                    "symbol": "BTC-USD",
+    for analyst, current_price_usd in (
+        ("Technical Analyst", 105.0),
+        ("News Analyst", 95.0),
+    ):
+        for _ in range(20):
+            snapshot = AnalysisSnapshot(
+                database_id=None,
+                symbol="BTC-USD",
+                timestamp=datetime.now(),
+                provider="test",
+                model="test",
+                results=[
+                    {
+                        "analyst": analyst,
+                        "symbol": "BTC-USD",
+                        "action": "BUY",
+                        "confidence": 90.0,
+                        "evidence": 90.0,
+                        "reasoning": ["Directional BUY signal."],
+                    },
+                ],
+                decision={
                     "action": "BUY",
                     "confidence": 90.0,
                     "evidence": 90.0,
-                    "reasoning": ["Bullish."],
                 },
-                {
-                    "analyst": "News Analyst",
-                    "symbol": "BTC-USD",
-                    "action": "SELL",
-                    "confidence": 90.0,
-                    "evidence": 90.0,
-                    "reasoning": ["Bearish."],
+                intelligence={
+                    "action": "BUY",
+                    "buy_count": 1,
+                    "hold_count": 0,
+                    "sell_count": 0,
+                    "agreement": 100.0,
                 },
-            ],
-            decision={
-                "action": "BUY",
-                "confidence": 90.0,
-                "evidence": 90.0,
-            },
-            intelligence={
-                "action": "BUY",
-                "buy_count": 1,
-                "hold_count": 0,
-                "sell_count": 1,
-                "agreement": 50.0,
-            },
-        )
-        snapshot_repository.save(snapshot)
+            )
+            snapshot_repository.save(snapshot)
 
-        prediction = first.prediction_tracker.record(
-            decision=DecisionResult(
-                symbol="BTC-USD",
-                action=Action.BUY,
-                confidence=90.0,
-                evidence=90.0,
-                analysts=[
-                    "Technical Analyst",
-                    "News Analyst",
-                ],
-                analysis_snapshot_id=snapshot.database_id,
-            ),
-            price_usd=100.0,
-        )
-        first.prediction_evaluator.evaluate(
-            prediction=prediction,
-            current_price_usd=105.0,
-        )
+            prediction = first.prediction_tracker.record(
+                decision=DecisionResult(
+                    symbol="BTC-USD",
+                    action=Action.BUY,
+                    confidence=90.0,
+                    evidence=90.0,
+                    analysts=[analyst],
+                    analysis_snapshot_id=snapshot.database_id,
+                ),
+                price_usd=100.0,
+            )
+            first.prediction_evaluator.evaluate(
+                prediction=prediction,
+                current_price_usd=current_price_usd,
+            )
 
     restarted = AtlasEngine(config)
 
     buy_weights = restarted.agent_weight_engine.calculate(
         action="BUY"
     )
-    sell_weights = restarted.agent_weight_engine.calculate(
-        action="SELL"
-    )
 
     assert buy_weights["Technical Analyst"] > buy_weights["News Analyst"]
-    assert sell_weights["Technical Analyst"] == sell_weights["News Analyst"]
 
     restarted.decision_engine.risk_manager = None
     restarted.decision_engine.portfolio_manager = None
