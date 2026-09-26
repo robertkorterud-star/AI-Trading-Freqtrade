@@ -42,10 +42,10 @@ class TradingService:
             analysis_snapshot_id=analysis_snapshot_id,
         )
 
-        self._history.append(trade)
-
         if self._repository is not None:
             self._repository.save(trade)
+
+        self._history.append(trade)
 
         return trade
 
@@ -71,10 +71,10 @@ class TradingService:
             analysis_snapshot_id=analysis_snapshot_id,
         )
 
-        self._history.append(trade)
-
         if self._repository is not None:
             self._repository.save(trade)
+
+        self._history.append(trade)
 
         return trade
 
