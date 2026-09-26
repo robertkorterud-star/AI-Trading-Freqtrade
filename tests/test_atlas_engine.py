@@ -167,12 +167,19 @@ def test_atlas_engine_end_to_end_paper_buy_and_sell_with_profit(tmp_path):
 
 def test_atlas_engine_start_sends_decision_to_paper_runtime(
     monkeypatch,
+    tmp_path,
 ):
 
     from atlas.models.action import Action
     from atlas.models.analysis_result import AnalysisResult
 
-    engine = AtlasEngine()
+    config = AtlasConfig(
+        agent_performance_storage=(
+            str(tmp_path / "agent_performance.json")
+        ),
+        database_path=str(tmp_path / "atlas_test.db"),
+    )
+    engine = AtlasEngine(config=config)
 
     engine.config.trading_mode = "paper"
     engine.config.paper_trading = True
