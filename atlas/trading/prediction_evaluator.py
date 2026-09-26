@@ -136,6 +136,7 @@ class PredictionEvaluator:
             prediction.price_change_percent,
             prediction.evaluated_at,
         )
+        original_outcome_count = self.outcomes.count()
 
         outcome = self.outcomes.evaluate(
             prediction=prediction,
@@ -198,6 +199,9 @@ class PredictionEvaluator:
                             prediction.price_change_percent,
                             prediction.evaluated_at,
                         ) = original_evaluation_state
+                        del self.outcomes._outcomes[
+                            original_outcome_count:
+                        ]
                         raise
 
             elif self.prediction_repository is not None:
