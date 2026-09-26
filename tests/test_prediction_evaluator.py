@@ -610,3 +610,98 @@ def test_restart_rebuilds_directional_agent_performance_without_double_counting(
     assert restored.correct == 1
     assert restored.action_predictions == {"BUY": 1}
     assert restored.action_correct == {"BUY": 1}
+
+
+
+def test_persisted_learning_uses_each_analysts_original_direction(tmp_path):
+    from atlas.database.analysis_snapshot_repository import (
+        AnalysisSnapshotRepository,
+    )
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+
+    database_path = tmp_path / "atlas.db"
+    tracker = PredictionTracker(storage_path=database_path)
+    snapshot_repository = AnalysisSnapshotRepository(
+        tracker.database
+    )
+    snapshot = AnalysisSnapshot(
+        database_id=None,
+        symbol="BTCUSDT",
+        timestamp=datetime.now(),
+        provider="test",
+        model="test",
+        results=[
+            {
+                "analyst": "Technical Analyst",
+                "symbol": "BTCUSDT",
+                "action": "BUY",
+                "confidence": 90.0,
+                "evidence": 90.0,
+                "reasoning": ["Bullish."],
+            },
+            {
+                "analyst": "News Analyst",
+                "symbol": "BTCUSDT",
+                "action": "SELL",
+                "confidence": 90.0,
+                "evidence": 90.0,
+                "reasoning": ["Bearish."],
+            },
+        ],
+        decision={
+            "action": "BUY",
+            "confidence": 90.0,
+            "evidence": 90.0,
+        },
+        intelligence={
+            "action": "BUY",
+            "buy_count": 1,
+            "hold_count": 0,
+            "sell_count": 1,
+            "agreement": 50.0,
+        },
+    )
+    snapshot_repository.save(snapshot)
+
+    prediction = tracker.record(
+        decision=DecisionResult(
+            symbol="BTCUSDT",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            analysts=[
+                "Technical Analyst",
+                "News Analyst",
+            ],
+            analysis_snapshot_id=snapshot.database_id,
+        ),
+        price_usd=100.0,
+    )
+
+    performance = AgentPerformanceTracker()
+    evaluator = PredictionEvaluator(
+        predictions=tracker,
+        outcomes=OutcomeTracker(),
+        agent_performance=performance,
+        outcome_repository=OutcomeRepository(
+            tracker.database
+        ),
+    )
+
+    evaluator.evaluate(
+        prediction=prediction,
+        current_price_usd=105.0,
+    )
+
+    technical = performance.get("Technical Analyst")
+    news = performance.get("News Analyst")
+
+    assert technical.predictions == 1
+    assert technical.correct == 1
+    assert technical.action_predictions == {"BUY": 1}
+    assert technical.action_correct == {"BUY": 1}
+
+    assert news.predictions == 1
+    assert news.correct == 0
+    assert news.action_predictions == {"SELL": 1}
+    assert news.action_correct == {}
