@@ -64,6 +64,7 @@ class PaperTradingExecutionAdapter:
         # according to the required adapter responsibility.
         if request.action is Action.BUY:
             amount_nok = request.quantity * price_usd * usd_nok
+            portfolio_state = self.portfolio.snapshot_state()
 
             position = self.portfolio.buy(
                 symbol=request.symbol,
@@ -82,9 +83,7 @@ class PaperTradingExecutionAdapter:
                     analysis_snapshot_id=request.analysis_snapshot_id,
                 )
             except Exception:
-                self.portfolio.restore_from_trades(
-                    self.trading.history()
-                )
+                self.portfolio.restore_state(portfolio_state)
                 raise
 
             return ExecutionResult(
@@ -97,6 +96,7 @@ class PaperTradingExecutionAdapter:
 
         if request.action is Action.SELL:
             # For SELL we must respect PortfolioService.sell contract.
+            portfolio_state = self.portfolio.snapshot_state()
             result = self.portfolio.sell(
                 symbol=request.symbol,
                 price_usd=price_usd,
