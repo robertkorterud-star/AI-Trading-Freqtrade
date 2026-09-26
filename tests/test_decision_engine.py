@@ -1048,6 +1048,10 @@ def test_decision_engine_uses_real_directional_history_for_learned_support():
     )
 
     assert decision.action == Action.HOLD
+    assert decision.action_support_analyst == "Technical Analyst"
+    assert decision.action_support_action == Action.BUY
+    assert decision.action_support_weight > 0.0
+    assert decision.decision_margin == 80.0
     assert any(
         "Learned support: Technical Analyst supports BUY"
         in reason
