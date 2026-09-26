@@ -254,6 +254,7 @@ class AtlasEngine:
             portfolio=portfolio,
             trading=trading,
             exchange_service=self.exchange,
+            account_state_repository=self.paper_account_state_repository,
         )
 
         self.execution_engine = ExecutionEngine(paper_adapter)
