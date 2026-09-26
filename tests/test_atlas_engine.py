@@ -3558,6 +3558,10 @@ def test_restart_reconciles_stale_peak_before_new_position_same_symbol(tmp_path)
 
     restarted = AtlasEngine(config)
     assert restarted.portfolio_service.as_dict(10.0)["positions"] == []
+    assert (
+        restarted.paper_account_state_repository.get_trade_replay_after()
+        is None
+    )
 
     restarted.portfolio_service.buy(
         symbol="BTC-USD",
@@ -3571,6 +3575,10 @@ def test_restart_reconciles_stale_peak_before_new_position_same_symbol(tmp_path)
         quantity=new_position["quantity"],
         price_usd=90.0,
         amount_nok=1000.0,
+    )
+    assert (
+        restarted.paper_account_state_repository.get_trade_replay_after()
+        is None
     )
 
     restarted_again = AtlasEngine(config)
