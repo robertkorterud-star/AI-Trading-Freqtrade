@@ -129,6 +129,14 @@ class PredictionEvaluator:
         if prediction.evaluated:
             return None
 
+        original_evaluation_state = (
+            prediction.evaluated,
+            prediction.correct,
+            prediction.evaluated_price_usd,
+            prediction.price_change_percent,
+            prediction.evaluated_at,
+        )
+
         outcome = self.outcomes.evaluate(
             prediction=prediction,
             current_price_usd=current_price_usd,
@@ -183,6 +191,13 @@ class PredictionEvaluator:
                         connection.commit()
                     except Exception:
                         connection.rollback()
+                        (
+                            prediction.evaluated,
+                            prediction.correct,
+                            prediction.evaluated_price_usd,
+                            prediction.price_change_percent,
+                            prediction.evaluated_at,
+                        ) = original_evaluation_state
                         raise
 
             elif self.prediction_repository is not None:
