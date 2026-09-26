@@ -3071,6 +3071,57 @@ def test_atlas_engine_restores_persisted_position_peak_across_restart(tmp_path):
 
 
 
+
+def test_restore_paper_portfolio_reconciles_stale_position_peak(tmp_path):
+    config = AtlasConfig(database_path=str(tmp_path / "atlas.db"))
+
+    engine = AtlasEngine(config)
+    engine.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+    engine.paper_account_state_repository.set_position_peak_price_usd(
+        "BTC-USD",
+        120.0,
+    )
+
+    sale = engine.portfolio_service.sell(
+        symbol="BTC-USD",
+        price_usd=110.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_sell(
+        symbol="BTC-USD",
+        quantity=sale["quantity"],
+        price_usd=110.0,
+        amount_nok=sale["sale_value_nok"],
+        realized_pnl_nok=sale["realized_pnl_nok"],
+    )
+
+    assert (
+        engine.paper_account_state_repository
+        .get_position_peak_price_usd("BTC-USD")
+        == 120.0
+    )
+
+    engine.restore_paper_portfolio()
+
+    assert engine.portfolio_service.as_dict(10.0)["positions"] == []
+    assert (
+        engine.paper_account_state_repository
+        .get_position_peak_price_usd("BTC-USD")
+        is None
+    )
+
+
 def test_decision_runtime_persists_new_position_peak_price():
     from types import SimpleNamespace
 
