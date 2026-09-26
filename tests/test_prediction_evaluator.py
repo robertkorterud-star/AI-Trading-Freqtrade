@@ -501,3 +501,46 @@ def test_hold_prediction_learning_does_not_train_directional_agent_weights():
     assert technical is not None
     assert technical.predictions == 1
     assert technical.action_predictions.get("HOLD", 0) == 0
+
+
+
+def test_failed_persistence_keeps_in_memory_prediction_pending(
+    monkeypatch,
+    tmp_path,
+):
+    database_path = tmp_path / "atlas.db"
+    tracker, prediction = _persisted_old_prediction(
+        database_path,
+        analysts=["Technical Analyst"],
+    )
+    outcome_repository = OutcomeRepository(tracker.database)
+    evaluator = PredictionEvaluator(
+        predictions=tracker,
+        outcomes=OutcomeTracker(),
+        agent_performance=AgentPerformanceTracker(),
+        outcome_repository=outcome_repository,
+    )
+
+    def fail_save(*args, **kwargs):
+        raise RuntimeError("Outcome persistence failed.")
+
+    monkeypatch.setattr(
+        outcome_repository,
+        "save",
+        fail_save,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Outcome persistence failed.",
+    ):
+        evaluator.evaluate(
+            prediction=prediction,
+            current_price_usd=190.0,
+        )
+
+    assert prediction.evaluated is False
+    assert prediction.correct is None
+    assert prediction.evaluated_price_usd is None
+    assert prediction.price_change_percent is None
+    assert prediction.evaluated_at is None
