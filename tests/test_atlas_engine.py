@@ -326,6 +326,8 @@ def test_execution_failure_preserves_prediction_without_trade_event(
     tmp_path,
 ):
 
+    import pytest
+
     from atlas.models.action import Action
     from atlas.models.analysis_result import AnalysisResult
 
