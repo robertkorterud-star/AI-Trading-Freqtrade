@@ -56,6 +56,16 @@ def test_new_trade_after_legacy_reset_survives_restart():
         def get_rate(self, base, target):
             return type("Rate", (), {"rate": 10.0})()
 
+    class _AccountState:
+        def __init__(self):
+            self.replay_after = None
+
+        def get_trade_replay_after(self):
+            return self.replay_after
+
+        def set_trade_replay_after(self, timestamp):
+            self.replay_after = timestamp
+
     legacy_trade = TradeRecord(
         symbol="BTC-USD",
         action="BUY",
@@ -66,12 +76,14 @@ def test_new_trade_after_legacy_reset_survives_restart():
         timestamp=datetime(2026, 9, 14, 7, 27, 24),
     )
     repository = _Repository([legacy_trade])
+    account_state = _AccountState()
 
     first_portfolio = PortfolioService(starting_capital_nok=5_000.0)
     first_adapter = PaperTradingExecutionAdapter(
         portfolio=first_portfolio,
         trading=TradingService(repository=repository),
         exchange_service=_Exchange(),
+        account_state_repository=account_state,
     )
 
     first_adapter.execute(
@@ -94,6 +106,7 @@ def test_new_trade_after_legacy_reset_survives_restart():
         portfolio=restarted_portfolio,
         trading=TradingService(repository=repository),
         exchange_service=_Exchange(),
+        account_state_repository=account_state,
     )
 
     after_restart = restarted_portfolio.as_dict(10.0)
