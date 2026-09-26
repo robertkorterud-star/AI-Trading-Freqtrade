@@ -3353,3 +3353,63 @@ def test_decision_runtime_passes_position_peak_to_decision_engine():
 
     assert result == "decision"
     assert captured["peak_price"] == 120.0
+
+
+
+def test_atlas_engine_reconciles_stale_agent_performance_from_predictions(
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    from atlas.models.action import Action
+    from atlas.trading.prediction_record import PredictionRecord
+
+    database_path = tmp_path / "atlas.db"
+    performance_path = tmp_path / "agent_performance.json"
+    config = AtlasConfig(
+        database_path=str(database_path),
+        agent_performance_storage=str(performance_path),
+    )
+
+    first = AtlasEngine(config)
+
+    prediction = PredictionRecord(
+        symbol="BTC-USD",
+        action="BUY",
+        confidence=90.0,
+        evidence=90.0,
+        price_usd=100.0,
+        timestamp=datetime.now() - timedelta(hours=25),
+        analysts=["Technical Analyst"],
+    )
+    first.prediction_tracker.repository.save(prediction)
+    first.prediction_evaluator.evaluate(
+        prediction=prediction,
+        current_price_usd=105.0,
+    )
+
+    performance_path.write_text(
+        """{
+  "Technical Analyst": {
+    "predictions": 99,
+    "correct": 0,
+    "action_predictions": {"SELL": 99},
+    "action_correct": {"SELL": 0}
+  }
+}"""
+    )
+
+    restarted = AtlasEngine(config)
+
+    performance = restarted.agent_performance.get(
+        "Technical Analyst"
+    )
+    assert performance.predictions == 1
+    assert performance.correct == 1
+    assert performance.action_predictions == {"BUY": 1}
+    assert performance.action_correct == {"BUY": 1}
+
+    assert (
+        restarted.decision_engine.agent_weight_engine.performance
+        is restarted.agent_performance
+    )
