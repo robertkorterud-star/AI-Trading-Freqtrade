@@ -4,6 +4,8 @@ Stores durable account-level state that cannot be reconstructed from the
 paper-trade ledger alone.
 """
 
+from datetime import datetime
+
 from atlas.database.connection import Database
 
 
@@ -39,6 +41,34 @@ class PaperAccountStateRepository:
             )
             connection.commit()
 
+
+    def get_trade_replay_after(self):
+        with self.database.connect() as connection:
+            row = connection.execute(
+                "SELECT trade_replay_after FROM paper_account_state WHERE id = 1"
+            ).fetchone()
+
+        if row is None or row["trade_replay_after"] is None:
+            return None
+
+        return datetime.fromisoformat(row["trade_replay_after"])
+
+    def set_trade_replay_after(self, timestamp):
+        value = timestamp
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value)
+
+        with self.database.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO paper_account_state (id, trade_replay_after)
+                VALUES (1, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    trade_replay_after = excluded.trade_replay_after
+                """,
+                (value.isoformat(),),
+            )
+            connection.commit()
 
     def get_position_peak_price_usd(self, symbol):
         with self.database.connect() as connection:
