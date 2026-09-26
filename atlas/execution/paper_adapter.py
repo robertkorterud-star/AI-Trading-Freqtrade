@@ -72,14 +72,21 @@ class PaperTradingExecutionAdapter:
                 usd_nok=usd_nok,
             )
 
-            self.trading.record_buy(
-                symbol=request.symbol,
-                quantity=request.quantity,
-                price_usd=price_usd,
-                amount_nok=amount_nok,
-                reason="ExecutionAdapter: paper BUY",
-                analysis_snapshot_id=request.analysis_snapshot_id,
-            )
+            try:
+                self.trading.record_buy(
+                    symbol=request.symbol,
+                    quantity=request.quantity,
+                    price_usd=price_usd,
+                    amount_nok=amount_nok,
+                    reason="ExecutionAdapter: paper BUY",
+                    analysis_snapshot_id=request.analysis_snapshot_id,
+                )
+            except Exception:
+                self.portfolio.restore_from_trades(
+                    self.trading.history()
+                )
+                raise
+
             return ExecutionResult(
                 status=ExecutionStatus.SIMULATED,
                 symbol=request.symbol,
@@ -97,15 +104,21 @@ class PaperTradingExecutionAdapter:
                 quantity=request.quantity,
             )
 
-            self.trading.record_sell(
-                symbol=request.symbol,
-                quantity=result["quantity"],
-                price_usd=price_usd,
-                amount_nok=result["sale_value_nok"],
-                realized_pnl_nok=result["realized_pnl_nok"],
-                reason="ExecutionAdapter: paper SELL",
-                analysis_snapshot_id=request.analysis_snapshot_id,
-            )
+            try:
+                self.trading.record_sell(
+                    symbol=request.symbol,
+                    quantity=result["quantity"],
+                    price_usd=price_usd,
+                    amount_nok=result["sale_value_nok"],
+                    realized_pnl_nok=result["realized_pnl_nok"],
+                    reason="ExecutionAdapter: paper SELL",
+                    analysis_snapshot_id=request.analysis_snapshot_id,
+                )
+            except Exception:
+                self.portfolio.restore_from_trades(
+                    self.trading.history()
+                )
+                raise
 
             return ExecutionResult(
                 status=ExecutionStatus.SIMULATED,
