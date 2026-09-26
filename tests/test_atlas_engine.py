@@ -233,6 +233,8 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
         pass
 
     def fake_execute(decision, price=None, **kwargs):
+        assert len(engine.prediction_tracker.history()) == 1
+
         calls.append({
             "decision": decision,
             "price": price,
