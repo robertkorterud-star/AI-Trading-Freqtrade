@@ -558,7 +558,7 @@ def test_restart_rebuilds_directional_agent_performance_without_double_counting(
         storage_path=database_path,
     )
     prediction = tracker.record(
-        decision=FakeDecision(
+        decision=DecisionResult(
             symbol="BTCUSDT",
             action=Action.BUY,
             confidence=90.0,
