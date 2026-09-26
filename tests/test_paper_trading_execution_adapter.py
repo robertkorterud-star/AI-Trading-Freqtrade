@@ -247,3 +247,42 @@ def test_paper_adapter_repeated_buy_persistence_failure_restores_existing_positi
     assert trading.history() == []
     assert portfolio.as_dict(usd_nok=10.0) == before
 
+def test_paper_adapter_partial_sell_persistence_failure_restores_existing_position_state():
+    portfolio = PortfolioService(1000000)
+    portfolio.buy(
+        symbol="BTC-USD",
+        amount_nok=200000.0,
+        price_usd=20000.0,
+        usd_nok=10.0,
+    )
+    portfolio.update_prices({"BTC-USD": 25000.0})
+
+    class FailingRepository:
+        def load(self):
+            return []
+
+        def save(self, trade):
+            raise RuntimeError("trade persistence failed")
+
+    trading = TradingService(repository=FailingRepository())
+
+    class FakeExchange:
+        def get_rate(self, base, target):
+            return type("R", (), {"rate": 10.0})()
+
+    adapter = PaperTradingExecutionAdapter(
+        portfolio=portfolio,
+        trading=trading,
+        exchange_service=FakeExchange(),
+    )
+    service = DecisionExecutionService(ExecutionEngine(adapter))
+    decision = _make_decision("BTC-USD", Action.SELL, 0.5)
+
+    before = portfolio.as_dict(usd_nok=10.0)
+
+    with pytest.raises(RuntimeError, match="trade persistence failed"):
+        service.execute(decision, price=22000.0)
+
+    assert trading.history() == []
+    assert portfolio.as_dict(usd_nok=10.0) == before
+
