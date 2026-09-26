@@ -180,7 +180,8 @@ CREATE TABLE IF NOT EXISTS atlas_settings (
 
 CREATE TABLE IF NOT EXISTS paper_account_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    peak_equity_nok REAL
+    peak_equity_nok REAL,
+    trade_replay_after TEXT
 );
 
 CREATE TABLE IF NOT EXISTS paper_position_state (
@@ -272,6 +273,21 @@ def initialize_database(database: Database):
                 """
                 ALTER TABLE predictions
                 ADD COLUMN analysis_snapshot_id INTEGER
+                """
+            )
+
+        paper_account_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(paper_account_state)"
+            ).fetchall()
+        }
+
+        if "trade_replay_after" not in paper_account_columns:
+            connection.execute(
+                """
+                ALTER TABLE paper_account_state
+                ADD COLUMN trade_replay_after TEXT
                 """
             )
 
