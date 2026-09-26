@@ -986,3 +986,70 @@ def test_decision_engine_uses_position_peak_for_trailing_stop():
     )
 
     assert decision.action is Action.SELL
+
+
+
+def test_decision_engine_uses_real_directional_history_for_learned_support():
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.trading.agent_performance_tracker import AgentPerformanceTracker
+    from atlas.trading.agent_weight_engine import AgentWeightEngine
+
+    performance = AgentPerformanceTracker()
+
+    for analyst, buy_correct, sell_correct in (
+        ("Technical Analyst", 18, 6),
+        ("Company Analyst", 10, 10),
+        ("News Analyst", 6, 18),
+    ):
+        for index in range(20):
+            performance.record(
+                analyst=analyst,
+                correct=index < buy_correct,
+                action="BUY",
+            )
+            performance.record(
+                analyst=analyst,
+                correct=index < sell_correct,
+                action="SELL",
+            )
+
+    engine = DecisionEngine()
+    engine.agent_weight_engine = AgentWeightEngine(
+        performance
+    )
+
+    decision = engine.evaluate(
+        [
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="Technical Analyst",
+                action=Action.HOLD,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Neutral current signal."],
+            ),
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="Company Analyst",
+                action=Action.HOLD,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Neutral current signal."],
+            ),
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="News Analyst",
+                action=Action.HOLD,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Neutral current signal."],
+            ),
+        ]
+    )
+
+    assert decision.action == Action.HOLD
+    assert any(
+        "Learned support: Technical Analyst supports BUY"
+        in reason
+        for reason in decision.reasoning
+    )
