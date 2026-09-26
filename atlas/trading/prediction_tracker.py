@@ -83,14 +83,14 @@ class PredictionTracker:
             reason=reason,
         )
 
-        self._predictions.append(
-            prediction
-        )
-
         if self.repository is not None:
             self.repository.save(
                 prediction
             )
+
+        self._predictions.append(
+            prediction
+        )
 
         return prediction
 
