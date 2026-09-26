@@ -320,6 +320,98 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
     assert calls[0]["decision"].risk_assessment is not None
     assert calls[0]["decision"].portfolio_assessment is not None
 
+
+def test_execution_failure_preserves_prediction_without_trade_event(
+    monkeypatch,
+    tmp_path,
+):
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=(
+            str(tmp_path / "agent_performance.json")
+        ),
+        database_path=str(tmp_path / "atlas_test.db"),
+    )
+    engine = AtlasEngine(config=config)
+    engine.config.trading_mode = "paper"
+    engine.config.paper_trading = True
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 100000.0})()
+
+    def fail_execution(decision, price=None, **kwargs):
+        raise RuntimeError("paper execution failed")
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        lambda decision: None,
+    )
+    monkeypatch.setattr(
+        engine.decision_execution_service,
+        "execute",
+        fail_execution,
+    )
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    with pytest.raises(RuntimeError, match="paper execution failed"):
+        engine.start()
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0].symbol == "BTC-USD"
+    assert predictions[0].action is Action.BUY
+
+    events = engine.event_repository.after(0, limit=100)
+    assert any(event["type"] == "DECISION_READY" for event in events)
+    assert not any(event["type"] == "TRADE_EXECUTED" for event in events)
+
+
 def test_atlas_config_defaults_to_safe_advisor_mode():
 
     config = AtlasConfig()
