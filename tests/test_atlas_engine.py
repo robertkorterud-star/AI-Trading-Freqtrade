@@ -3518,3 +3518,129 @@ def test_atlas_engine_restart_preserves_original_analyst_directions(tmp_path):
         restarted.decision_engine.agent_weight_engine.performance
         is restarted.agent_performance
     )
+
+
+
+def test_atlas_engine_restart_applies_rebuilt_directional_learning_to_decision_support(tmp_path):
+    from datetime import datetime
+
+    from atlas.database.analysis_snapshot_repository import (
+        AnalysisSnapshotRepository,
+    )
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+    from atlas.models.decision_result import DecisionResult
+
+    database_path = tmp_path / "atlas.db"
+    performance_path = tmp_path / "agent_performance.json"
+    config = AtlasConfig(
+        database_path=str(database_path),
+        agent_performance_storage=str(performance_path),
+    )
+
+    first = AtlasEngine(config)
+    snapshot_repository = AnalysisSnapshotRepository(
+        first.database
+    )
+
+    for index in range(20):
+        snapshot = AnalysisSnapshot(
+            database_id=None,
+            symbol="BTC-USD",
+            timestamp=datetime.now(),
+            provider="test",
+            model="test",
+            results=[
+                {
+                    "analyst": "Technical Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "BUY",
+                    "confidence": 90.0,
+                    "evidence": 90.0,
+                    "reasoning": ["Bullish."],
+                },
+                {
+                    "analyst": "News Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "SELL",
+                    "confidence": 90.0,
+                    "evidence": 90.0,
+                    "reasoning": ["Bearish."],
+                },
+            ],
+            decision={
+                "action": "BUY",
+                "confidence": 90.0,
+                "evidence": 90.0,
+            },
+            intelligence={
+                "action": "BUY",
+                "buy_count": 1,
+                "hold_count": 0,
+                "sell_count": 1,
+                "agreement": 50.0,
+            },
+        )
+        snapshot_repository.save(snapshot)
+
+        prediction = first.prediction_tracker.record(
+            decision=DecisionResult(
+                symbol="BTC-USD",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                analysts=[
+                    "Technical Analyst",
+                    "News Analyst",
+                ],
+                analysis_snapshot_id=snapshot.database_id,
+            ),
+            price_usd=100.0,
+        )
+        first.prediction_evaluator.evaluate(
+            prediction=prediction,
+            current_price_usd=105.0,
+        )
+
+    restarted = AtlasEngine(config)
+
+    buy_weights = restarted.agent_weight_engine.calculate(
+        action="BUY"
+    )
+    sell_weights = restarted.agent_weight_engine.calculate(
+        action="SELL"
+    )
+
+    assert buy_weights["Technical Analyst"] > buy_weights["News Analyst"]
+    assert sell_weights["Technical Analyst"] == sell_weights["News Analyst"]
+
+    restarted.decision_engine.risk_manager = None
+    restarted.decision_engine.portfolio_manager = None
+    restarted.decision_engine.position_exit_engine = None
+
+    decision = restarted.decision_engine.evaluate(
+        [
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="Technical Analyst",
+                action=Action.HOLD,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Neutral current signal."],
+            ),
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="News Analyst",
+                action=Action.HOLD,
+                confidence=80.0,
+                evidence=80.0,
+                reasoning=["Neutral current signal."],
+            ),
+        ]
+    )
+
+    assert decision.action is Action.HOLD
+    assert decision.action_support_analyst == "Technical Analyst"
+    assert decision.action_support_action is Action.BUY
+    assert decision.action_support_weight == buy_weights["Technical Analyst"]
