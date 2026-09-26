@@ -106,3 +106,50 @@ def test_invalid_max_samples_is_rejected():
             FakeRepository([]),
             max_samples=0,
         )
+
+
+
+def test_persisted_evaluation_becomes_return_history_after_restart(
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    from atlas.database.outcome_repository import OutcomeRepository
+    from atlas.database.prediction_repository import PredictionRepository
+    from atlas.trading.outcome_tracker import OutcomeTracker
+    from atlas.trading.prediction_evaluator import PredictionEvaluator
+    from atlas.trading.prediction_record import PredictionRecord
+    from atlas.trading.prediction_tracker import PredictionTracker
+
+    database_path = tmp_path / "atlas.db"
+    tracker = PredictionTracker(storage_path=database_path)
+    prediction = PredictionRecord(
+        symbol="BTCUSDT",
+        action="BUY",
+        confidence=88.0,
+        evidence=85.0,
+        price_usd=100.0,
+        timestamp=datetime.now() - timedelta(hours=25),
+    )
+    tracker.repository.save(prediction)
+
+    evaluator = PredictionEvaluator(
+        predictions=tracker,
+        outcomes=OutcomeTracker(),
+        outcome_repository=OutcomeRepository(tracker.database),
+    )
+    evaluator.evaluate(
+        prediction=prediction,
+        current_price_usd=105.0,
+    )
+
+    restarted_tracker = PredictionTracker(
+        storage_path=database_path,
+    )
+    provider = HistoricalReturnProvider(
+        PredictionRepository(restarted_tracker.database)
+    )
+
+    assert provider.get_returns("BTCUSDT", Action.BUY) == [
+        pytest.approx(0.05),
+    ]
