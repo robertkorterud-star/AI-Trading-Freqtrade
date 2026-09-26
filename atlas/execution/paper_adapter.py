@@ -30,22 +30,42 @@ class PaperTradingExecutionAdapter:
         self.trading = trading or TradingService()
         persisted_trades = self.trading.history()
         if persisted_trades:
-            try:
-                self.portfolio.restore_from_trades(persisted_trades)
-            except ValueError:
-                # Persisted history can contain legacy/corrupt trades that do
-                # not describe the current paper account. Never let such
-                # history poison the live risk-sizing equity on restart.
-                self.portfolio.reset()
-            else:
-                snapshot = self.portfolio.as_dict(1.0)
-                if snapshot["cash_nok"] < -1e-9:
-                    # A valid paper account cannot spend more cash than its
-                    # configured starting capital. Keep the trade history as
-                    # history, but start the current account safely.
-                    self.portfolio.reset()
+            self._restore_latest_valid_history(persisted_trades)
         # Keep a reference to ExchangeRateService and fetch rate at execute-time.
         self.exchange_service = exchange_service
+
+    def _restore_latest_valid_history(self, persisted_trades):
+        """Restore the newest valid paper-account period from trade history.
+
+        Legacy/corrupt trades remain in TradingService for audit history. If
+        the full ledger cannot describe a valid current account, progressively
+        discard only the oldest replay inputs until the newest valid suffix can
+        be reconstructed.
+        """
+
+        def value(trade, key):
+            if isinstance(trade, dict):
+                return trade[key]
+            return getattr(trade, key)
+
+        ordered_trades = sorted(
+            persisted_trades,
+            key=lambda trade: value(trade, "timestamp"),
+        )
+
+        for start in range(len(ordered_trades)):
+            try:
+                self.portfolio.restore_from_trades(
+                    ordered_trades[start:]
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+
+            snapshot = self.portfolio.as_dict(1.0)
+            if snapshot["cash_nok"] >= -1e-9:
+                return
+
+        self.portfolio.reset()
 
     def execute(self, request: ExecutionRequest) -> ExecutionResult:
         # Validate adapter inputs at this boundary:
