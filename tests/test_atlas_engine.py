@@ -406,8 +406,8 @@ def test_execution_failure_preserves_prediction_without_trade_event(
 
     predictions = engine.prediction_tracker.history()
     assert len(predictions) == 1
-    assert predictions[0].symbol == "BTC-USD"
-    assert predictions[0].action is Action.BUY
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "BUY"
 
     events = engine.event_repository.after(0, limit=100)
     assert any(event["type"] == "DECISION_READY" for event in events)
