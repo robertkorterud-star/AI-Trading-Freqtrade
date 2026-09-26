@@ -321,6 +321,78 @@ def test_atlas_engine_start_sends_decision_to_paper_runtime(
     assert calls[0]["decision"].portfolio_assessment is not None
 
 
+
+def test_snapshot_persistence_failure_prevents_decision_publication_and_execution(monkeypatch, tmp_path):
+    import pytest
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+    )
+    config.trading_mode = "paper"
+    config.paper_trading = True
+
+    engine = AtlasEngine(config=config)
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 100000.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    def fail_snapshot_save(snapshot):
+        raise RuntimeError("snapshot persistence failed")
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(
+        engine.analysis_snapshot_repository,
+        "save",
+        fail_snapshot_save,
+    )
+
+    with pytest.raises(RuntimeError, match="snapshot persistence failed"):
+        engine.start()
+
+    assert engine.prediction_tracker.count() == 0
+    assert engine.trading_service.count() == 0
+    assert engine.event_repository.after(0, limit=100) == []
+
+
 def test_execution_failure_preserves_prediction_without_trade_event(
     monkeypatch,
     tmp_path,
