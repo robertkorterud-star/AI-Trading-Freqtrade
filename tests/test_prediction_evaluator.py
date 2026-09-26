@@ -704,4 +704,4 @@ def test_persisted_learning_uses_each_analysts_original_direction(tmp_path):
     assert news.predictions == 1
     assert news.correct == 0
     assert news.action_predictions == {"SELL": 1}
-    assert news.action_correct == {}
+    assert news.action_correct == {"SELL": 0}
