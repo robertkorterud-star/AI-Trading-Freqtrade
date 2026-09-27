@@ -457,9 +457,9 @@ def test_risk_veto_records_hold_prediction_without_paper_trade(
     decision = selected["decision"]
     assert decision.action is Action.HOLD
     assert decision.risk_assessment is not None
-    assert decision.risk_assessment.action is Action.SELL
+    assert decision.risk_assessment.action is Action.BUY
     assert decision.risk_assessment.allowed is False
-    assert "No open position available to sell." in decision.risk_assessment.reasons
+    assert "Maximum drawdown limit reached." in decision.risk_assessment.reasons
 
     predictions = engine.prediction_tracker.history()
     assert len(predictions) == 1
