@@ -95,3 +95,18 @@ def test_runtime_run_loads_persisted_settings_when_no_config_is_supplied(monkeyp
     assert captured["config"].load_persisted_settings is True
     assert captured["interval_seconds"] == 45
     assert captured["started"] is True
+
+
+def test_runtime_loop_main_starts_continuous_runtime(monkeypatch):
+    import atlas.core.runtime_loop as runtime_loop
+
+    captured = {}
+
+    def fake_run():
+        captured["started"] = True
+
+    monkeypatch.setattr(runtime_loop, "run", fake_run)
+
+    runtime_loop.main()
+
+    assert captured["started"] is True
