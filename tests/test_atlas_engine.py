@@ -4564,10 +4564,10 @@ def test_atlas_engine_evaluated_history_changes_next_decision_weights(
                 {
                     "analyst": "News Analyst",
                     "symbol": "BTC-USD",
-                    "action": "BUY",
+                    "action": ("BUY" if index < 6 else "SELL"),
                     "confidence": 90.0,
                     "evidence": 90.0,
-                    "reasoning": ["Historical BUY."],
+                    "reasoning": ["Historical directional signal."],
                 },
             ],
             decision={
@@ -4601,9 +4601,6 @@ def test_atlas_engine_evaluated_history_changes_next_decision_weights(
         engine.prediction_tracker.repository.save(prediction)
 
         current_price = 105.0 if index < 18 else 95.0
-        if index >= 6:
-            snapshot.results[1]["action"] = "SELL"
-            engine.analysis_snapshot_repository.save(snapshot)
 
         engine.prediction_evaluator.evaluate(
             prediction=prediction,
