@@ -256,6 +256,7 @@ class AtlasEngine:
             exchange_service=self.exchange,
             account_state_repository=self.paper_account_state_repository,
         )
+        self.paper_execution_adapter = paper_adapter
 
         self.execution_engine = ExecutionEngine(paper_adapter)
         self.decision_execution_service = DecisionExecutionService(self.execution_engine)
@@ -1076,9 +1077,7 @@ class AtlasEngine:
 
     def restore_paper_portfolio(self):
         """Restore paper positions and durable per-position state."""
-        self.portfolio_service.restore_from_trades(
-            self.trading_service._history
-        )
+        self.paper_execution_adapter.restore_portfolio()
         self._reconcile_position_peak_state()
 
     def _evaluate_candidate_decision(
