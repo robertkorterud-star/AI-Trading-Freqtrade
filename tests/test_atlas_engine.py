@@ -6549,7 +6549,9 @@ def test_restart_preserves_paper_accounting_after_profitable_partial_sell_and_re
         price=110.0,
     )
     assert sell_result is not None
-    assert sell_result["realized_pnl_nok"] > 0.0
+    sell_trade = engine.trading_service.history()[0]
+    assert sell_trade["action"] == "SELL"
+    assert sell_trade["realized_pnl_nok"] > 0.0
 
     reentry = engine._evaluate_candidate_decision(
         buy_analysis,
