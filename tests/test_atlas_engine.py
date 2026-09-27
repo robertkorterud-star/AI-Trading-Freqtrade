@@ -4793,3 +4793,147 @@ def test_atlas_engine_start_runs_modern_paper_buy_then_sell_lifecycle(
         for event in trade_events
     ] == ["BUY", "SELL"]
 
+def test_atlas_engine_buy_prediction_is_evaluated_on_later_start(
+    monkeypatch,
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    import atlas.trading.prediction_tracker as prediction_tracker_module
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    real_datetime = datetime
+    first_run_time = real_datetime.now() - timedelta(hours=25)
+
+    class HistoricalDateTime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is not None:
+                return first_run_time.astimezone(tz)
+            return first_run_time
+
+    state = {
+        "action": Action.BUY,
+        "price": 100.0,
+    }
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+    }
+
+    def current_analysis():
+        return [
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="Technical Analyst",
+                action=state["action"],
+                confidence=95.0,
+                evidence=95.0,
+                reasoning=[f"Strong {state['action'].value} signal."],
+            )
+        ]
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": state["price"]})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        analysis = current_analysis()
+        selected["analysis"] = analysis
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    monkeypatch.setattr(
+        prediction_tracker_module,
+        "datetime",
+        HistoricalDateTime,
+    )
+    engine.start()
+
+    stored = engine.prediction_tracker.repository.get_all()
+    assert len(stored) == 1
+    assert stored[0].action == "BUY"
+    assert stored[0].evaluated is False
+    assert stored[0].timestamp == first_run_time
+
+    monkeypatch.setattr(
+        prediction_tracker_module,
+        "datetime",
+        real_datetime,
+    )
+    state["action"] = Action.SELL
+    state["price"] = 110.0
+
+    engine.start()
+
+    stored = engine.prediction_tracker.repository.get_all()
+    buy_prediction = next(
+        prediction
+        for prediction in stored
+        if prediction.action == "BUY"
+    )
+    assert buy_prediction.evaluated is True
+    assert buy_prediction.correct is True
+    assert buy_prediction.evaluated_price_usd == 110.0
+    assert buy_prediction.price_change_percent == 10.0
+
+    outcomes = engine.outcome_repository.get_for_prediction(
+        buy_prediction.database_id
+    )
+    assert len(outcomes) == 1
+    assert outcomes[0].correct is True
+
+    performance = engine.agent_performance.get("Technical Analyst")
+    assert performance.predictions == 1
+    assert performance.correct == 1
+    assert performance.action_predictions == {"BUY": 1}
+    assert performance.action_correct == {"BUY": 1}
+
+    trades = engine.trading_service.history()
+    assert [trade["action"] for trade in reversed(trades)] == [
+        "BUY",
+        "SELL",
+    ]
+
+    events = engine.event_repository.after(0, limit=100)
+    assert any(
+        event["type"] == "LEARNING_UPDATED"
+        and event["payload"] == {"evaluated_predictions": 1}
+        for event in events
+    )
+
