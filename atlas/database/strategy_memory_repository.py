@@ -230,9 +230,7 @@ class StrategyMemoryRepository:
                     record.total_return_percent,
                     record.evidence_strength,
                     int(record.robust_winner),
-                    record.updated_at.isoformat(
-                        timespec="seconds"
-                    ),
+                    record.updated_at.isoformat(),
                 ),
             )
 
