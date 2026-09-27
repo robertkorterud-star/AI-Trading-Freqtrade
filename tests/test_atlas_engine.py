@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
 
 from atlas.core.config import AtlasConfig
 from atlas.core.engine import AtlasEngine
