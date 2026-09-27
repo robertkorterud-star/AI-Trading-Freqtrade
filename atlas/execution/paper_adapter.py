@@ -51,7 +51,6 @@ class PaperTradingExecutionAdapter:
             ]
 
         if not replay_trades:
-            self.portfolio.reset()
             return
 
         try:
