@@ -4111,6 +4111,114 @@ def test_trade_persistence_failure_rolls_back_paper_buy(
     assert not any(event["type"] == "TRADE_EXECUTED" for event in events)
 
 
+
+def test_trade_persistence_failure_rolls_back_paper_sell(
+    monkeypatch,
+    tmp_path,
+):
+    import pytest
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    engine.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.SELL,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong SELL signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 110.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    original_save = engine.trading_service._repository.save
+
+    def fail_sell_trade_save(record):
+        if record.action == "SELL":
+            raise RuntimeError("sell trade persistence failed")
+        return original_save(record)
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(
+        engine.trading_service._repository,
+        "save",
+        fail_sell_trade_save,
+    )
+
+    portfolio_before = engine.portfolio_service.as_dict(usd_nok=10.0)
+    trade_count_before = engine.trading_service.count()
+
+    with pytest.raises(RuntimeError, match="sell trade persistence failed"):
+        engine.start()
+
+    assert engine.trading_service.count() == trade_count_before
+    assert engine.portfolio_service.as_dict(usd_nok=10.0) == portfolio_before
+
+    portfolio_after = engine.portfolio_service.as_dict(usd_nok=10.0)
+    assert portfolio_after["profit_vault_nok"] == 0.0
+    assert len(portfolio_after["positions"]) == 1
+    assert portfolio_after["positions"][0]["symbol"] == "BTC-USD"
+    assert portfolio_after["positions"][0]["quantity"] == 1.0
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["action"] == "SELL"
+
+    events = engine.event_repository.after(0, limit=100)
+    assert any(event["type"] == "DECISION_READY" for event in events)
+    assert not any(event["type"] == "TRADE_EXECUTED" for event in events)
+
+
 def test_trade_remains_committed_when_trade_executed_event_publish_fails(monkeypatch, tmp_path):
     import pytest
 
