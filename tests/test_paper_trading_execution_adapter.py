@@ -527,3 +527,100 @@ def test_algorithm_fusion_decision_buy_reaches_paper_execution():
     assert trading.count() == 1
     assert portfolio.as_dict(usd_nok=10.0)["positions"]
 
+def test_real_algorithms_pipeline_decision_reaches_paper_buy():
+    from atlas.algorithms.breakout import IntradayBreakoutAlgorithm
+    from atlas.algorithms.momentum import IntradayMomentumAlgorithm
+    from atlas.algorithms.pipeline import AlgorithmPipeline
+    from atlas.algorithms.registry import AlgorithmRegistry
+    from atlas.decision.engine import DecisionEngine
+    from atlas.portfolio.manager import PortfolioManager
+    from atlas.risk.manager import RiskManager
+
+    candles = [
+        {
+            "timestamp": str(index),
+            "open": close,
+            "high": close,
+            "low": close,
+            "close": close,
+            "volume": 1.0,
+        }
+        for index, close in enumerate(
+            [
+                100.0,
+                100.1,
+                100.2,
+                100.3,
+                100.4,
+                100.5,
+                100.6,
+                100.7,
+                100.8,
+                100.9,
+                101.0,
+                101.1,
+                103.0,
+            ]
+        )
+    ]
+
+    registry = AlgorithmRegistry()
+    registry.register(IntradayMomentumAlgorithm())
+    registry.register(IntradayBreakoutAlgorithm())
+    pipeline = AlgorithmPipeline(registry)
+
+    fusion_result, signals = pipeline.analyze(
+        "BTC-USD",
+        {"price": 103.0, "candles": candles},
+    )
+
+    assert len(signals) == 2
+    assert all(signal.action is Action.BUY for signal in signals)
+    assert fusion_result is not None
+    assert fusion_result.action is Action.BUY
+
+    portfolio = PortfolioService(1000000)
+    trading = TradingService()
+
+    class FakeExchange:
+        def get_rate(self, base, target):
+            return type("R", (), {"rate": 10.0})()
+
+    service = DecisionExecutionService(
+        ExecutionEngine(
+            PaperTradingExecutionAdapter(
+                portfolio=portfolio,
+                trading=trading,
+                exchange_service=FakeExchange(),
+            )
+        )
+    )
+    decision_engine = DecisionEngine(
+        risk_manager=RiskManager(),
+        portfolio_manager=PortfolioManager(),
+    )
+
+    decision = decision_engine.evaluate_algorithm_signals(
+        signals,
+        fusion_result=fusion_result,
+        price=103.0,
+        equity=100000.0,
+        current_exposure_pct=0.0,
+    )
+
+    assert decision.action is Action.BUY
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.allowed is True
+    assert decision.portfolio_assessment is not None
+    assert decision.portfolio_assessment.allowed is True
+
+    result = service.execute(
+        decision,
+        price=103.0,
+    )
+
+    assert result is not None
+    assert result.action is Action.BUY
+    assert trading.count() == 1
+    assert portfolio.as_dict(usd_nok=10.0)["positions"]
+
