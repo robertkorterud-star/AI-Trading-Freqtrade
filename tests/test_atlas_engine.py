@@ -5321,7 +5321,6 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
     buy_result = first.decision_execution_service.execute(
         decision=buy_decision,
         price=100.0,
-        symbol="BTC-USD",
     )
     assert buy_result is not None
 
@@ -5363,7 +5362,6 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
     sell_result = restarted.decision_execution_service.execute(
         decision=sell_decision,
         price=110.0,
-        symbol="BTC-USD",
     )
     assert sell_result is not None
 
