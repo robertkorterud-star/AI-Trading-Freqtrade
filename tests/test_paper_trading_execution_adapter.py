@@ -286,3 +286,64 @@ def test_paper_adapter_partial_sell_persistence_failure_restores_existing_positi
     assert trading.history() == []
     assert portfolio.as_dict(usd_nok=10.0) == before
 
+def test_modern_decision_engine_buy_reaches_paper_execution():
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.portfolio.manager import PortfolioManager
+    from atlas.risk.manager import RiskManager
+
+    portfolio = PortfolioService(1000000)
+    trading = TradingService()
+
+    class FakeExchange:
+        def get_rate(self, base, target):
+            return type("R", (), {"rate": 10.0})()
+
+    adapter = PaperTradingExecutionAdapter(
+        portfolio=portfolio,
+        trading=trading,
+        exchange_service=FakeExchange(),
+    )
+    service = DecisionExecutionService(
+        ExecutionEngine(adapter)
+    )
+
+    decision_engine = DecisionEngine(
+        risk_manager=RiskManager(),
+        portfolio_manager=PortfolioManager(),
+    )
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY evidence."],
+        )
+    ]
+
+    decision = decision_engine.evaluate(
+        analysis,
+        price=20000.0,
+        equity=100000.0,
+        current_exposure=0.0,
+    )
+
+    assert decision.action is Action.BUY
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.allowed is True
+    assert decision.portfolio_assessment is not None
+    assert decision.portfolio_assessment.allowed is True
+
+    result = service.execute(
+        decision,
+        price=20000.0,
+    )
+
+    assert result is not None
+    assert result.action is Action.BUY
+    assert trading.count() == 1
+    assert portfolio.as_dict(usd_nok=10.0)["positions"]
+
