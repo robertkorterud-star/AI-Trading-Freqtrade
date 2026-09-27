@@ -4407,3 +4407,128 @@ def test_atlas_engine_start_runs_real_algorithm_pipeline_to_modern_paper_buy(
         for position in portfolio["positions"]
     )
 
+def test_atlas_engine_start_persists_ready_prediction_learning_update(
+    monkeypatch,
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+    from atlas.models.decision_result import DecisionResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    snapshot = AnalysisSnapshot(
+        database_id=None,
+        symbol="BTC-USD",
+        timestamp=datetime.now() - timedelta(hours=25),
+        provider="test",
+        model="test",
+        results=[
+            {
+                "analyst": "Technical Analyst",
+                "symbol": "BTC-USD",
+                "action": "BUY",
+                "confidence": 95.0,
+                "evidence": 95.0,
+                "reasoning": ["Bullish test evidence."],
+            },
+            {
+                "analyst": "News Analyst",
+                "symbol": "BTC-USD",
+                "action": "SELL",
+                "confidence": 90.0,
+                "evidence": 90.0,
+                "reasoning": ["Bearish test evidence."],
+            },
+        ],
+        decision={
+            "action": "BUY",
+            "confidence": 95.0,
+            "evidence": 95.0,
+        },
+        intelligence={
+            "action": "BUY",
+            "buy_count": 1,
+            "hold_count": 0,
+            "sell_count": 1,
+            "agreement": 50.0,
+        },
+    )
+    engine.analysis_snapshot_repository.save(snapshot)
+
+    prediction = engine.prediction_tracker.record(
+        decision=DecisionResult(
+            symbol="BTC-USD",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            analysts=["Technical Analyst", "News Analyst"],
+            analysis_snapshot_id=snapshot.database_id,
+        ),
+        price_usd=100.0,
+        reason="Learning lifecycle test.",
+    )
+    prediction.timestamp = datetime.now() - timedelta(hours=25)
+    engine.prediction_tracker.repository.update(
+        prediction.database_id,
+        prediction,
+    )
+
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        lambda symbol: type("Snapshot", (), {"price": 105.0})(),
+    )
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        lambda limit=3: [],
+    )
+
+    engine.start()
+
+    stored_prediction = (
+        engine.prediction_tracker.repository.get_all()[0]
+    )
+    assert stored_prediction.evaluated is True
+    assert stored_prediction.correct is True
+    assert stored_prediction.evaluated_price_usd == 105.0
+    assert stored_prediction.price_change_percent == 5.0
+
+    outcomes = engine.outcome_repository.get_for_prediction(
+        prediction.database_id
+    )
+    assert len(outcomes) == 1
+    assert outcomes[0].correct is True
+
+    technical = engine.agent_performance.get("Technical Analyst")
+    news = engine.agent_performance.get("News Analyst")
+    assert technical.predictions == 1
+    assert technical.correct == 1
+    assert technical.action_predictions == {"BUY": 1}
+    assert technical.action_correct == {"BUY": 1}
+    assert news.predictions == 1
+    assert news.correct == 0
+    assert news.action_predictions == {"SELL": 1}
+    assert news.action_correct == {"SELL": 0}
+
+    events = engine.event_repository.after(0, limit=100)
+    learning_events = [
+        event
+        for event in events
+        if event["type"] == "LEARNING_UPDATED"
+    ]
+    assert len(learning_events) == 1
+    assert learning_events[0]["payload"] == {
+        "evaluated_predictions": 1,
+    }
+
