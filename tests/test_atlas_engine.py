@@ -398,6 +398,137 @@ def test_snapshot_persistence_failure_prevents_decision_publication_and_executio
 
 
 
+
+def test_start_executes_prioritized_sell_before_stronger_new_buy(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.risk.manager import RiskAssessment
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    engine.portfolio_service.buy(
+        symbol="BTC-USD",
+        amount_nok=1000.0,
+        price_usd=100.0,
+        usd_nok=10.0,
+    )
+    engine.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=1.0,
+        price_usd=100.0,
+        amount_nok=1000.0,
+    )
+
+    new_buy = DecisionResult(
+        symbol="ETH-USD",
+        action=Action.BUY,
+        confidence=99.0,
+        evidence=99.0,
+        robustness=99.0,
+        decision_margin=50.0,
+        risk_assessment=RiskAssessment(
+            action=Action.BUY,
+            allowed=True,
+            risk_level="LOW",
+            position_size=1.0,
+            position_value=110.0,
+            stop_loss_price=107.8,
+            take_profit_price=114.4,
+            reasons=("Approved for test.",),
+        ),
+    )
+    existing_exit = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.SELL,
+        confidence=80.0,
+        evidence=80.0,
+        robustness=70.0,
+        decision_margin=20.0,
+        risk_assessment=RiskAssessment(
+            action=Action.SELL,
+            allowed=True,
+            risk_level="LOW",
+            position_size=1.0,
+            position_value=110.0,
+            stop_loss_price=None,
+            take_profit_price=None,
+            reasons=("Approved exit for test.",),
+        ),
+    )
+
+    candidates = [
+        {
+            "symbol": "ETH-USD",
+            "discovery_score": 100.0,
+            "analysis": [],
+            "decision": new_buy,
+        },
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 80.0,
+            "analysis": [],
+            "decision": existing_exit,
+        },
+    ]
+
+    monkeypatch.setattr(engine, "decide_candidates", lambda limit=3: candidates)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        lambda symbol: [],
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        lambda symbol: type("Snapshot", (), {"price": 110.0})(),
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    engine.start()
+
+    trades = engine.trading_service.history()
+    assert [trade["action"] for trade in trades] == ["SELL", "BUY"]
+    assert trades[0]["symbol"] == "BTC-USD"
+    assert not any(
+        position["symbol"] == "BTC-USD"
+        for position in engine.portfolio_service.as_dict(10.0)["positions"]
+    )
+    assert not any(
+        trade["symbol"] == "ETH-USD" and trade["action"] == "BUY"
+        for trade in trades
+    )
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "SELL"
+
+
 def test_start_prioritizes_sell_exit_over_stronger_new_buy(
     monkeypatch,
     tmp_path,
