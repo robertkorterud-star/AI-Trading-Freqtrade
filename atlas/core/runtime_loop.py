@@ -100,3 +100,11 @@ def run(config: AtlasConfig | None = None, interval_seconds: float = 30.0):
         engine=AtlasEngine(config=runtime_config),
         interval_seconds=interval_seconds,
     ).run_forever()
+
+def main():
+    """Start the continuous ATLAS runtime from the module entrypoint."""
+    run()
+
+
+if __name__ == "__main__":
+    main()
