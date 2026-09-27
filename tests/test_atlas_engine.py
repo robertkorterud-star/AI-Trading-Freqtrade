@@ -5333,17 +5333,16 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
     bought_position = first.portfolio_service.as_dict(10.0)["positions"][0]
     bought_quantity = bought_position["quantity"]
     assert bought_quantity > 0.0
+    first.paper_account_state_repository.set_position_peak_price_usd(
+        "BTC-USD",
+        120.0,
+    )
 
     restarted = AtlasEngine(config=config)
     restored_position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
     assert restored_position["symbol"] == "BTC-USD"
     assert restored_position["quantity"] == bought_quantity
-
-    monkeypatch.setattr(
-        restarted,
-        "_get_usd_nok_rate",
-        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
-    )
+    assert restored_position["peak_price_usd"] == 120.0
 
     sell_analysis = [
         AnalysisResult(
@@ -5355,21 +5354,65 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
             reasoning=["Strong SELL signal."],
         )
     ]
-    sell_decision = restarted._evaluate_candidate_decision(
-        sell_analysis,
-        market_snapshot=type("Snapshot", (), {"price": 110.0})(),
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": sell_analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 110.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = restarted._evaluate_candidate_decision(
+            sell_analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(
+        restarted,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+    monkeypatch.setattr(
+        restarted,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(
+        restarted,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+    monkeypatch.setattr(
+        restarted,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        restarted.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        restarted.report,
+        "print_decision",
+        lambda decision: None,
+    )
+    monkeypatch.setattr(
+        restarted.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
     )
 
+    restarted.start()
+
+    sell_decision = selected["decision"]
     assert sell_decision.action is Action.SELL
     assert sell_decision.risk_assessment is not None
     assert sell_decision.risk_assessment.allowed is True
     assert sell_decision.risk_assessment.position_size == bought_quantity
-
-    sell_result = restarted.decision_execution_service.execute(
-        decision=sell_decision,
-        price=110.0,
-    )
-    assert sell_result is not None
 
     trades = restarted.trading_service.history()
     assert [trade["action"] for trade in reversed(trades)] == [
@@ -5377,6 +5420,7 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
         "SELL",
     ]
     assert trades[0]["realized_pnl_nok"] > 0.0
+    assert trades[0]["analysis_snapshot_id"] is not None
 
     portfolio = restarted.portfolio_service.as_dict(10.0)
     assert not any(
@@ -5384,4 +5428,22 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
         for position in portfolio["positions"]
     )
     assert portfolio["profit_vault_nok"] > 0.0
+    assert (
+        restarted.paper_account_state_repository
+        .get_position_peak_price_usd("BTC-USD")
+        is None
+    )
+
+    events = restarted.event_repository.after(0, limit=100)
+    sell_events = [
+        event
+        for event in events
+        if event["type"] == "TRADE_EXECUTED"
+        and event["payload"]["action"] == "SELL"
+    ]
+    assert len(sell_events) == 1
+    assert (
+        sell_events[0]["payload"]["analysis_snapshot_id"]
+        == trades[0]["analysis_snapshot_id"]
+    )
 
