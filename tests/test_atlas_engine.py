@@ -6541,12 +6541,12 @@ def test_restart_preserves_paper_accounting_after_profitable_partial_sell_and_re
     ]
     partial_sell = engine._evaluate_candidate_decision(
         sell_analysis,
-        market_snapshot=type("Snapshot", (), {"price": 110.0})(),
+        market_snapshot=type("Snapshot", (), {"price": 108.0})(),
     )
     assert partial_sell.action is Action.SELL
     sell_result = engine.decision_execution_service.execute(
         decision=partial_sell,
-        price=110.0,
+        price=108.0,
     )
     assert sell_result is not None
     sell_trade = engine.trading_service.history()[0]
@@ -6555,12 +6555,12 @@ def test_restart_preserves_paper_accounting_after_profitable_partial_sell_and_re
 
     reentry = engine._evaluate_candidate_decision(
         buy_analysis,
-        market_snapshot=type("Snapshot", (), {"price": 99.0})(),
+        market_snapshot=type("Snapshot", (), {"price": 98.0})(),
     )
     assert reentry.action is Action.BUY
     assert engine.decision_execution_service.execute(
         decision=reentry,
-        price=99.0,
+        price=98.0,
     ) is not None
 
     before_restart = engine.portfolio_service.as_dict(10.0)
