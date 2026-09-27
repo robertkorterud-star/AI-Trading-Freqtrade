@@ -36,9 +36,7 @@ class AnalysisSnapshotRepository:
                 """,
                 (
                     snapshot.symbol,
-                    snapshot.timestamp.isoformat(
-                        timespec="seconds"
-                    ),
+                    snapshot.timestamp.isoformat(),
                     snapshot.provider,
                     snapshot.model,
                     json.dumps(
