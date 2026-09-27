@@ -2007,6 +2007,12 @@ def test_get_candidate_selection_report_returns_none_without_candidates():
     )
 
 
+def test_default_atlas_engine_does_not_use_runtime_database_during_pytest():
+    engine = AtlasEngine()
+
+    assert engine.config.database_path != "atlas/data/atlas.db"
+
+
 def test_atlas_engine_start_uses_selected_candidate(
     monkeypatch,
 ):
