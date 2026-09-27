@@ -48,9 +48,7 @@ class PredictionRepository:
                     prediction.confidence,
                     prediction.evidence,
                     prediction.price_usd,
-                    prediction.timestamp.isoformat(
-                        timespec="seconds"
-                    ),
+                    prediction.timestamp.isoformat(),
                     json.dumps(
                         prediction.analysts,
                         ensure_ascii=False,
