@@ -415,10 +415,10 @@ def test_risk_veto_records_hold_prediction_without_paper_trade(
         AnalysisResult(
             symbol="BTC-USD",
             analyst="test-analyst",
-            action=Action.SELL,
+            action=Action.BUY,
             confidence=95.0,
             evidence=95.0,
-            reasoning=["Strong SELL signal."],
+            reasoning=["Strong BUY signal."],
         )
     ]
     selected = {
