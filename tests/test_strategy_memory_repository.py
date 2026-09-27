@@ -189,8 +189,20 @@ def test_save_and_get_preserves_subsecond_updated_at(tmp_path):
         2026, 9, 28, 8, 0, 0, 900000
     )
 
-    record = _record()
-    record.updated_at = updated_at
+    record = StrategyMemoryRecord(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy_name="Momentum",
+        trade_count=20,
+        winning_trades=15,
+        losing_trades=5,
+        win_rate_percent=75.0,
+        average_trade_return_percent=2.0,
+        total_return_percent=40.0,
+        evidence_strength="STRONG",
+        robust_winner=True,
+        updated_at=updated_at,
+    )
 
     repository.save(record)
 
