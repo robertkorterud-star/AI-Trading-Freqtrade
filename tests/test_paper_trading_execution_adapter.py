@@ -347,3 +347,97 @@ def test_modern_decision_engine_buy_reaches_paper_execution():
     assert trading.count() == 1
     assert portfolio.as_dict(usd_nok=10.0)["positions"]
 
+def test_modern_decision_engine_buy_then_sell_closes_paper_position():
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.portfolio.manager import PortfolioManager
+    from atlas.risk.manager import RiskManager
+
+    portfolio = PortfolioService(1000000)
+    trading = TradingService()
+
+    class FakeExchange:
+        def get_rate(self, base, target):
+            return type("R", (), {"rate": 10.0})()
+
+    service = DecisionExecutionService(
+        ExecutionEngine(
+            PaperTradingExecutionAdapter(
+                portfolio=portfolio,
+                trading=trading,
+                exchange_service=FakeExchange(),
+            )
+        )
+    )
+    decision_engine = DecisionEngine(
+        risk_manager=RiskManager(),
+        portfolio_manager=PortfolioManager(),
+    )
+
+    buy_analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY evidence."],
+        )
+    ]
+    buy_decision = decision_engine.evaluate(
+        buy_analysis,
+        price=20000.0,
+        equity=100000.0,
+        current_exposure_pct=0.0,
+    )
+    buy_result = service.execute(
+        buy_decision,
+        price=20000.0,
+    )
+
+    assert buy_result is not None
+    assert buy_result.action is Action.BUY
+
+    position = portfolio.as_dict(usd_nok=10.0)["positions"][0]
+    open_quantity = position["quantity"]
+
+    sell_analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.SELL,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong SELL evidence."],
+        )
+    ]
+    sell_decision = decision_engine.evaluate(
+        sell_analysis,
+        price=22000.0,
+        equity=100000.0,
+        current_exposure_pct=0.0,
+        current_position=open_quantity,
+        last_buy_price=20000.0,
+        average_price=20000.0,
+        peak_price=22000.0,
+    )
+
+    assert sell_decision.action is Action.SELL
+    assert sell_decision.risk_assessment is not None
+    assert sell_decision.risk_assessment.allowed is True
+    assert sell_decision.risk_assessment.position_size == pytest.approx(
+        open_quantity
+    )
+
+    sell_result = service.execute(
+        sell_decision,
+        price=22000.0,
+    )
+
+    assert sell_result is not None
+    assert sell_result.action is Action.SELL
+    assert sell_result.quantity == pytest.approx(open_quantity)
+    assert trading.count() == 2
+    assert portfolio.as_dict(usd_nok=10.0)["positions"] == []
+    assert portfolio.as_dict(usd_nok=10.0)["profit_vault_nok"] > 0
+
