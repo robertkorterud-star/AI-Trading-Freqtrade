@@ -5041,7 +5041,7 @@ def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
             analyst="News Analyst",
             action=Action.SELL,
             confidence=100.0,
-            evidence=0.0,
+            evidence=100.0,
             reasoning=["Current news SELL."],
         ),
         AnalysisResult(
@@ -5049,7 +5049,7 @@ def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
             analyst="Company Analyst",
             action=Action.SELL,
             confidence=100.0,
-            evidence=0.0,
+            evidence=100.0,
             reasoning=["Current company SELL."],
         ),
     ]
