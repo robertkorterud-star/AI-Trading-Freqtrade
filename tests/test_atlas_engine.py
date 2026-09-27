@@ -397,6 +397,113 @@ def test_snapshot_persistence_failure_prevents_decision_publication_and_executio
 
 
 
+
+def test_start_prioritizes_sell_exit_over_stronger_new_buy(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+    from atlas.risk.manager import RiskAssessment
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    new_buy = DecisionResult(
+        symbol="ETH-USD",
+        action=Action.BUY,
+        confidence=99.0,
+        evidence=99.0,
+        robustness=99.0,
+        decision_margin=50.0,
+        risk_assessment=RiskAssessment(
+            action=Action.BUY,
+            allowed=True,
+            risk_level="LOW",
+            position_size=1.0,
+            position_value=100.0,
+            stop_loss_price=98.0,
+            take_profit_price=104.0,
+            reasons=("Approved for test.",),
+        ),
+    )
+    existing_exit = DecisionResult(
+        symbol="BTC-USD",
+        action=Action.SELL,
+        confidence=80.0,
+        evidence=80.0,
+        robustness=70.0,
+        decision_margin=20.0,
+        risk_assessment=RiskAssessment(
+            action=Action.SELL,
+            allowed=True,
+            risk_level="LOW",
+            position_size=1.0,
+            position_value=100.0,
+            stop_loss_price=None,
+            take_profit_price=None,
+            reasons=("Approved exit for test.",),
+        ),
+    )
+
+    candidates = [
+        {
+            "symbol": "ETH-USD",
+            "discovery_score": 100.0,
+            "analysis": [],
+            "decision": new_buy,
+        },
+        {
+            "symbol": "BTC-USD",
+            "discovery_score": 80.0,
+            "analysis": [],
+            "decision": existing_exit,
+        },
+    ]
+
+    monkeypatch.setattr(engine, "decide_candidates", lambda limit=3: candidates)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        lambda symbol: [],
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        lambda symbol: type("Snapshot", (), {"price": 100.0})(),
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    executed = []
+
+    def fake_execute(decision, *, price=None, analysis_snapshot_id=None):
+        executed.append(decision)
+        return None
+
+    monkeypatch.setattr(engine.decision_execution_service, "execute", fake_execute)
+
+    engine.start()
+
+    assert len(executed) == 1
+    assert executed[0] is existing_exit
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "SELL"
+
+
 def test_start_prefers_investable_buy_over_stronger_vetoed_hold(
     monkeypatch,
     tmp_path,
