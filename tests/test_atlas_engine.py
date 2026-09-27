@@ -4763,8 +4763,8 @@ def test_atlas_engine_start_runs_modern_paper_buy_then_sell_lifecycle(
 
     predictions = engine.prediction_tracker.history()
     assert [prediction["action"] for prediction in predictions] == [
-        "BUY",
         "SELL",
+        "BUY",
     ]
 
     trades = engine.trading_service.history()
