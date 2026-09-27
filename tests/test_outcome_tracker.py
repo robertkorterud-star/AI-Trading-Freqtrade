@@ -1,6 +1,9 @@
 from datetime import datetime
 
-from atlas.trading.outcome_tracker import OutcomeTracker
+from atlas.database.connection import Database
+from atlas.database.outcome_repository import OutcomeRepository
+from atlas.database.schema import initialize_database
+from atlas.trading.outcome_tracker import OutcomeRecord, OutcomeTracker
 from atlas.trading.prediction_record import PredictionRecord
 
 
@@ -98,3 +101,36 @@ def test_tracker_clear():
 
     assert tracker.count() == 0
     assert tracker.history() == []
+
+
+
+def test_outcome_repository_preserves_subsecond_latest_order(tmp_path):
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+    repository = OutcomeRepository(database)
+
+    newer = OutcomeRecord(
+        symbol="NVDA",
+        action="BUY",
+        prediction_price_usd=100.0,
+        outcome_price_usd=105.0,
+        change_percent=5.0,
+        correct=True,
+        timestamp=datetime(2026, 9, 28, 8, 0, 0, 900000),
+    )
+    repository.save(1, newer)
+
+    older = OutcomeRecord(
+        symbol="NVDA",
+        action="BUY",
+        prediction_price_usd=100.0,
+        outcome_price_usd=104.0,
+        change_percent=4.0,
+        correct=True,
+        timestamp=datetime(2026, 9, 28, 8, 0, 0, 100000),
+    )
+    repository.save(1, older)
+
+    outcomes = repository.get_all()
+
+    assert outcomes[0].timestamp == newer.timestamp
