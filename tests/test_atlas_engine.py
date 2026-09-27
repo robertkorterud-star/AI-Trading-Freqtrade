@@ -4529,3 +4529,122 @@ def test_atlas_engine_start_persists_ready_prediction_learning_update(
         "evaluated_predictions": 1,
     }
 
+def test_atlas_engine_evaluated_history_changes_next_decision_weights(
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+    from atlas.trading.prediction_record import PredictionRecord
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+    )
+    engine = AtlasEngine(config=config)
+
+    for index in range(20):
+        snapshot = AnalysisSnapshot(
+            database_id=None,
+            symbol="BTC-USD",
+            timestamp=datetime.now() - timedelta(hours=25, minutes=index),
+            provider="test",
+            model="test",
+            results=[
+                {
+                    "analyst": "Technical Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "BUY",
+                    "confidence": 90.0,
+                    "evidence": 90.0,
+                    "reasoning": ["Historical BUY."],
+                },
+                {
+                    "analyst": "News Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "BUY",
+                    "confidence": 90.0,
+                    "evidence": 90.0,
+                    "reasoning": ["Historical BUY."],
+                },
+            ],
+            decision={
+                "action": "BUY",
+                "confidence": 90.0,
+                "evidence": 90.0,
+            },
+            intelligence={
+                "action": "BUY",
+                "buy_count": 2,
+                "hold_count": 0,
+                "sell_count": 0,
+                "agreement": 100.0,
+            },
+        )
+        engine.analysis_snapshot_repository.save(snapshot)
+
+        prediction = PredictionRecord(
+            symbol="BTC-USD",
+            action="BUY",
+            confidence=90.0,
+            evidence=90.0,
+            price_usd=100.0,
+            timestamp=datetime.now() - timedelta(
+                hours=25,
+                minutes=index,
+            ),
+            analysts=["Technical Analyst", "News Analyst"],
+            analysis_snapshot_id=snapshot.database_id,
+        )
+        engine.prediction_tracker.repository.save(prediction)
+
+        current_price = 105.0 if index < 18 else 95.0
+        if index >= 6:
+            snapshot.results[1]["action"] = "SELL"
+            engine.analysis_snapshot_repository.save(snapshot)
+
+        engine.prediction_evaluator.evaluate(
+            prediction=prediction,
+            current_price_usd=current_price,
+        )
+
+    technical = engine.agent_performance.get("Technical Analyst")
+    news = engine.agent_performance.get("News Analyst")
+
+    assert technical.action_predictions["BUY"] == 20
+    assert technical.action_correct["BUY"] == 18
+    assert news.action_predictions["BUY"] == 6
+    assert news.action_correct["BUY"] == 6
+    assert news.action_predictions["SELL"] == 14
+    assert news.action_correct["SELL"] == 2
+
+    decision = engine.decision_engine.evaluate(
+        [
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="Technical Analyst",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Current technical BUY."],
+            ),
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="News Analyst",
+                action=Action.HOLD,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Current news HOLD."],
+            ),
+        ],
+        price=100.0,
+        equity=10000.0,
+    )
+
+    assert decision.agent_weights["Technical Analyst"] > (
+        decision.agent_weights["News Analyst"]
+    )
+    assert decision.agent_weights == engine.agent_weight_engine.calculate()
+
