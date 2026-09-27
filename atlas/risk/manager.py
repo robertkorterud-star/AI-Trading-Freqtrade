@@ -150,6 +150,12 @@ class RiskManager:
 
         position_pct = min(self.max_position_pct, remaining_exposure_pct)
         max_position_value = equity * position_pct / 100.0
+        if action is Action.BUY:
+            existing_position_value = current_position * price
+            max_position_value = max(
+                0.0,
+                max_position_value - existing_position_value,
+            )
         risk_budget = equity * self.risk_per_trade_pct / 100.0
         stop_distance = price * self.stop_loss_pct / 100.0
         size_by_risk = risk_budget / stop_distance
