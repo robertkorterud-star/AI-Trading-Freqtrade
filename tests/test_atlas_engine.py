@@ -6481,6 +6481,116 @@ def test_atlas_engine_start_executes_partial_paper_sell_and_preserves_position(
 
 
 
+def test_partial_sell_preserves_last_buy_price_for_next_accumulation_gate(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+
+    buy_analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    initial_buy = engine._evaluate_candidate_decision(
+        buy_analysis,
+        market_snapshot=type("Snapshot", (), {"price": 100.0})(),
+    )
+    assert initial_buy.action is Action.BUY
+    assert engine.decision_execution_service.execute(
+        decision=initial_buy,
+        price=100.0,
+    ) is not None
+
+    sell_analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.SELL,
+            confidence=50.0,
+            evidence=50.0,
+            reasoning=["Moderate SELL signal."],
+        )
+    ]
+    partial_sell = engine._evaluate_candidate_decision(
+        sell_analysis,
+        market_snapshot=type("Snapshot", (), {"price": 99.0})(),
+    )
+    assert partial_sell.action is Action.SELL
+    assert engine.decision_execution_service.execute(
+        decision=partial_sell,
+        price=99.0,
+    ) is not None
+
+    after_sell = engine.portfolio_service.as_dict(10.0)
+    position_after_sell = next(
+        position
+        for position in after_sell["positions"]
+        if position["symbol"] == "BTC-USD"
+    )
+    assert position_after_sell["last_buy_price_usd"] == 100.0
+
+    blocked_buy = engine._evaluate_candidate_decision(
+        buy_analysis,
+        market_snapshot=type("Snapshot", (), {"price": 99.0})(),
+    )
+    assert blocked_buy.dominant_action is Action.BUY
+    assert blocked_buy.action is Action.HOLD
+
+    allowed_buy = engine._evaluate_candidate_decision(
+        buy_analysis,
+        market_snapshot=type("Snapshot", (), {"price": 98.0})(),
+    )
+    assert allowed_buy.dominant_action is Action.BUY
+    assert allowed_buy.action is Action.BUY
+    assert allowed_buy.risk_assessment is not None
+    assert allowed_buy.risk_assessment.allowed is True
+    assert allowed_buy.portfolio_assessment is not None
+    assert allowed_buy.portfolio_assessment.allowed is True
+
+    before_reentry_quantity = position_after_sell["quantity"]
+    assert engine.decision_execution_service.execute(
+        decision=allowed_buy,
+        price=98.0,
+    ) is not None
+
+    after_reentry = engine.portfolio_service.as_dict(10.0)
+    position_after_reentry = next(
+        position
+        for position in after_reentry["positions"]
+        if position["symbol"] == "BTC-USD"
+    )
+    assert position_after_reentry["quantity"] > before_reentry_quantity
+    assert position_after_reentry["last_buy_price_usd"] == 98.0
+
+
+
 def test_start_executes_accumulation_buy_after_configured_drop_through_paper_lifecycle(
     monkeypatch,
     tmp_path,
