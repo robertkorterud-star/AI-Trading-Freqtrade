@@ -5286,3 +5286,98 @@ def test_atlas_engine_restart_reuses_persisted_learning_for_decision(
         for reason in decision.reasoning
     )
 
+def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    first = AtlasEngine(config=config)
+
+    buy_analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    buy_decision = first._evaluate_candidate_decision(
+        buy_analysis,
+        market_snapshot=type("Snapshot", (), {"price": 100.0})(),
+    )
+    assert buy_decision.action is Action.BUY
+
+    buy_result = first.decision_execution_service.execute(
+        decision=buy_decision,
+        price=100.0,
+        symbol="BTC-USD",
+    )
+    assert buy_result is not None
+
+    bought_position = first.portfolio_service.as_dict(10.0)["positions"][0]
+    bought_quantity = bought_position["quantity"]
+    assert bought_quantity > 0.0
+
+    restarted = AtlasEngine(config=config)
+    restored_position = restarted.portfolio_service.as_dict(10.0)["positions"][0]
+    assert restored_position["symbol"] == "BTC-USD"
+    assert restored_position["quantity"] == bought_quantity
+
+    monkeypatch.setattr(
+        restarted,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+
+    sell_analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.SELL,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong SELL signal."],
+        )
+    ]
+    sell_decision = restarted._evaluate_candidate_decision(
+        sell_analysis,
+        market_snapshot=type("Snapshot", (), {"price": 110.0})(),
+    )
+
+    assert sell_decision.action is Action.SELL
+    assert sell_decision.risk_assessment is not None
+    assert sell_decision.risk_assessment.allowed is True
+    assert sell_decision.risk_assessment.position_size == bought_quantity
+
+    sell_result = restarted.decision_execution_service.execute(
+        decision=sell_decision,
+        price=110.0,
+        symbol="BTC-USD",
+    )
+    assert sell_result is not None
+
+    trades = restarted.trading_service.history()
+    assert [trade["action"] for trade in reversed(trades)] == [
+        "BUY",
+        "SELL",
+    ]
+    assert trades[0]["realized_pnl_nok"] > 0.0
+
+    portfolio = restarted.portfolio_service.as_dict(10.0)
+    assert not any(
+        position["symbol"] == "BTC-USD"
+        for position in portfolio["positions"]
+    )
+    assert portfolio["profit_vault_nok"] > 0.0
+
