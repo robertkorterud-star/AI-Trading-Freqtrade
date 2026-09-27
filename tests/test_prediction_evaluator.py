@@ -812,3 +812,33 @@ def test_restart_preserves_each_analysts_original_direction(tmp_path):
     assert news.correct == 0
     assert news.action_predictions == {"SELL": 1}
     assert news.action_correct == {"SELL": 0}
+
+
+
+def test_restart_preserves_subsecond_prediction_readiness_boundary(tmp_path):
+    database_path = tmp_path / "atlas.db"
+    tracker = PredictionTracker(storage_path=database_path)
+    timestamp = datetime(2026, 9, 27, 8, 0, 0, 900000)
+
+    prediction = PredictionRecord(
+        symbol="NVDA",
+        action="BUY",
+        confidence=88.0,
+        evidence=85.0,
+        price_usd=180.0,
+        timestamp=timestamp,
+    )
+    tracker.repository.save(prediction)
+
+    restarted_tracker = PredictionTracker(storage_path=database_path)
+    evaluator = PredictionEvaluator(
+        predictions=restarted_tracker,
+        outcomes=OutcomeTracker(),
+    )
+
+    ready = evaluator.ready_predictions(
+        hours=24,
+        now=datetime(2026, 9, 28, 8, 0, 0, 500000),
+    )
+
+    assert ready == []
