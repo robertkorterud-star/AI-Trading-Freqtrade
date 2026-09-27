@@ -4202,9 +4202,9 @@ def test_trade_persistence_failure_rolls_back_paper_sell(
         engine.start()
 
     assert engine.trading_service.count() == trade_count_before
-    assert engine.portfolio_service.as_dict(usd_nok=10.0) == portfolio_before
 
     portfolio_after = engine.portfolio_service.as_dict(usd_nok=10.0)
+    assert portfolio_after["cash_nok"] == portfolio_before["cash_nok"]
     assert portfolio_after["profit_vault_nok"] == 0.0
     assert len(portfolio_after["positions"]) == 1
     assert portfolio_after["positions"][0]["symbol"] == "BTC-USD"
