@@ -29,11 +29,18 @@ class PaperTradingExecutionAdapter:
     ) -> None:
         self.portfolio = portfolio
         self.trading = trading or TradingService()
+        self.account_state_repository = account_state_repository
+        self.restore_portfolio()
+        # Keep a reference to ExchangeRateService and fetch rate at execute-time.
+        self.exchange_service = exchange_service
+
+    def restore_portfolio(self):
+        """Restore paper portfolio using the persisted replay boundary."""
         persisted_trades = self.trading.history()
         replay_trades = list(persisted_trades)
         replay_after = (
-            account_state_repository.get_trade_replay_after()
-            if account_state_repository is not None
+            self.account_state_repository.get_trade_replay_after()
+            if self.account_state_repository is not None
             else None
         )
         if replay_after is not None:
@@ -43,25 +50,26 @@ class PaperTradingExecutionAdapter:
                 if self._trade_timestamp(trade) > replay_after
             ]
 
-        if replay_trades:
-            try:
-                self.portfolio.restore_from_trades(replay_trades)
-            except ValueError:
+        if not replay_trades:
+            self.portfolio.reset()
+            return
+
+        try:
+            self.portfolio.restore_from_trades(replay_trades)
+        except ValueError:
+            self.portfolio.reset()
+            self._persist_replay_boundary(
+                self.account_state_repository,
+                replay_trades,
+            )
+        else:
+            snapshot = self.portfolio.as_dict(1.0)
+            if snapshot["cash_nok"] < -1e-9:
                 self.portfolio.reset()
                 self._persist_replay_boundary(
-                    account_state_repository,
+                    self.account_state_repository,
                     replay_trades,
                 )
-            else:
-                snapshot = self.portfolio.as_dict(1.0)
-                if snapshot["cash_nok"] < -1e-9:
-                    self.portfolio.reset()
-                    self._persist_replay_boundary(
-                        account_state_repository,
-                        replay_trades,
-                    )
-        # Keep a reference to ExchangeRateService and fetch rate at execute-time.
-        self.exchange_service = exchange_service
 
     @staticmethod
     def _trade_timestamp(trade):
