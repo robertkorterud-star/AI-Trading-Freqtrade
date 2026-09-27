@@ -2,7 +2,8 @@
 Global configuration for ATLAS.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import os
 
 
 @dataclass(slots=True)
@@ -37,8 +38,11 @@ class AtlasConfig:
         "atlas/data/agent_performance.json"
     )
 
-    database_path: str = (
-        "atlas/data/atlas.db"
+    database_path: str = field(
+        default_factory=lambda: os.environ.get(
+            "ATLAS_DATABASE_PATH",
+            "atlas/data/atlas.db",
+        )
     )
 
     load_persisted_settings: bool = False
