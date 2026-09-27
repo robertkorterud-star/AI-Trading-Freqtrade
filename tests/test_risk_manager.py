@@ -25,6 +25,27 @@ def test_position_is_capped_by_max_position_pct():
     assert result.position_size == pytest.approx(10.0)
 
 
+
+def test_buy_position_size_uses_only_remaining_single_position_capacity():
+    manager = RiskManager(
+        risk_per_trade_pct=1.0,
+        max_position_pct=20.0,
+        stop_loss_pct=2.0,
+    )
+
+    result = manager.assess(
+        Action.BUY,
+        price=100.0,
+        equity=10_000.0,
+        current_position=15.0,
+    )
+
+    assert result.allowed is True
+    assert result.position_value == pytest.approx(500.0)
+    assert result.position_size == pytest.approx(5.0)
+
+
+
 def test_sell_without_open_position_is_blocked():
     result = RiskManager().assess(Action.SELL, price=100.0, equity=10_000.0)
 
