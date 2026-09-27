@@ -4937,3 +4937,192 @@ def test_atlas_engine_buy_prediction_is_evaluated_on_later_start(
         for event in events
     )
 
+def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
+    monkeypatch,
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+    from atlas.trading.prediction_record import PredictionRecord
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    for index in range(20):
+        snapshot = AnalysisSnapshot(
+            database_id=None,
+            symbol="BTC-USD",
+            timestamp=datetime.now() - timedelta(
+                hours=25,
+                minutes=index,
+            ),
+            provider="test",
+            model="test",
+            results=[
+                {
+                    "analyst": "Technical Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "BUY",
+                    "confidence": 100.0,
+                    "evidence": 100.0,
+                    "reasoning": ["Historical technical BUY."],
+                },
+                {
+                    "analyst": "News Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "SELL",
+                    "confidence": 100.0,
+                    "evidence": 0.0,
+                    "reasoning": ["Historical news SELL."],
+                },
+                {
+                    "analyst": "Company Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "SELL",
+                    "confidence": 100.0,
+                    "evidence": 0.0,
+                    "reasoning": ["Historical company SELL."],
+                },
+            ],
+            decision={
+                "action": "BUY",
+                "confidence": 100.0,
+                "evidence": 100.0,
+            },
+            intelligence={
+                "action": "BUY",
+                "buy_count": 1,
+                "hold_count": 0,
+                "sell_count": 2,
+                "agreement": 66.67,
+            },
+        )
+        engine.analysis_snapshot_repository.save(snapshot)
+
+        prediction = PredictionRecord(
+            symbol="BTC-USD",
+            action="BUY",
+            confidence=100.0,
+            evidence=100.0,
+            price_usd=100.0,
+            timestamp=datetime.now() - timedelta(
+                hours=25,
+                minutes=index,
+            ),
+            analysts=[
+                "Technical Analyst",
+                "News Analyst",
+                "Company Analyst",
+            ],
+            analysis_snapshot_id=snapshot.database_id,
+        )
+        engine.prediction_tracker.repository.save(prediction)
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Current technical BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=0.0,
+            reasoning=["Current news SELL."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=0.0,
+            reasoning=["Current company SELL."],
+        ),
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 105.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    engine.start()
+
+    decision = selected["decision"]
+    weights = engine.agent_weight_engine.calculate()
+
+    assert engine.agent_performance.get("Technical Analyst").predictions == 20
+    assert engine.agent_performance.get("Technical Analyst").correct == 20
+    assert engine.agent_performance.get("News Analyst").predictions == 20
+    assert engine.agent_performance.get("News Analyst").correct == 0
+    assert engine.agent_performance.get("Company Analyst").predictions == 20
+    assert engine.agent_performance.get("Company Analyst").correct == 0
+
+    assert weights["Technical Analyst"] > weights["News Analyst"]
+    assert weights["Technical Analyst"] > weights["Company Analyst"]
+    assert decision.agent_weights == weights
+    assert decision.action is Action.BUY
+    assert any(
+        "adaptive" in reason.lower()
+        for reason in decision.reasoning
+    )
+
+    events = engine.event_repository.after(0, limit=100)
+    learning_events = [
+        event
+        for event in events
+        if event["type"] == "LEARNING_UPDATED"
+    ]
+    assert learning_events[-1]["payload"] == {
+        "evaluated_predictions": 20,
+    }
+
+    trades = engine.trading_service.history()
+    assert trades[0]["action"] == "BUY"
+
