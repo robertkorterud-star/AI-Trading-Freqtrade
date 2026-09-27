@@ -492,10 +492,10 @@ def test_algorithm_fusion_decision_buy_reaches_paper_execution():
             algorithm="mean_reversion",
             symbol="BTC-USD",
             timeframe="5m",
-            action=Action.HOLD,
-            score=60.0,
-            confidence=0.60,
-            reasoning=["No mean-reversion entry."],
+            action=Action.BUY,
+            score=90.0,
+            confidence=0.90,
+            reasoning=["Mean-reversion confirms the BUY setup."],
         ),
     ]
     fusion_result = SignalFusion().combine(signals)
