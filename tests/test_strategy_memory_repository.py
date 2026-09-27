@@ -176,3 +176,29 @@ def test_clear_removes_records(tmp_path):
 
     assert repository.count() == 0
     assert repository.get_all() == ()
+
+
+def test_save_and_get_preserves_subsecond_updated_at(tmp_path):
+    database = Database(
+        tmp_path / "strategy_memory.db"
+    )
+    initialize_database(database)
+    repository = StrategyMemoryRepository(database)
+
+    updated_at = datetime(
+        2026, 9, 28, 8, 0, 0, 900000
+    )
+
+    record = _record()
+    record.updated_at = updated_at
+
+    repository.save(record)
+
+    restored = repository.get(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy_name="Momentum",
+    )
+
+    assert restored is not None
+    assert restored.updated_at == updated_at
