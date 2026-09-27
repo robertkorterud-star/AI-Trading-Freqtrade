@@ -103,3 +103,23 @@ def test_dashboard_trade_history_attaches_canonical_snapshot(tmp_path):
     assert trade["analysis_snapshot"]["database_id"] == snapshot_id
     assert trade["analysis_snapshot"]["decision"]["action"] == "BUY"
     assert trade["analysis_snapshot"]["intelligence"]["agreement"] == 100.0
+
+
+
+def test_analysis_snapshot_repository_preserves_subsecond_latest_order(tmp_path):
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+    repository = AnalysisSnapshotRepository(database)
+
+    newer = make_snapshot()
+    newer.timestamp = datetime(2026, 9, 10, 8, 0, 0, 900000)
+    repository.save(newer)
+
+    older = make_snapshot()
+    older.timestamp = datetime(2026, 9, 10, 8, 0, 0, 100000)
+    repository.save(older)
+
+    latest = repository.get_latest("BTC-USD")
+
+    assert latest.database_id == newer.database_id
+    assert latest.timestamp == newer.timestamp
