@@ -4645,3 +4645,151 @@ def test_atlas_engine_evaluated_history_changes_next_decision_weights(
     )
     assert decision.agent_weights == engine.agent_weight_engine.calculate()
 
+def test_atlas_engine_start_runs_modern_paper_buy_then_sell_lifecycle(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    state = {
+        "action": Action.BUY,
+        "price": 100.0,
+    }
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+    }
+
+    def current_analysis():
+        return [
+            AnalysisResult(
+                symbol="BTC-USD",
+                analyst="test-analyst",
+                action=state["action"],
+                confidence=95.0,
+                evidence=95.0,
+                reasoning=[f"Strong {state['action'].value} signal."],
+            )
+        ]
+
+    def fake_snapshot(symbol):
+        return type(
+            "Snapshot",
+            (),
+            {"price": state["price"]},
+        )()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        analysis = current_analysis()
+        selected["analysis"] = analysis
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        lambda decision: None,
+    )
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    engine.start()
+
+    buy_decision = selected["decision"]
+    assert buy_decision.action is Action.BUY
+    assert buy_decision.risk_assessment is not None
+    assert buy_decision.risk_assessment.allowed is True
+
+    bought_portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
+    bought_position = next(
+        position
+        for position in bought_portfolio["positions"]
+        if position["symbol"] == "BTC-USD"
+    )
+    bought_quantity = bought_position["quantity"]
+    assert bought_quantity > 0.0
+
+    state["action"] = Action.SELL
+    state["price"] = 110.0
+
+    engine.start()
+
+    sell_decision = selected["decision"]
+    assert sell_decision.action is Action.SELL
+    assert sell_decision.risk_assessment is not None
+    assert sell_decision.risk_assessment.allowed is True
+    assert sell_decision.risk_assessment.position_size == bought_quantity
+
+    predictions = engine.prediction_tracker.history()
+    assert [prediction["action"] for prediction in predictions] == [
+        "BUY",
+        "SELL",
+    ]
+
+    trades = engine.trading_service.history()
+    assert [trade["action"] for trade in reversed(trades)] == [
+        "BUY",
+        "SELL",
+    ]
+    sell_trade = trades[0]
+    assert sell_trade["realized_pnl_nok"] > 0.0
+
+    portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
+    assert not any(
+        position["symbol"] == "BTC-USD"
+        for position in portfolio["positions"]
+    )
+    assert portfolio["profit_vault_nok"] > 0.0
+
+    events = engine.event_repository.after(0, limit=100)
+    trade_events = [
+        event
+        for event in events
+        if event["type"] == "TRADE_EXECUTED"
+    ]
+    assert [
+        event["payload"]["action"]
+        for event in trade_events
+    ] == ["BUY", "SELL"]
+
