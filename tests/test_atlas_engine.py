@@ -428,6 +428,24 @@ def test_restart_preserves_aggregate_portfolio_veto_from_restored_positions(
         max_single_position_pct=20.0,
     )
     first.decision_engine.portfolio_manager = first.portfolio_manager
+    monkeypatch.setattr(
+        first.market_data,
+        "get_many",
+        lambda symbols, horizon=None: {
+            symbol: type("Snapshot", (), {"price": 100.0})()
+            for symbol in symbols
+        },
+    )
+    monkeypatch.setattr(
+        first,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        first.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
 
     def buy(symbol):
         analysis = [
