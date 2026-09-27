@@ -405,6 +405,8 @@ def test_restart_preserves_aggregate_portfolio_veto_from_restored_positions(
     monkeypatch,
     tmp_path,
 ):
+    import pytest
+
     from atlas.models.action import Action
     from atlas.models.analysis_result import AnalysisResult
     from atlas.portfolio.manager import PortfolioManager
