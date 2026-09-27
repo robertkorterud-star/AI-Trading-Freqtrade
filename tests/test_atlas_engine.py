@@ -4272,3 +4272,138 @@ def test_atlas_engine_start_records_prediction_and_executes_modern_paper_buy(
         "TRADE_EXECUTED"
     )
 
+def test_atlas_engine_start_runs_real_algorithm_pipeline_to_modern_paper_buy(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryScore
+    from atlas.market.asset_type import AssetType
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    closes = [
+        100.0 + index * 0.1
+        for index in range(30)
+    ]
+    closes[-1] = 105.0
+    candles = tuple(
+        Candle(
+            timestamp=float(index + 1),
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=100.0,
+        )
+        for index, close in enumerate(closes)
+    )
+    normalized_snapshot = MarketSnapshot.from_candles(
+        "BTC-USD",
+        candles,
+        timeframe_candles={"5m": candles},
+    )
+
+    candidate = DiscoveryScore(
+        asset=Asset(
+            symbol="BTC-USD",
+            name="Bitcoin",
+            asset_type=AssetType.CRYPTO,
+            market="crypto",
+            currency="USD",
+        ),
+        score=100.0,
+    )
+    analyst_evidence = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong controlled BUY evidence."],
+        )
+    ]
+
+    monkeypatch.setattr(
+        engine,
+        "discover_candidates",
+        lambda limit=3, minimum_score=0.0, horizon=None: [candidate],
+    )
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        lambda symbol: analyst_evidence,
+    )
+    monkeypatch.setattr(
+        engine.market_data,
+        "snapshot",
+        lambda symbol, interval, limit: normalized_snapshot,
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        lambda symbol: type(
+            "Snapshot",
+            (),
+            {"price": normalized_snapshot.price},
+        )(),
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine,
+        "get_regime_memory_decision",
+        lambda symbol, regime: None,
+    )
+    monkeypatch.setattr(
+        engine,
+        "integrate_regime_decision",
+        lambda decision, regime_decision: decision,
+    )
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        lambda decision: None,
+    )
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    engine.start()
+
+    predictions = engine.prediction_tracker.history()
+    trades = engine.trading_service.history()
+    portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
+
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "BUY"
+    assert len(trades) == 1
+    assert trades[0]["symbol"] == "BTC-USD"
+    assert trades[0]["action"] == "BUY"
+    assert any(
+        position["symbol"] == "BTC-USD"
+        for position in portfolio["positions"]
+    )
+
