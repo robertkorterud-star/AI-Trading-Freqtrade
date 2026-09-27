@@ -4116,3 +4116,46 @@ def test_committed_sell_survives_position_peak_cleanup_failure(monkeypatch, tmp_
         for position in portfolio["positions"]
     )
 
+
+
+
+def test_restore_paper_portfolio_respects_persisted_replay_boundary(tmp_path):
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
+        capital_limit=5_000.0,
+    )
+
+    legacy = AtlasEngine(config)
+    legacy.trading_service.record_buy(
+        symbol="BTC-USD",
+        quantity=0.2,
+        price_usd=100_000.0,
+        amount_nok=185_854.02,
+    )
+
+    restarted = AtlasEngine(config)
+
+    assert (
+        restarted.paper_account_state_repository.get_trade_replay_after()
+        is not None
+    )
+    assert restarted.portfolio_service.as_dict(10.0)["positions"] == []
+
+    restarted.portfolio_service.buy(
+        symbol="ETH-USD",
+        amount_nok=2_000.0,
+        price_usd=20_000.0,
+        usd_nok=10.0,
+    )
+    restarted.trading_service.record_buy(
+        symbol="ETH-USD",
+        quantity=0.01,
+        price_usd=20_000.0,
+        amount_nok=2_000.0,
+    )
+
+    restarted.restore_paper_portfolio()
+
+    positions = restarted.portfolio_service.as_dict(10.0)["positions"]
+
+    assert [position["symbol"] for position in positions] == ["ETH-USD"]
