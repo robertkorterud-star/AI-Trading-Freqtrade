@@ -401,6 +401,136 @@ def test_snapshot_persistence_failure_prevents_decision_publication_and_executio
 
 
 
+def test_restart_preserves_aggregate_portfolio_veto_from_restored_positions(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.portfolio.manager import PortfolioManager
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    first = AtlasEngine(config=config)
+    first.portfolio_manager = PortfolioManager(
+        max_exposure_pct=30.0,
+        max_single_position_pct=20.0,
+    )
+    first.decision_engine.portfolio_manager = first.portfolio_manager
+
+    def buy(symbol):
+        analysis = [
+            AnalysisResult(
+                symbol=symbol,
+                analyst="test-analyst",
+                action=Action.BUY,
+                confidence=95.0,
+                evidence=95.0,
+                reasoning=["Strong BUY signal."],
+            )
+        ]
+        decision = first._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=type("Snapshot", (), {"price": 100.0})(),
+        )
+        assert decision.action is Action.BUY
+        result = first.decision_execution_service.execute(
+            decision=decision,
+            price=100.0,
+        )
+        assert result is not None
+
+    buy("BTC-USD")
+    buy("ETH-USD")
+
+    restarted = AtlasEngine(config=config)
+    restarted.portfolio_manager = PortfolioManager(
+        max_exposure_pct=30.0,
+        max_single_position_pct=20.0,
+    )
+    restarted.decision_engine.portfolio_manager = restarted.portfolio_manager
+
+    restored = restarted.portfolio_service.as_dict(10.0)
+    assert {position["symbol"] for position in restored["positions"]} == {
+        "BTC-USD",
+        "ETH-USD",
+    }
+    assert restored["positions_value_nok"] == pytest.approx(300000.0)
+
+    analysis = [
+        AnalysisResult(
+            symbol="SOL-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    selected = {
+        "symbol": "SOL-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 100.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = restarted._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("SOL-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(restarted, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        restarted.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(restarted, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(
+        restarted.market_data,
+        "get_many",
+        lambda symbols, horizon=None: {
+            symbol: fake_snapshot(symbol)
+            for symbol in symbols
+        },
+    )
+    monkeypatch.setattr(
+        restarted,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(restarted.report, "print_decision", lambda decision: None)
+
+    before_trade_count = restarted.trading_service.count()
+    restarted.start()
+
+    decision = selected["decision"]
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.allowed is True
+    assert decision.portfolio_assessment is not None
+    assert decision.portfolio_assessment.allowed is False
+    assert "exposure capacity" in " ".join(
+        decision.portfolio_assessment.reasons
+    ).lower()
+    assert decision.action is Action.HOLD
+
+    predictions = restarted.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "SOL-USD"
+    assert predictions[0]["action"] == "HOLD"
+    assert restarted.trading_service.count() == before_trade_count
+
+
+
 def test_start_preserves_aggregate_portfolio_veto_with_existing_positions(
     monkeypatch,
     tmp_path,
