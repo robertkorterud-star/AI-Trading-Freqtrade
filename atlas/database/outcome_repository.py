@@ -67,9 +67,7 @@ class OutcomeRepository:
                 outcome.outcome_price_usd,
                 outcome.change_percent,
                 int(outcome.correct),
-                outcome.timestamp.isoformat(
-                    timespec="seconds"
-                ),
+                outcome.timestamp.isoformat(),
             ),
         )
 
