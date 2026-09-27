@@ -5126,3 +5126,163 @@ def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
     trades = engine.trading_service.history()
     assert trades[0]["action"] == "BUY"
 
+def test_atlas_engine_restart_reuses_persisted_learning_for_decision(
+    monkeypatch,
+    tmp_path,
+):
+    from datetime import datetime, timedelta
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.analysis_snapshot import AnalysisSnapshot
+    from atlas.trading.prediction_record import PredictionRecord
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    first = AtlasEngine(config=config)
+
+    for index in range(40):
+        snapshot = AnalysisSnapshot(
+            database_id=None,
+            symbol="BTC-USD",
+            timestamp=datetime.now() - timedelta(
+                hours=25,
+                minutes=index,
+            ),
+            provider="test",
+            model="test",
+            results=[
+                {
+                    "analyst": "Technical Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "BUY",
+                    "confidence": 100.0,
+                    "evidence": 100.0,
+                    "reasoning": ["Historical technical BUY."],
+                },
+                {
+                    "analyst": "News Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "SELL",
+                    "confidence": 100.0,
+                    "evidence": 100.0,
+                    "reasoning": ["Historical news SELL."],
+                },
+                {
+                    "analyst": "Company Analyst",
+                    "symbol": "BTC-USD",
+                    "action": "SELL",
+                    "confidence": 100.0,
+                    "evidence": 100.0,
+                    "reasoning": ["Historical company SELL."],
+                },
+            ],
+            decision={
+                "action": "BUY",
+                "confidence": 100.0,
+                "evidence": 100.0,
+            },
+            intelligence={
+                "action": "BUY",
+                "buy_count": 1,
+                "hold_count": 0,
+                "sell_count": 2,
+                "agreement": 66.67,
+            },
+        )
+        first.analysis_snapshot_repository.save(snapshot)
+        first.prediction_tracker.repository.save(
+            PredictionRecord(
+                symbol="BTC-USD",
+                action="BUY",
+                confidence=100.0,
+                evidence=100.0,
+                price_usd=100.0,
+                timestamp=datetime.now() - timedelta(
+                    hours=25,
+                    minutes=index,
+                ),
+                analysts=[
+                    "Technical Analyst",
+                    "News Analyst",
+                    "Company Analyst",
+                ],
+                analysis_snapshot_id=snapshot.database_id,
+            )
+        )
+
+    evaluated = first.prediction_evaluator.evaluate_ready(
+        current_prices_usd={"BTC-USD": 105.0},
+    )
+    assert len(evaluated) == 40
+
+    first_weights = first.agent_weight_engine.calculate()
+    assert first_weights["Technical Analyst"] > first_weights["News Analyst"]
+
+    restarted = AtlasEngine(config=config)
+
+    restarted_weights = restarted.agent_weight_engine.calculate()
+    assert restarted_weights == first_weights
+    assert restarted.agent_performance.get(
+        "Technical Analyst"
+    ).predictions == 40
+    assert restarted.agent_performance.get(
+        "Technical Analyst"
+    ).correct == 40
+    assert restarted.agent_performance.get(
+        "News Analyst"
+    ).correct == 0
+    assert restarted.agent_performance.get(
+        "Company Analyst"
+    ).correct == 0
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Current technical BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Current news SELL."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Company Analyst",
+            action=Action.SELL,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Current company SELL."],
+        ),
+    ]
+
+    monkeypatch.setattr(
+        restarted,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+
+    decision = restarted._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=type("Snapshot", (), {"price": 105.0})(),
+    )
+
+    assert decision.agent_weights == restarted_weights
+    assert decision.action is Action.BUY
+    assert any(
+        "adaptive weighting allowed" in reason.lower()
+        for reason in decision.reasoning
+    )
+
