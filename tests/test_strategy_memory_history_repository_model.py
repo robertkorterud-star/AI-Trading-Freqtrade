@@ -62,3 +62,44 @@ def test_history_returns_history_records(tmp_path):
 
     assert record.research_run_id == "run-001"
     assert record.total_return_percent == 40.0
+
+
+def test_save_history_preserves_subsecond_recorded_at(tmp_path):
+    database = Database(
+        tmp_path / "strategy_memory.db"
+    )
+    initialize_database(database)
+    repository = StrategyMemoryRepository(database)
+
+    updated_at = datetime(
+        2026, 9, 28, 8, 0, 0, 900000,
+        tzinfo=timezone.utc,
+    )
+    record = StrategyMemoryRecord(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy_name="Momentum",
+        trade_count=20,
+        winning_trades=15,
+        losing_trades=5,
+        win_rate_percent=75.0,
+        average_trade_return_percent=2.0,
+        total_return_percent=40.0,
+        evidence_strength="STRONG",
+        robust_winner=True,
+        updated_at=updated_at,
+    )
+
+    repository.save_history(
+        record,
+        research_run_id="run-001",
+    )
+
+    history = repository.history(
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+        strategy_name="Momentum",
+    )
+
+    assert len(history) == 1
+    assert history[0].recorded_at == updated_at
