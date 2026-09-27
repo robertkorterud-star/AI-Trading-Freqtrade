@@ -103,6 +103,11 @@ def test_intelligence_source_adapter_adds_youtube_transcript():
         youtube=FakeYouTube(),
         finnhub=FakeFinnhub(),
         transcript=FakeTranscript(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = adapter.get("NVDA")
