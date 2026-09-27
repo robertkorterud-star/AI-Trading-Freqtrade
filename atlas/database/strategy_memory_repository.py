@@ -39,9 +39,7 @@ class StrategyMemoryRepository:
         identifier is generated for this save.
         """
 
-        recorded_at = record.updated_at.isoformat(
-            timespec="seconds"
-        )
+        recorded_at = record.updated_at.isoformat()
 
         with self.database.connect() as connection:
 
