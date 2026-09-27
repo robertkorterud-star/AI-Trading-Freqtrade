@@ -6555,12 +6555,12 @@ def test_restart_preserves_paper_accounting_after_profitable_partial_sell_and_re
 
     reentry = engine._evaluate_candidate_decision(
         buy_analysis,
-        market_snapshot=type("Snapshot", (), {"price": 98.0})(),
+        market_snapshot=type("Snapshot", (), {"price": 99.0})(),
     )
     assert reentry.action is Action.BUY
     assert engine.decision_execution_service.execute(
         decision=reentry,
-        price=98.0,
+        price=99.0,
     ) is not None
 
     before_restart = engine.portfolio_service.as_dict(10.0)
