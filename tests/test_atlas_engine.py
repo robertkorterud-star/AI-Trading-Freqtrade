@@ -6599,6 +6599,120 @@ def test_start_executes_accumulation_buy_after_configured_drop_through_paper_lif
 
 
 
+def test_start_blocks_accumulation_buy_when_existing_position_exceeds_tightened_risk_cap(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    initial_decision = engine._evaluate_candidate_decision(
+        analysis,
+        market_snapshot=type("Snapshot", (), {"price": 100.0})(),
+    )
+    assert initial_decision.action is Action.BUY
+    initial_result = engine.decision_execution_service.execute(
+        decision=initial_decision,
+        price=100.0,
+    )
+    assert initial_result is not None
+
+    engine.risk_manager.max_position_pct = 19.0
+
+    before_trade_count = engine.trading_service.count()
+    before = engine.portfolio_service.as_dict(10.0)
+    before_position = next(
+        position
+        for position in before["positions"]
+        if position["symbol"] == "BTC-USD"
+    )
+
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 98.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    engine.start()
+
+    decision = selected["decision"]
+    assert decision.dominant_action is Action.BUY
+    assert decision.action is Action.HOLD
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.allowed is False
+    assert decision.risk_assessment.position_size == 0.0
+    assert decision.portfolio_assessment is None
+    assert engine.trading_service.count() == before_trade_count
+
+    after = engine.portfolio_service.as_dict(10.0)
+    after_position = next(
+        position
+        for position in after["positions"]
+        if position["symbol"] == "BTC-USD"
+    )
+    assert after_position["quantity"] == before_position["quantity"]
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "HOLD"
+
+
+
 def test_start_blocks_repeated_buy_until_accumulation_drop_through_paper_lifecycle(
     monkeypatch,
     tmp_path,
