@@ -328,7 +328,7 @@ def test_modern_decision_engine_buy_reaches_paper_execution():
         analysis,
         price=20000.0,
         equity=100000.0,
-        current_exposure=0.0,
+        current_exposure_pct=0.0,
     )
 
     assert decision.action is Action.BUY
