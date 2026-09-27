@@ -4159,3 +4159,116 @@ def test_restore_paper_portfolio_respects_persisted_replay_boundary(tmp_path):
     positions = restarted.portfolio_service.as_dict(10.0)["positions"]
 
     assert [position["symbol"] for position in positions] == ["ETH-USD"]
+
+def test_atlas_engine_start_records_prediction_and_executes_modern_paper_buy(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type(
+            "Snapshot",
+            (),
+            {"price": 20000.0},
+        )()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.exchange,
+        "get_rate",
+        lambda base, target: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(
+        engine.report,
+        "print_decision",
+        lambda decision: None,
+    )
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    engine.start()
+
+    decision = selected["decision"]
+    assert decision.action is Action.BUY
+    assert decision.analysis_snapshot_id is not None
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "BUY"
+
+    trades = engine.trading_service.history()
+    assert len(trades) == 1
+    assert trades[0]["symbol"] == "BTC-USD"
+    assert trades[0]["action"] == "BUY"
+
+    portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
+    assert any(
+        position["symbol"] == "BTC-USD"
+        for position in portfolio["positions"]
+    )
+
+    events = engine.event_repository.after(0, limit=100)
+    event_types = [event["type"] for event in events]
+    assert "DECISION_READY" in event_types
+    assert "TRADE_EXECUTED" in event_types
+    assert event_types.index("DECISION_READY") < event_types.index(
+        "TRADE_EXECUTED"
+    )
+
