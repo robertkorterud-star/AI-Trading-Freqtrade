@@ -4957,7 +4957,7 @@ def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
     )
     engine = AtlasEngine(config=config)
 
-    for index in range(20):
+    for index in range(40):
         snapshot = AnalysisSnapshot(
             database_id=None,
             symbol="BTC-USD",
@@ -5097,11 +5097,11 @@ def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
     decision = selected["decision"]
     weights = engine.agent_weight_engine.calculate()
 
-    assert engine.agent_performance.get("Technical Analyst").predictions == 20
-    assert engine.agent_performance.get("Technical Analyst").correct == 20
-    assert engine.agent_performance.get("News Analyst").predictions == 20
+    assert engine.agent_performance.get("Technical Analyst").predictions == 40
+    assert engine.agent_performance.get("Technical Analyst").correct == 40
+    assert engine.agent_performance.get("News Analyst").predictions == 40
     assert engine.agent_performance.get("News Analyst").correct == 0
-    assert engine.agent_performance.get("Company Analyst").predictions == 20
+    assert engine.agent_performance.get("Company Analyst").predictions == 40
     assert engine.agent_performance.get("Company Analyst").correct == 0
 
     assert weights["Technical Analyst"] > weights["News Analyst"]
@@ -5120,7 +5120,7 @@ def test_atlas_engine_start_uses_newly_evaluated_history_in_same_run_decision(
         if event["type"] == "LEARNING_UPDATED"
     ]
     assert learning_events[-1]["payload"] == {
-        "evaluated_predictions": 20,
+        "evaluated_predictions": 40,
     }
 
     trades = engine.trading_service.history()
