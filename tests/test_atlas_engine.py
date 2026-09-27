@@ -408,6 +408,7 @@ def test_restart_preserves_aggregate_portfolio_veto_from_restored_positions(
     from atlas.models.action import Action
     from atlas.models.analysis_result import AnalysisResult
     from atlas.portfolio.manager import PortfolioManager
+    from atlas.risk.manager import RiskManager
 
     config = AtlasConfig(
         agent_performance_storage=str(tmp_path / "agent_performance.json"),
@@ -417,6 +418,11 @@ def test_restart_preserves_aggregate_portfolio_veto_from_restored_positions(
         paper_trading=True,
     )
     first = AtlasEngine(config=config)
+    first.risk_manager = RiskManager(
+        risk_per_trade_pct=0.3,
+        max_position_pct=15.0,
+    )
+    first.decision_engine.risk_manager = first.risk_manager
     first.portfolio_manager = PortfolioManager(
         max_exposure_pct=30.0,
         max_single_position_pct=20.0,
