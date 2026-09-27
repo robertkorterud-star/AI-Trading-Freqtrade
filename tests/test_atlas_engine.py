@@ -4252,11 +4252,17 @@ def test_atlas_engine_start_records_prediction_and_executes_modern_paper_buy(
     assert len(predictions) == 1
     assert predictions[0]["symbol"] == "BTC-USD"
     assert predictions[0]["action"] == "BUY"
+    assert predictions[0]["analysis_snapshot_id"] == decision.analysis_snapshot_id
 
     trades = engine.trading_service.history()
     assert len(trades) == 1
     assert trades[0]["symbol"] == "BTC-USD"
     assert trades[0]["action"] == "BUY"
+    assert trades[0]["analysis_snapshot_id"] == decision.analysis_snapshot_id
+    assert (
+        trades[0]["analysis_snapshot_id"]
+        == predictions[0]["analysis_snapshot_id"]
+    )
 
     portfolio = engine.portfolio_service.as_dict(usd_nok=10.0)
     assert any(
