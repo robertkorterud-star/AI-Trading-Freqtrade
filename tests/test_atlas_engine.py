@@ -399,6 +399,112 @@ def test_snapshot_persistence_failure_prevents_decision_publication_and_executio
 
 
 
+
+def test_start_preserves_aggregate_portfolio_veto_with_existing_positions(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.portfolio.manager import PortfolioManager
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    engine.portfolio_manager = PortfolioManager(
+        max_exposure_pct=30.0,
+        max_single_position_pct=20.0,
+    )
+    engine.decision_engine.portfolio_manager = engine.portfolio_manager
+
+    for symbol in ("BTC-USD", "ETH-USD"):
+        engine.portfolio_service.buy(
+            symbol=symbol,
+            amount_nok=150000.0,
+            price_usd=100.0,
+            usd_nok=10.0,
+        )
+
+    analysis = [
+        AnalysisResult(
+            symbol="SOL-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    selected = {
+        "symbol": "SOL-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 100.0})()
+
+    def fake_decide_candidates(limit=3):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("SOL-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_market_snapshot",
+        fake_snapshot,
+    )
+    monkeypatch.setattr(
+        engine.market_data,
+        "get_many",
+        lambda symbols: {
+            symbol: fake_snapshot(symbol)
+            for symbol in symbols
+        },
+    )
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: type("ExchangeRate", (), {"rate": 10.0})(),
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    before_trade_count = engine.trading_service.count()
+
+    engine.start()
+
+    decision = selected["decision"]
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.allowed is True
+    assert decision.portfolio_assessment is not None
+    assert decision.portfolio_assessment.allowed is False
+    assert any(
+        "exposure capacity" in reason
+        for reason in decision.portfolio_assessment.reasons
+    )
+    assert decision.action is Action.HOLD
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "SOL-USD"
+    assert predictions[0]["action"] == "HOLD"
+    assert engine.trading_service.count() == before_trade_count
+
+
 def test_start_executes_prioritized_sell_before_stronger_new_buy(
     monkeypatch,
     tmp_path,
