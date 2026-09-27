@@ -410,6 +410,7 @@ def test_risk_veto_records_hold_prediction_without_paper_trade(
         paper_trading=True,
     )
     engine = AtlasEngine(config=config)
+    engine.risk_manager.max_drawdown_pct = 0.0
 
     analysis = [
         AnalysisResult(
