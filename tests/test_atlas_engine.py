@@ -394,6 +394,82 @@ def test_snapshot_persistence_failure_prevents_decision_publication_and_executio
 
 
 
+
+def test_risk_veto_records_hold_prediction_without_paper_trade(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.SELL,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong SELL signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    def fake_snapshot(symbol):
+        return type("Snapshot", (), {"price": 100.0})()
+
+    def fake_decide_candidates(limit=3, minimum_score=0.0):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        lambda candidates, investable_only=False: selected,
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    engine.start()
+
+    decision = selected["decision"]
+    assert decision.action is Action.HOLD
+    assert decision.risk_assessment is not None
+    assert decision.risk_assessment.action is Action.SELL
+    assert decision.risk_assessment.allowed is False
+    assert "No open position available to sell." in decision.risk_assessment.reasons
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["action"] == "HOLD"
+    assert engine.trading_service.count() == 0
+
+    events = engine.event_repository.after(0, limit=100)
+    assert any(event["type"] == "DECISION_READY" for event in events)
+    assert not any(event["type"] == "TRADE_EXECUTED" for event in events)
+
+
 def test_prediction_persistence_failure_prevents_paper_execution(
     monkeypatch,
     tmp_path,
