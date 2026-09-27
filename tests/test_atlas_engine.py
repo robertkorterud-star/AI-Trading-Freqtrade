@@ -4417,6 +4417,7 @@ def test_atlas_engine_start_persists_ready_prediction_learning_update(
     from atlas.models.analysis_result import AnalysisResult
     from atlas.models.analysis_snapshot import AnalysisSnapshot
     from atlas.models.decision_result import DecisionResult
+    from atlas.trading.prediction_record import PredictionRecord
 
     config = AtlasConfig(
         agent_performance_storage=str(tmp_path / "agent_performance.json"),
@@ -4465,23 +4466,19 @@ def test_atlas_engine_start_persists_ready_prediction_learning_update(
     )
     engine.analysis_snapshot_repository.save(snapshot)
 
-    prediction = engine.prediction_tracker.record(
-        decision=DecisionResult(
-            symbol="BTC-USD",
-            action=Action.BUY,
-            confidence=95.0,
-            evidence=95.0,
-            analysts=["Technical Analyst", "News Analyst"],
-            analysis_snapshot_id=snapshot.database_id,
-        ),
+    prediction = PredictionRecord(
+        symbol="BTC-USD",
+        action="BUY",
+        confidence=95.0,
+        evidence=95.0,
         price_usd=100.0,
+        timestamp=datetime.now() - timedelta(hours=25),
+        analysts=["Technical Analyst", "News Analyst"],
         reason="Learning lifecycle test.",
+        analysis_snapshot_id=snapshot.database_id,
     )
-    prediction.timestamp = datetime.now() - timedelta(hours=25)
-    engine.prediction_tracker.repository.update(
-        prediction.database_id,
-        prediction,
-    )
+    engine.prediction_tracker.repository.save(prediction)
+    engine.prediction_tracker._predictions.append(prediction)
 
     monkeypatch.setattr(
         engine,
