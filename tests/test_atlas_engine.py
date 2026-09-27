@@ -4090,7 +4090,7 @@ def test_trade_persistence_failure_rolls_back_paper_buy(
         lambda current_prices_usd: [],
     )
     monkeypatch.setattr(
-        engine.trading_service.repository,
+        engine.trading_service._repository,
         "save",
         fail_trade_save,
     )
