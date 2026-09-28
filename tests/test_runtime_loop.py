@@ -110,3 +110,34 @@ def test_runtime_loop_main_starts_continuous_runtime(monkeypatch):
     runtime_loop.main()
 
     assert captured["started"] is True
+
+def test_runtime_research_expands_active_universe_before_trigger_scan():
+    engine = FakeEngine()
+    researched = [SimpleNamespace(symbol="AMD")]
+
+    class FakeResearchScheduler:
+        def should_research(self):
+            return True
+
+        def research(self):
+            return SimpleNamespace()
+
+    engine.research_candidates = lambda: researched
+    expanded = []
+
+    def expand_universe(candidates):
+        expanded.extend(candidate.symbol for candidate in candidates)
+        return len(candidates)
+
+    engine.expand_universe_from_candidates = expand_universe
+
+    loop = AtlasRuntimeLoop(
+        engine=engine,
+        interval_seconds=30,
+        research_scheduler=FakeResearchScheduler(),
+    )
+
+    loop.run_once()
+
+    assert expanded == ["AMD"]
+
