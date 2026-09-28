@@ -10,6 +10,7 @@ result is intentionally a research signal, not a trading decision.
 
 from dataclasses import dataclass, field
 from enum import Enum
+import math
 
 
 class AssetType(str, Enum):
@@ -34,6 +35,7 @@ class MarketObservation:
     news_catalyst: bool = False
     liquid: bool = True
     breakout_percent: float = 0.0
+    bid_ask_spread_percent: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +62,9 @@ class MarketScout:
     MIN_VOLUME = 100_000.0
 
     def _eligible(self, observation: MarketObservation) -> bool:
+        spread = observation.bid_ask_spread_percent
+        if spread is not None and (not math.isfinite(spread) or spread < 0):
+            return False
         if not observation.symbol.strip():
             return False
         if observation.asset_type is AssetType.STOCK:
@@ -106,6 +111,12 @@ class MarketScout:
     def _liquidity_score(self, observation: MarketObservation) -> float:
         if not observation.liquid:
             return 0.0
+        spread = observation.bid_ask_spread_percent
+        if spread is not None:
+            if not math.isfinite(spread) or spread < 0:
+                return 0.0
+            # Quote spread proxy only, not traded volume or order-book depth.
+            return self._clamp(100.0 / (1.0 + spread))
         ratio = self._volume_ratio(observation)
         return self._clamp(50.0 + ratio * 10.0)
 
@@ -130,6 +141,8 @@ class MarketScout:
         )
 
         reasons: list[str] = []
+        if observation.bid_ask_spread_percent is not None:
+            reasons.append(f"quoted spread {observation.bid_ask_spread_percent:.3f}%")
         if observation.change_percent >= 10.0:
             reasons.append("strong daily momentum")
         if self._volume_ratio(observation) >= 5.0:
