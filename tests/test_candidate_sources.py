@@ -207,3 +207,38 @@ def test_candidate_pool_preserves_complementary_metadata_for_duplicate_symbol():
         "horizon": "day_trade",
         "theme": "AI infrastructure",
     }
+
+def test_research_ticker_source_creates_candidates_from_related_tickers():
+    from atlas.market.candidates.research_tickers import ResearchTickerSource
+
+    articles = (
+        {
+            "title": "Chip demand accelerates",
+            "related_tickers": [
+                {
+                    "symbol": "AMD",
+                    "relevance_score": 0.91,
+                    "sentiment_score": 0.42,
+                    "sentiment": "positive",
+                },
+                {
+                    "symbol": "NVDA",
+                    "relevance_score": 0.84,
+                    "sentiment_score": 0.31,
+                    "sentiment": "positive",
+                },
+            ],
+        },
+    )
+
+    candidates = ResearchTickerSource(articles).discover()
+
+    assert [candidate.symbol for candidate in candidates] == [
+        "AMD",
+        "NVDA",
+    ]
+    assert candidates[0].source == "research_ticker"
+    assert candidates[0].score == 91.0
+    assert candidates[0].metadata["relevance_score"] == 0.91
+    assert candidates[0].metadata["sentiment"] == "positive"
+
