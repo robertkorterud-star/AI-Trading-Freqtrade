@@ -109,11 +109,43 @@ class EtoroMarketDataClient:
         return payload.get("instrumentTypes", [])
 
     def get_instruments(self, instrument_type_id: int) -> list[dict]:
-        payload = self._get(
-            "/market-data/instruments",
-            {"instrumentTypeIds": instrument_type_id},
+        """Read every search page, including explicit platform status fields.
+
+        Search filters may be ignored by eToro, so the provider also validates
+        instrument type and status locally. Status is not account suitability.
+        """
+        fields = (
+            "instrumentId,instrumentTypeID,internalSymbolFull,displayname,"
+            "isInternalInstrument,isHiddenFromClient,isDelisted,"
+            "isCurrentlyTradable,isActiveInPlatform,isBuyEnabled"
         )
-        return payload.get("instrumentDisplayDatas", [])
+        results: list[dict] = []
+        seen: set[int] = set()
+        page = 1
+        while True:
+            payload = self._get("/market-data/search", {
+                "instrumentTypeID": instrument_type_id,
+                "fields": fields,
+                "pageNumber": page,
+                "pageSize": 100,
+            })
+            items = payload.get("items")
+            total = _integer(payload.get("totalItems"))
+            if not isinstance(items, list) or total is None or total < 0:
+                raise RuntimeError("eToro returned invalid instrument search data.")
+            if not items:
+                if len(results) < total:
+                    raise RuntimeError("eToro instrument search ended before all pages arrived.")
+                return results
+            new_ids = {_integer(item.get("instrumentId")) for item in items}
+            new_ids.discard(None)
+            if not new_ids - seen:
+                raise RuntimeError("eToro instrument search repeated a page.")
+            seen.update(new_ids)
+            results.extend(items)
+            if len(results) >= total:
+                return results
+            page += 1
 
     def get_rates(self, instrument_ids: list[int]) -> dict[int, dict]:
         """Retrieve rates in eToro's documented batches of at most 100 IDs."""
@@ -179,6 +211,17 @@ class EtoroCryptoMarketDataProvider:
         normalized: list[EtoroCryptoInstrument] = []
         seen: set[int] = set()
         for item in instruments:
+            if _integer(item.get("instrumentTypeID")) != type_id:
+                continue
+            # Require explicit status: missing/unknown fields must not qualify.
+            if not all(item.get(key) is True for key in (
+                "isActiveInPlatform", "isCurrentlyTradable", "isBuyEnabled"
+            )):
+                continue
+            if not all(item.get(key) is False for key in (
+                "isDelisted", "isHiddenFromClient", "isInternalInstrument"
+            )):
+                continue
             instrument_id = _integer(
                 item.get("instrumentID", item.get("instrumentId"))
             )
@@ -186,17 +229,15 @@ class EtoroCryptoMarketDataProvider:
                 continue
             seen.add(instrument_id)
             symbol = str(
-                item.get("symbolFull")
-                or item.get("instrumentDisplayName")
-                or instrument_id
+                item.get("internalSymbolFull") or ""
             ).strip()
-            if not symbol:
+            if not symbol or symbol.lower().endswith(".old"):
                 continue
             normalized.append(
                 EtoroCryptoInstrument(
                     instrument_id=instrument_id,
                     symbol=symbol,
-                    name=str(item.get("instrumentDisplayName") or symbol),
+                    name=str(item.get("displayname") or symbol),
                 )
             )
 
