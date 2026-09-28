@@ -269,3 +269,44 @@ def test_ranker_evidence_exposes_cost_adjusted_return():
         "Expected net return after trading costs" in line
         for line in evidence.reasoning
     )
+
+def test_ranker_economic_eligibility_rejects_only_ready_non_positive_net_buy():
+    ranker = CandidateDecisionRanker()
+
+    known_unprofitable = make_decision(
+        "KNOWN-UNPROFITABLE",
+        Action.BUY,
+        80.0,
+        80.0,
+        80.0,
+        20.0,
+        expected_return=0.0024,
+    )
+    known_unprofitable.expected_return_ready = True
+
+    unknown = make_decision(
+        "UNKNOWN",
+        Action.BUY,
+        80.0,
+        80.0,
+        80.0,
+        20.0,
+        expected_return=0.0,
+    )
+    unknown.expected_return_ready = False
+
+    sell = make_decision(
+        "EXIT",
+        Action.SELL,
+        80.0,
+        80.0,
+        80.0,
+        20.0,
+        expected_return=0.0,
+    )
+    sell.expected_return_ready = True
+
+    assert ranker.is_economically_eligible(known_unprofitable) is False
+    assert ranker.is_economically_eligible(unknown) is True
+    assert ranker.is_economically_eligible(sell) is True
+
