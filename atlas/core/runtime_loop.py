@@ -77,7 +77,15 @@ class AtlasRuntimeLoop:
                     "ATLAS candidate research context refreshed."
                 )
                 candidates = self.engine.research_candidates()
-                self.engine.expand_universe_from_candidates(candidates)
+                added = self.engine.expand_universe_from_candidates(candidates)
+                symbols = ", ".join(
+                    candidate.symbol for candidate in candidates
+                )
+                self.engine.logger.info(
+                    "ATLAS research candidates: "
+                    f"{symbols}; added={added}; "
+                    f"active_universe={self.engine.asset_universe.count()}"
+                )
 
         for state in self._get_market_states():
             if self._get_trigger(state.symbol).should_analyze(state):
