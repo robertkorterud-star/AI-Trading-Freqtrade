@@ -232,10 +232,13 @@ class CandidateDecisionRanker:
             valid = [
                 decision
                 for decision in valid
-                if decision.action in {
-                    Action.BUY,
-                    Action.SELL,
-                }
+                if (
+                    decision.action is Action.SELL
+                    or (
+                        decision.action is Action.BUY
+                        and self._net_return_details(decision)[1] > 0.0
+                    )
+                )
             ]
 
         regime_decisions = regime_decisions or {}
