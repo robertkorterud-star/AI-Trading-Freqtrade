@@ -1,8 +1,21 @@
+import json
+
 from urllib.parse import parse_qs, urlparse
 
 from atlas.adapters.etoro_market_data import EtoroMarketDataClient, EtoroCryptoMarketDataProvider
 from atlas.market.market_scout import AssetType, MarketObservation
 from atlas.services.scanner_service import ScannerService
+
+
+def instrument(instrument_id, symbol, **overrides):
+    return {
+        "instrumentId": instrument_id, "internalSymbolFull": symbol,
+        "displayname": symbol, "instrumentTypeID": 9,
+        "isActiveInPlatform": True, "isCurrentlyTradable": True,
+        "isBuyEnabled": True, "isDelisted": False,
+        "isHiddenFromClient": False, "isInternalInstrument": False,
+        **overrides,
+    }
 
 
 class FakeCryptoClient:
@@ -15,8 +28,8 @@ class FakeCryptoClient:
     def get_instruments(self, instrument_type_id):
         assert instrument_type_id == 9
         return [
-            {"instrumentID": 1, "symbolFull": "BTC", "instrumentDisplayName": "Bitcoin"},
-            {"instrumentID": 2, "symbolFull": "ETH", "instrumentDisplayName": "Ethereum"},
+            instrument(1, "BTC"),
+            instrument(2, "ETH"),
         ]
 
     def get_rates(self, instrument_ids):
@@ -146,3 +159,73 @@ def test_etoro_provider_loads_dotenv_and_requires_both_keys(
         assert "ETORO_API_KEY and ETORO_USER_KEY" in str(exc)
     else:
         raise AssertionError("Missing user key should fail clearly")
+
+
+def test_etoro_filters_status_before_fetching_rates_or_candles():
+    class Client(FakeCryptoClient):
+        def get_instruments(self, instrument_type_id):
+            valid = super().get_instruments(instrument_type_id)
+            invalid = [
+                instrument(3, "BIGTIME.old"),
+                instrument(4, "BADGER.OLD"),
+                instrument(5, "STOCK", instrumentTypeID=4),
+            ]
+            for key in ("isActiveInPlatform", "isCurrentlyTradable", "isBuyEnabled"):
+                invalid.append(instrument(10 + len(invalid), key, **{key: False}))
+            for key in ("isDelisted", "isHiddenFromClient", "isInternalInstrument"):
+                invalid.append(instrument(10 + len(invalid), key, **{key: True}))
+            for key in ("isActiveInPlatform", "isCurrentlyTradable", "isBuyEnabled",
+                        "isDelisted", "isHiddenFromClient", "isInternalInstrument"):
+                missing = instrument(10 + len(invalid), "MISSING")
+                del missing[key]
+                invalid.append(missing)
+            invalid.append(instrument(99, "STRING", isBuyEnabled="false"))
+            return valid + invalid
+
+        def get_daily_candles(self, instrument_id, count=8):
+            assert instrument_id in (1, 2)
+            return super().get_daily_candles(instrument_id, count)
+
+    result = ScannerService().scan_crypto(EtoroCryptoMarketDataProvider(Client()))
+    assert {item.symbol for item in result.candidates} == {"BTC", "ETH"}
+
+
+def test_etoro_search_reads_all_pages_and_requests_status():
+    queries = []
+
+    def opener(request, timeout):
+        query = parse_qs(urlparse(request.full_url).query)
+        queries.append(query)
+        assert urlparse(request.full_url).path.endswith("/market-data/search")
+        page = int(query["pageNumber"][0])
+        # Server may use smaller pages than requested.
+        return FakeResponse(json.dumps({
+            "items": [instrument(page, f"COIN{page}")],
+            "totalItems": 3, "pageSize": 1, "page": page,
+        }).encode())
+
+    client = EtoroMarketDataClient("app", "user", opener=opener,
+                                  sleeper=lambda _: None)
+    items = client.get_instruments(9)
+    assert [item["instrumentId"] for item in items] == [1, 2, 3]
+    assert all(query["instrumentTypeID"] == ["9"] for query in queries)
+    assert "isDelisted" in queries[0]["fields"][0]
+    assert "isCurrentlyTradable" in queries[0]["fields"][0]
+
+
+def test_etoro_search_rejects_incomplete_or_repeated_pages():
+    for response in (
+        {"items": [], "totalItems": 2},
+        {"items": [instrument(1, "BTC")], "totalItems": 2},
+        {"instrumentDisplayDatas": []},
+    ):
+        client = EtoroMarketDataClient(
+            "app", "user", sleeper=lambda _: None,
+            opener=lambda request, timeout: FakeResponse(json.dumps(response).encode()),
+        )
+        try:
+            client.get_instruments(9)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("Incomplete universe must fail explicitly")
