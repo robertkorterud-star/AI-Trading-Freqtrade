@@ -125,7 +125,7 @@ def test_etoro_provider_loads_dotenv_and_requires_both_keys(
 ):
     env_file = tmp_path / ".env"
     env_file.write_text(
-        "ETORO_API_KEY=app-key\\nETORO_USER_KEY='user-key'\\n",
+        "ETORO_API_KEY=app-key\nETORO_USER_KEY='user-key'\n",
         encoding="utf-8",
     )
     monkeypatch.delenv("ETORO_API_KEY", raising=False)
@@ -137,7 +137,7 @@ def test_etoro_provider_loads_dotenv_and_requires_both_keys(
     assert provider.client.user_key == "user-key"
 
     incomplete_env = tmp_path / "incomplete.env"
-    incomplete_env.write_text("ETORO_API_KEY=app-key\\n", encoding="utf-8")
+    incomplete_env.write_text("ETORO_API_KEY=app-key\n", encoding="utf-8")
     monkeypatch.delenv("ETORO_API_KEY", raising=False)
     monkeypatch.delenv("ETORO_USER_KEY", raising=False)
     try:
