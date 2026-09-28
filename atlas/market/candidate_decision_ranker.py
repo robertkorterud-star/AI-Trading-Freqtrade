@@ -38,6 +38,26 @@ class CandidateDecisionRanker:
         )
         return gross_return, net_return, risk_adjusted
 
+    def is_economically_eligible(
+        self,
+        decision: DecisionResult,
+    ) -> bool:
+        """Return whether a decision passes the candidate economic gate."""
+        if decision.action is not Action.BUY:
+            return True
+
+        if not bool(
+            getattr(
+                decision,
+                "expected_return_ready",
+                False,
+            )
+        ):
+            return True
+
+        _, net_return, _ = self._net_return_details(decision)
+        return net_return > 0.0
+
     @staticmethod
     def _net_return_score(risk_adjusted_net_return: float) -> float:
         """Map risk-adjusted net return to a stable 0-100 ranking score.
