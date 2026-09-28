@@ -26,6 +26,9 @@ class FakeAssetUniverse:
     def all(self):
         return [SimpleNamespace(symbol="AAPL")]
 
+    def count(self):
+        return len(self.all())
+
 
 class FakeTechnicalService:
     def __init__(self):
@@ -79,7 +82,8 @@ def test_runtime_once_refreshes_research_and_triggers_canonical_engine_cycle():
     assert engine.starts == 1
     assert engine.candidate_research_service.calls == 1
     assert engine.logger.messages == [
-        "ATLAS candidate research context refreshed."
+        "ATLAS candidate research context refreshed.",
+        "ATLAS research candidates: ; added=0; active_universe=1",
     ]
 
 
