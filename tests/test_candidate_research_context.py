@@ -75,3 +75,38 @@ def test_candidate_research_context_preserves_normalized_news_evidence():
     assert "SUMMARY: Strong semiconductor demand." in rendered
     assert "URL: https://example.com/nvda" in rendered
     assert "SENTIMENT: positive" in rendered
+
+def test_candidate_research_context_exposes_related_tickers():
+    context = CandidateResearchContext(
+        articles=(
+            {
+                "source": "Alpha Vantage",
+                "published_at": "2026-09-28T10:00:00",
+                "title": "Chip demand accelerates",
+                "summary": "Semiconductor shares react.",
+                "related_tickers": [
+                    {
+                        "symbol": "AMD",
+                        "relevance_score": 0.91,
+                        "sentiment_score": 0.42,
+                        "sentiment": "positive",
+                    },
+                    {
+                        "symbol": "NVDA",
+                        "relevance_score": 0.84,
+                        "sentiment_score": 0.31,
+                        "sentiment": "positive",
+                    },
+                ],
+            },
+        )
+    )
+
+    rendered = context.as_text()
+
+    assert "RELATED TICKERS:" in rendered
+    assert "AMD" in rendered
+    assert "relevance=0.91" in rendered
+    assert "NVDA" in rendered
+    assert "sentiment=positive" in rendered
+
