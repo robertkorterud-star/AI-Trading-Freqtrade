@@ -1,8 +1,8 @@
 """ATLAS Scanner service.
 
-Coordinates market observations with the deterministic MarketScout.  The
-service is deliberately market-data-vendor neutral and read-only: it finds
-and explains candidates but never creates trading orders.
+Coordinates market observations with the deterministic MarketScout. The service
+is read-only: it finds and explains candidates but never creates trading
+orders.
 """
 
 from __future__ import annotations
@@ -24,6 +24,8 @@ class ScannerResult:
 class ScannerService:
     """Application service for ATLAS candidate discovery."""
 
+    DEFAULT_CRYPTO_CANDIDATE_LIMIT = 100
+
     def __init__(self, scout: MarketScout | None = None) -> None:
         self.scout = scout or MarketScout()
 
@@ -36,6 +38,36 @@ class ScannerService:
             candidates=candidates,
         )
 
+    def scan_crypto(
+        self,
+        provider,
+        limit: int = DEFAULT_CRYPTO_CANDIDATE_LIMIT,
+    ) -> ScannerResult:
+        """Scan the provider crypto universe and retain its top candidates.
+
+        Provider must expose get_crypto_observations(). Dependency injection
+        keeps tests and alternative crypto sources independent of eToro keys.
+        """
+        observations = provider.get_crypto_observations()
+        ranked = self.scout.scan(observations)
+        return ScannerResult(
+            scanned=len(observations),
+            eligible=len(ranked),
+            candidates=tuple(ranked[: max(0, int(limit))]),
+        )
+
+    def scan_etoro_crypto(
+        self,
+        limit: int = DEFAULT_CRYPTO_CANDIDATE_LIMIT,
+    ) -> ScannerResult:
+        """Scan all eToro crypto instruments using local environment keys."""
+        from atlas.adapters.etoro_market_data import EtoroCryptoMarketDataProvider
+
+        return self.scan_crypto(
+            EtoroCryptoMarketDataProvider.from_env(),
+            limit=limit,
+        )
+
     def as_dict(self, result: ScannerResult) -> dict:
         """Return a stable dashboard/API representation of a scan result."""
         return {
@@ -45,6 +77,7 @@ class ScannerService:
                 "stock_min_price": self.scout.MIN_STOCK_PRICE,
                 "minimum_average_volume": self.scout.MIN_AVERAGE_VOLUME,
                 "minimum_current_volume": self.scout.MIN_VOLUME,
+                "crypto_candidate_limit": self.DEFAULT_CRYPTO_CANDIDATE_LIMIT,
             },
             "candidates": [
                 {
