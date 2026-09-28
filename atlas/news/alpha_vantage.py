@@ -132,6 +132,62 @@ class AlphaVantageNewsAdapter:
             if not title:
                 continue
 
+            related_tickers = []
+
+            ticker_sentiment = article.get(
+                "ticker_sentiment",
+                [],
+            )
+
+            if isinstance(ticker_sentiment, list):
+                for item in ticker_sentiment:
+                    if not isinstance(item, dict):
+                        continue
+
+                    symbol = str(item.get("ticker", "")).strip().upper()
+                    if not symbol:
+                        continue
+
+                    try:
+                        relevance_score = float(
+                            item.get("relevance_score", 0.0)
+                        )
+                    except (TypeError, ValueError):
+                        relevance_score = 0.0
+
+                    try:
+                        sentiment_score = float(
+                            item.get("ticker_sentiment_score", 0.0)
+                        )
+                    except (TypeError, ValueError):
+                        sentiment_score = 0.0
+
+                    sentiment = {
+                        "bullish": "positive",
+                        "somewhat-bullish": "positive",
+                        "positive": "positive",
+                        "bearish": "negative",
+                        "somewhat-bearish": "negative",
+                        "negative": "negative",
+                    }.get(
+                        str(
+                            item.get(
+                                "ticker_sentiment_label",
+                                "neutral",
+                            )
+                        ).strip().lower(),
+                        "neutral",
+                    )
+
+                    related_tickers.append(
+                        {
+                            "symbol": symbol,
+                            "relevance_score": relevance_score,
+                            "sentiment_score": sentiment_score,
+                            "sentiment": sentiment,
+                        }
+                    )
+
             results.append(
                 {
                     "title": title,
@@ -164,6 +220,7 @@ class AlphaVantageNewsAdapter:
                     "published_at": str(
                         article.get("time_published", "")
                     ).strip(),
+                    "related_tickers": related_tickers,
                 }
             )
 
