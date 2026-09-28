@@ -354,3 +354,60 @@ def test_engine_can_expand_universe_from_researched_candidate():
 
     assert added == 1
     assert engine.asset_universe.get("AMD") is not None
+
+def test_engine_research_candidates_includes_structured_research_tickers(
+    monkeypatch,
+):
+    context = CandidateResearchContext(
+        articles=(
+            {
+                "source": "Alpha Vantage",
+                "title": "Cybersecurity demand expands",
+                "summary": "Broad market research.",
+                "related_tickers": [
+                    {
+                        "symbol": "PLTR",
+                        "relevance_score": 0.91,
+                        "sentiment_score": 0.42,
+                        "sentiment": "positive",
+                    }
+                ],
+            },
+        )
+    )
+
+    engine = object.__new__(AtlasEngine)
+    engine.config = SimpleNamespace(
+        ai_provider="openai",
+        language="en",
+    )
+    engine.asset_discovery = FakeDiscovery()
+    engine.asset_universe = object()
+    engine.candidate_research_service = FakeResearchService(
+        context=context,
+    )
+
+    class EmptyAI:
+        def discover_candidates(self, research):
+            return []
+
+    monkeypatch.setattr(
+        "atlas.core.engine.AIProviderFactory.create",
+        lambda config: EmptyAI(),
+    )
+
+    candidates = engine.research_candidates(
+        research="",
+        limit=10,
+    )
+
+    pltr = next(
+        candidate
+        for candidate in candidates
+        if candidate.symbol == "PLTR"
+    )
+
+    assert pltr.source == "research_ticker"
+    assert pltr.score == 91.0
+    assert pltr.metadata["relevance_score"] == 0.91
+
