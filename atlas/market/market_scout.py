@@ -4,8 +4,8 @@ ATLAS Market Scout v1.
 A deterministic, explainable pre-filter inspired by momentum stock scanners.
 It does not place orders and does not depend on a specific market-data vendor.
 
-The scout turns raw market observations into a ranked candidate list.  The
-result is intentionally a *research signal*, not a trading decision.
+The scout turns raw market observations into a ranked candidate list. The
+result is intentionally a research signal, not a trading decision.
 """
 
 from dataclasses import dataclass, field
@@ -62,15 +62,14 @@ class MarketScout:
     def _eligible(self, observation: MarketObservation) -> bool:
         if not observation.symbol.strip():
             return False
-        if observation.price <= (
-            self.MIN_STOCK_PRICE
-            if observation.asset_type is AssetType.STOCK
-            else self.MIN_CRYPTO_PRICE
-        ):
-            return False
-        if observation.average_volume < self.MIN_AVERAGE_VOLUME:
-            return False
-        if observation.volume < self.MIN_VOLUME:
+        if observation.asset_type is AssetType.STOCK:
+            if observation.price <= self.MIN_STOCK_PRICE:
+                return False
+            if observation.average_volume < self.MIN_AVERAGE_VOLUME:
+                return False
+            if observation.volume < self.MIN_VOLUME:
+                return False
+        elif observation.price <= self.MIN_CRYPTO_PRICE:
             return False
         if not observation.liquid:
             return False
