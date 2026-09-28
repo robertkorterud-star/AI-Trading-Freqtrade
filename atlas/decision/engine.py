@@ -346,11 +346,25 @@ class DecisionEngine:
             robustness_level = "WEAK"
 
         expected_return = 0.0
+        expected_return_ready = False
         if self.expected_return_service is not None:
-            expected_return = self.expected_return_service.estimate(
-                symbol=results[0].symbol,
-                action=action,
+            estimate_with_status = getattr(
+                self.expected_return_service,
+                "estimate_with_status",
+                None,
             )
+            if estimate_with_status is not None:
+                estimate = estimate_with_status(
+                    symbol=results[0].symbol,
+                    action=action,
+                )
+                expected_return = estimate.value
+                expected_return_ready = estimate.ready
+            else:
+                expected_return = self.expected_return_service.estimate(
+                    symbol=results[0].symbol,
+                    action=action,
+                )
 
         reasoning = [
             "Decision based on combined analyst evidence.",
@@ -450,6 +464,7 @@ class DecisionEngine:
             robustness_level=robustness_level,
             reasoning=reasoning,
             expected_return=expected_return,
+            expected_return_ready=expected_return_ready,
             ensemble_action=ensemble_signal.action,
             ensemble_confidence=ensemble_signal.confidence,
             risk_assessment=risk_assessment,
