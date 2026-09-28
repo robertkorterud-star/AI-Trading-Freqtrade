@@ -704,11 +704,24 @@ class AtlasEngine:
         self,
         candidates,
         investable_only=False,
+        economically_eligible_only=False,
     ):
         'Return the strongest candidate decision.'
 
         if not candidates:
             return None
+
+        if economically_eligible_only:
+            candidates = [
+                item
+                for item in candidates
+                if self.candidate_decision_ranker.is_economically_eligible(
+                    item["decision"]
+                )
+            ]
+
+            if not candidates:
+                return None
 
         decisions = [
             item["decision"]
