@@ -1057,3 +1057,79 @@ def test_decision_engine_uses_real_directional_history_for_learned_support():
         in reason
         for reason in decision.reasoning
     )
+
+def test_decision_engine_holds_known_buy_without_positive_net_return():
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.trading.trading_cost_model import TradingCostModel
+
+    class StubExpectedReturnService:
+        def estimate_with_status(self, symbol, action):
+            assert symbol == "BTC-USD"
+            assert action is Action.BUY
+            return SimpleNamespace(value=0.0024, ready=True)
+
+    engine = DecisionEngine(
+        expected_return_service=StubExpectedReturnService(),
+        trading_cost_model=TradingCostModel(),
+    )
+
+    decision = engine.evaluate(
+        [
+            AnalysisResult(
+                analyst="test",
+                symbol="BTC-USD",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Strong BUY evidence."],
+            )
+        ]
+    )
+
+    assert decision.action is Action.HOLD
+    assert decision.expected_return == 0.0024
+    assert decision.expected_return_ready is True
+    assert any(
+        "trading costs" in reason.lower()
+        for reason in decision.reasoning
+    )
+
+
+def test_decision_engine_preserves_buy_when_expected_return_is_unknown():
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.trading.trading_cost_model import TradingCostModel
+
+    class StubExpectedReturnService:
+        def estimate_with_status(self, symbol, action):
+            assert symbol == "BTC-USD"
+            assert action is Action.BUY
+            return SimpleNamespace(value=0.0, ready=False)
+
+    engine = DecisionEngine(
+        expected_return_service=StubExpectedReturnService(),
+        trading_cost_model=TradingCostModel(),
+    )
+
+    decision = engine.evaluate(
+        [
+            AnalysisResult(
+                analyst="test",
+                symbol="BTC-USD",
+                action=Action.BUY,
+                confidence=90.0,
+                evidence=90.0,
+                reasoning=["Strong BUY evidence."],
+            )
+        ]
+    )
+
+    assert decision.action is Action.BUY
+    assert decision.expected_return == 0.0
+    assert decision.expected_return_ready is False
+
