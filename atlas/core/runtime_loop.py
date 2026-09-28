@@ -76,6 +76,8 @@ class AtlasRuntimeLoop:
                 self.engine.logger.info(
                     "ATLAS candidate research context refreshed."
                 )
+                candidates = self.engine.research_candidates()
+                self.engine.expand_universe_from_candidates(candidates)
 
         for state in self._get_market_states():
             if self._get_trigger(state.symbol).should_analyze(state):
