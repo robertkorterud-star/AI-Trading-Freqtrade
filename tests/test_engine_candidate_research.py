@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from atlas.core.engine import AtlasEngine
 from atlas.market.asset import Asset
 from atlas.market.asset_type import AssetType
+from atlas.market.asset_universe import AssetUniverse
 from atlas.market.candidates.source import Candidate
 from atlas.market.candidates.research_context import CandidateResearchContext
 
