@@ -100,6 +100,7 @@ from atlas.market.candidates.ai_research import AIResearchSource
 from atlas.market.candidates.ai_provider import AICandidateProvider
 from atlas.market.candidates.market_discovery import MarketDiscoverySource
 from atlas.market.candidates.research_service import CandidateResearchService
+from atlas.market.candidates.research_tickers import ResearchTickerSource
 from atlas.core.ai_provider_factory import AIProviderFactory
 
 
@@ -380,11 +381,13 @@ class AtlasEngine:
         """Discover research candidates using AI and market discovery."""
 
         ai_research = research
+        research_context = None
 
         if not ai_research.strip():
-            ai_research = self.candidate_research_service.get_context(
+            research_context = self.candidate_research_service.get_context(
                 limit=limit,
-            ).as_text()
+            )
+            ai_research = research_context.as_text()
 
         ai_provider = AIProviderFactory.create(
             config=self.config,
@@ -403,11 +406,20 @@ class AtlasEngine:
             horizon=horizon,
         )
 
+        sources = [
+            ai_candidates,
+            market_candidates,
+        ]
+
+        if research_context is not None:
+            sources.append(
+                ResearchTickerSource(
+                    research_context.articles,
+                )
+            )
+
         pool = CandidatePool(
-            sources=[
-                ai_candidates,
-                market_candidates,
-            ]
+            sources=sources,
         )
 
         return pool.collect()[:max(0, limit)]
