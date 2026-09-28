@@ -351,3 +351,61 @@ def test_market_research_normalizes_sentiment_like_symbol_news(monkeypatch):
     result = AlphaVantageNewsAdapter().market_news(limit=10)
 
     assert result[0]["sentiment"] == "positive"
+
+def test_alpha_vantage_market_news_preserves_related_tickers(monkeypatch):
+    monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "test-key")
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "feed": [
+                    {
+                        "title": "Chip demand accelerates",
+                        "source": "Example News",
+                        "summary": "Semiconductor shares react.",
+                        "url": "https://example.com/chips",
+                        "overall_sentiment_label": "Bullish",
+                        "time_published": "20260928100000",
+                        "ticker_sentiment": [
+                            {
+                                "ticker": "AMD",
+                                "relevance_score": "0.91",
+                                "ticker_sentiment_score": "0.42",
+                                "ticker_sentiment_label": "Bullish",
+                            },
+                            {
+                                "ticker": "NVDA",
+                                "relevance_score": "0.84",
+                                "ticker_sentiment_score": "0.31",
+                                "ticker_sentiment_label": "Somewhat-Bullish",
+                            },
+                        ],
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(
+        "atlas.news.alpha_vantage.requests.get",
+        lambda *args, **kwargs: Response(),
+    )
+
+    result = AlphaVantageNewsAdapter().market_news(limit=10)
+
+    assert result[0]["related_tickers"] == [
+        {
+            "symbol": "AMD",
+            "relevance_score": 0.91,
+            "sentiment_score": 0.42,
+            "sentiment": "positive",
+        },
+        {
+            "symbol": "NVDA",
+            "relevance_score": 0.84,
+            "sentiment_score": 0.31,
+            "sentiment": "positive",
+        },
+    ]
+
