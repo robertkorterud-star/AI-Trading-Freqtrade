@@ -7720,3 +7720,84 @@ def test_atlas_engine_shares_candidate_trading_cost_model_with_decision_engine(
         engine.candidate_decision_ranker.cost_model
     )
 
+def test_start_records_economic_hold_without_paper_trade(
+    monkeypatch,
+    tmp_path,
+):
+    from types import SimpleNamespace
+
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        capital_limit=1000000.0,
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    analysis = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="test-analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong BUY signal."],
+        )
+    ]
+    selected = {
+        "symbol": "BTC-USD",
+        "discovery_score": 100.0,
+        "analysis": analysis,
+    }
+
+    class StubExpectedReturnService:
+        def estimate_with_status(self, symbol, action):
+            assert symbol == "BTC-USD"
+            assert action is Action.BUY
+            return SimpleNamespace(value=0.0024, ready=True)
+
+    engine.expected_return_service = StubExpectedReturnService()
+    engine.decision_engine.expected_return_service = engine.expected_return_service
+
+    def fake_snapshot(symbol):
+        return SimpleNamespace(price=100.0)
+
+    def fake_decide_candidates(limit=3):
+        selected["decision"] = engine._evaluate_candidate_decision(
+            analysis,
+            market_snapshot=fake_snapshot("BTC-USD"),
+        )
+        return [selected]
+
+    monkeypatch.setattr(engine, "decide_candidates", fake_decide_candidates)
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+    monkeypatch.setattr(engine, "_get_market_snapshot", fake_snapshot)
+    monkeypatch.setattr(
+        engine,
+        "_get_usd_nok_rate",
+        lambda: SimpleNamespace(rate=10.0),
+    )
+    monkeypatch.setattr(engine.report, "print_decision", lambda decision: None)
+
+    before_trade_count = engine.trading_service.count()
+
+    engine.start()
+
+    decision = selected["decision"]
+    assert decision.action is Action.HOLD
+    assert decision.expected_return_ready is True
+
+    predictions = engine.prediction_tracker.history()
+    assert len(predictions) == 1
+    assert predictions[0]["symbol"] == "BTC-USD"
+    assert predictions[0]["action"] == "HOLD"
+    assert engine.trading_service.count() == before_trade_count
+
