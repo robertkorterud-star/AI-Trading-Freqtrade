@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 import time
 from typing import Callable
 from urllib.error import HTTPError, URLError
@@ -56,8 +57,12 @@ class EtoroMarketDataClient:
         self._last_request_at: float | None = None
 
     @classmethod
-    def from_env(cls) -> "EtoroMarketDataClient":
-        """Build a client from local environment variables."""
+    def from_env(
+        cls,
+        env_file: str | Path | None = None,
+    ) -> "EtoroMarketDataClient":
+        """Build a client from environment variables and the project .env file."""
+        _load_env_file(env_file)
         api_key = os.getenv("ETORO_API_KEY")
         user_key = os.getenv("ETORO_USER_KEY")
         if not api_key or not user_key:
@@ -145,8 +150,11 @@ class EtoroCryptoMarketDataProvider:
         self.client = client
 
     @classmethod
-    def from_env(cls) -> "EtoroCryptoMarketDataProvider":
-        return cls(EtoroMarketDataClient.from_env())
+    def from_env(
+        cls,
+        env_file: str | Path | None = None,
+    ) -> "EtoroCryptoMarketDataProvider":
+        return cls(EtoroMarketDataClient.from_env(env_file=env_file))
 
     def get_crypto_observations(self) -> list[MarketObservation]:
         types = self.client.get_instrument_types()
@@ -252,6 +260,35 @@ class EtoroCryptoMarketDataProvider:
             )
 
         return observations
+
+
+def _load_env_file(env_file: str | Path | None = None) -> None:
+    """Load simple KEY=VALUE entries without overriding existing environment."""
+    path = (
+        Path(env_file)
+        if env_file is not None
+        else Path(__file__).resolve().parents[2] / ".env"
+    )
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].lstrip()
+        key, separator, value = line.partition("=")
+        if not separator:
+            continue
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
 
 
 def _number(value) -> float | None:
