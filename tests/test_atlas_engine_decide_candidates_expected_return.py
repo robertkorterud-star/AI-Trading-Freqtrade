@@ -131,3 +131,41 @@ def test_atlas_engine_decide_candidates_carries_expected_return_availability():
     assert decision.expected_return == 0.0
     assert decision.expected_return_ready is True
 
+def test_atlas_engine_decide_candidates_holds_known_buy_without_positive_net_return():
+    engine = AtlasEngine(
+        config=AtlasConfig(
+            trading_mode="paper",
+            paper_trading=True,
+        )
+    )
+
+    engine.asset_discovery = StubAssetDiscovery()
+    engine.candidate_selector = StubCandidateSelector()
+    engine.market_data = StubMarketData()
+    engine.analysis_service = StubAnalysisService(_buy_analysis())
+
+    class StubEstimate:
+        value = 0.0024
+        ready = True
+
+    class StubExpectedReturnService:
+        def estimate_with_status(self, symbol, action):
+            assert symbol == "BTC-USD"
+            assert action == Action.BUY
+            return StubEstimate()
+
+    engine.expected_return_service = StubExpectedReturnService()
+    engine.decision_engine.expected_return_service = engine.expected_return_service
+
+    decisions = engine.decide_candidates(limit=1)
+
+    assert len(decisions) == 1
+    decision = decisions[0]["decision"]
+    assert decision.action is Action.HOLD
+    assert decision.expected_return == 0.0024
+    assert decision.expected_return_ready is True
+    assert any(
+        "trading costs" in reason.lower()
+        for reason in decision.reasoning
+    )
+
