@@ -39,6 +39,12 @@ class FakeEngine:
         self.asset_universe = FakeAssetUniverse()
         self.technical = FakeTechnicalService()
 
+    def research_candidates(self):
+        return []
+
+    def expand_universe_from_candidates(self, candidates):
+        return 0
+
     def start(self):
         self.calls += 1
 
