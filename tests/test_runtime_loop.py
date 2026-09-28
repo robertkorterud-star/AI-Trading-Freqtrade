@@ -18,6 +18,9 @@ class FakeAssetUniverse:
     def all(self):
         return [SimpleNamespace(symbol="AAPL")]
 
+    def count(self):
+        return len(self.all())
+
 
 class FakeTechnicalService:
     def get_snapshot(self, symbol):
