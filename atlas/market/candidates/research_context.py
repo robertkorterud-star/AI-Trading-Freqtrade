@@ -25,6 +25,37 @@ class CandidateResearchContext:
             summary = article.get("summary", "")
             url = article.get("url", "")
             sentiment = article.get("sentiment", "")
+            related_tickers = article.get(
+                "related_tickers",
+                [],
+            )
+
+            ticker_lines = []
+            if isinstance(related_tickers, list):
+                for ticker in related_tickers:
+                    if not isinstance(ticker, dict):
+                        continue
+
+                    symbol = str(
+                        ticker.get("symbol", "")
+                    ).strip()
+
+                    if not symbol:
+                        continue
+
+                    ticker_lines.append(
+                        f"{symbol} "
+                        f"relevance={ticker.get('relevance_score', 0.0)} "
+                        f"sentiment_score={ticker.get('sentiment_score', 0.0)} "
+                        f"sentiment={ticker.get('sentiment', 'neutral')}"
+                    )
+
+            related_ticker_text = ""
+            if ticker_lines:
+                related_ticker_text = (
+                    "\nRELATED TICKERS: "
+                    + "; ".join(ticker_lines)
+                )
 
             lines.append(
                 f"SOURCE: {source}\n"
@@ -33,6 +64,7 @@ class CandidateResearchContext:
                 f"SUMMARY: {summary[:1500]}\n"
                 f"URL: {url}\n"
                 f"SENTIMENT: {sentiment}"
+                f"{related_ticker_text}"
             )
 
         return "\n\n".join(lines)
