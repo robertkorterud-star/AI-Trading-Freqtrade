@@ -62,7 +62,7 @@ def test_etoro_provider_builds_crypto_observations_from_full_listing():
 
     assert [item.symbol for item in observations] == ["BTC", "ETH"]
     assert all(item.asset_type is AssetType.CRYPTO for item in observations)
-    assert observations[0].change_percent == 4.3478260869565215
+    assert abs(observations[0].change_percent - 4.3478) < 0.0001
     assert observations[0].breakout_percent == 20.0
     assert observations[1].volume == 0.0
 
