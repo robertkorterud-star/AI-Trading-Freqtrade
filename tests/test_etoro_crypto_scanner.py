@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 from urllib.parse import parse_qs, urlparse
 
@@ -35,8 +36,10 @@ class FakeCryptoClient:
     def get_rates(self, instrument_ids):
         assert instrument_ids == [1, 2]
         return {
-            1: {"instrumentID": 1, "lastExecution": 120.0},
-            2: {"instrumentID": 2, "lastExecution": 38.0},
+            1: {"instrumentID": 1, "bid": 119.5, "ask": 120.5,
+                "date": datetime.now(timezone.utc).isoformat()},
+            2: {"instrumentID": 2, "bid": 37.9, "ask": 38.1,
+                "date": datetime.now(timezone.utc).isoformat()},
         }
 
     def get_daily_candles(self, instrument_id, count=8):
@@ -76,7 +79,8 @@ def test_etoro_provider_builds_crypto_observations_from_full_listing():
     assert [item.symbol for item in observations] == ["BTC", "ETH"]
     assert all(item.asset_type is AssetType.CRYPTO for item in observations)
     assert abs(observations[0].change_percent - 9.0909) < 0.0001
-    assert abs(observations[0].breakout_percent - 20.0) < 0.0001
+    assert observations[0].breakout_percent == 0.0
+    assert abs(observations[0].bid_ask_spread_percent - 100 / 120) < 0.0001
     assert observations[1].volume == 0.0
 
 
@@ -260,3 +264,88 @@ def test_etoro_joins_status_to_display_catalog_when_search_omits_type():
     assert items[0]["instrumentTypeID"] == 9
     assert items[0]["internalSymbolFull"] == "BTC"
     assert items[0]["isActiveInPlatform"] is True
+
+
+def test_etoro_rejects_bad_quotes_before_candle_requests():
+    now = datetime(2026, 9, 28, 12, tzinfo=timezone.utc)
+    valid = {"bid": 99.5, "ask": 100.5, "date": now.isoformat()}
+    invalid = [
+        {**valid, "bid": None}, {**valid, "ask": 0},
+        {**valid, "bid": -1}, {**valid, "bid": 101},
+        {**valid, "ask": float("inf")}, {**valid, "bid": float("nan")},
+        {**valid, "ask": 110}, {**valid, "date": None},
+        {**valid, "date": "2026-09-28T12:00:00"},
+        {**valid, "date": (now - timedelta(seconds=301)).isoformat()},
+        {**valid, "date": (now + timedelta(seconds=31)).isoformat()},
+    ]
+    for quote in invalid:
+        class Client(FakeCryptoClient):
+            def get_rates(self, ids):
+                return {1: quote}
+
+            def get_daily_candles(self, *args):
+                raise AssertionError("Rejected quote must not fetch candles")
+
+        provider = EtoroCryptoMarketDataProvider(Client(), now=lambda: now)
+        assert provider.get_crypto_observations() == []
+
+
+def test_etoro_spread_limit_is_configurable_and_uses_midpoint():
+    now = datetime(2026, 9, 28, 12, tzinfo=timezone.utc)
+    class Client(FakeCryptoClient):
+        def get_rates(self, ids):
+            return {1: {"bid": 99, "ask": 101, "lastExecution": 999,
+                        "date": now.isoformat()}}
+    accepted = EtoroCryptoMarketDataProvider(Client(), now=lambda: now)
+    observations = accepted.get_crypto_observations()
+    assert len(observations) == 1
+    assert observations[0].price == 100
+    assert observations[0].bid_ask_spread_percent == 2
+    rejected = EtoroCryptoMarketDataProvider(Client(), max_spread_percent=1.9,
+                                            now=lambda: now)
+    assert rejected.get_crypto_observations() == []
+
+
+def test_etoro_invalid_history_cannot_create_momentum_candidate():
+    for history in ([], [{"close": 100}], [{"close": 0}, {"close": 110}],
+                    [{"close": float("inf")}, {"close": 110}]):
+        class Client(FakeCryptoClient):
+            def get_daily_candles(self, *args):
+                return history
+        assert EtoroCryptoMarketDataProvider(Client()).get_crypto_observations() == []
+
+
+def test_etoro_candle_api_failure_is_not_a_silent_partial_scan():
+    class Client(FakeCryptoClient):
+        def get_daily_candles(self, *args):
+            raise RuntimeError("eToro API rate limit reached (HTTP 429).")
+    try:
+        EtoroCryptoMarketDataProvider(Client()).get_crypto_observations()
+    except RuntimeError as exc:
+        assert "429" in str(exc)
+    else:
+        raise AssertionError("API failure must remain visible")
+
+
+def test_scout_prefers_narrow_spread_without_inventing_volume():
+    from atlas.market.market_scout import MarketScout
+    common = dict(asset_type=AssetType.CRYPTO, price=100, volume=0,
+                  average_volume=0, change_percent=5)
+    ranked = MarketScout().scan([
+        MarketObservation(symbol="WIDE", bid_ask_spread_percent=2, **common),
+        MarketObservation(symbol="NARROW", bid_ask_spread_percent=0.2, **common),
+    ])
+    assert [item.symbol for item in ranked] == ["NARROW", "WIDE"]
+    assert ranked[0].volume_score == 0
+    assert ranked[0].liquidity_score > ranked[1].liquidity_score
+    assert "quoted spread 0.200%" in ranked[0].reasons
+
+
+def test_etoro_quote_limits_reject_invalid_configuration():
+    for limit in (0, -1, float("nan"), float("inf")):
+        try:
+            EtoroCryptoMarketDataProvider(FakeCryptoClient(), max_spread_percent=limit)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Invalid spread limit should fail")
