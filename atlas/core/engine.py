@@ -883,6 +883,7 @@ class AtlasEngine:
 
         selected = self.select_best_candidate(
             candidate_decisions,
+            investable_only=True,
         )
 
         if selected is not None:
