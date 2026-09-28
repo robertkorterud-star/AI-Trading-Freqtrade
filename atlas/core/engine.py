@@ -80,6 +80,9 @@ from atlas.database.analysis_snapshot_repository import (
 from atlas.services.analysis_snapshot_builder import (
     AnalysisSnapshotBuilder,
 )
+from atlas.services.dynamic_asset_service import DynamicAssetService
+from atlas.services.internet_asset_resolver import InternetAssetResolver
+from atlas.services.yfinance_search_client import YFinanceSearchClient
 
 from atlas.market.asset_universe import AssetUniverse
 from atlas.market.asset_discovery import AssetDiscoveryService
@@ -153,6 +156,11 @@ class AtlasEngine:
         )
 
         self.asset_universe = AssetUniverse()
+
+        self.dynamic_asset_service = DynamicAssetService(
+            resolver=InternetAssetResolver(YFinanceSearchClient()),
+            universe=self.asset_universe,
+        )
 
         self.asset_discovery = AssetDiscoveryService(
             market_data=self.market_data,
@@ -401,6 +409,19 @@ class AtlasEngine:
         )
 
         return pool.collect()[:max(0, limit)]
+
+    def expand_universe_from_candidates(self, candidates):
+        """Resolve researched candidates into the active asset universe."""
+        added = 0
+
+        for candidate in candidates:
+            if self.asset_universe.get(candidate.symbol) is not None:
+                continue
+            added += int(
+                self.dynamic_asset_service.resolve_and_add(candidate.symbol)
+            )
+
+        return added
 
     def discover_candidates(
         self,
