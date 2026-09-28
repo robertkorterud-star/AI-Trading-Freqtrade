@@ -147,3 +147,53 @@ def test_runtime_research_expands_active_universe_before_trigger_scan():
 
     assert expanded == ["AMD"]
 
+
+
+def test_runtime_reports_research_universe_expansion():
+    engine = FakeEngine()
+    researched = [
+        SimpleNamespace(symbol="PLTR"),
+        SimpleNamespace(symbol="AMD"),
+    ]
+
+    class RecordingLogger:
+        def __init__(self):
+            self.messages = []
+
+        def info(self, message):
+            self.messages.append(message)
+
+    class ExpandedUniverse:
+        def all(self):
+            return [
+                SimpleNamespace(symbol="AAPL"),
+                SimpleNamespace(symbol="PLTR"),
+            ]
+
+        def count(self):
+            return 2
+
+    class FakeResearchScheduler:
+        def should_research(self):
+            return True
+
+        def research(self):
+            return SimpleNamespace()
+
+    engine.logger = RecordingLogger()
+    engine.asset_universe = ExpandedUniverse()
+    engine.research_candidates = lambda: researched
+    engine.expand_universe_from_candidates = lambda candidates: 1
+
+    loop = AtlasRuntimeLoop(
+        engine=engine,
+        interval_seconds=30,
+        research_scheduler=FakeResearchScheduler(),
+    )
+
+    loop.run_once()
+
+    assert (
+        "ATLAS research candidates: PLTR, AMD; "
+        "added=1; active_universe=2"
+    ) in engine.logger.messages
