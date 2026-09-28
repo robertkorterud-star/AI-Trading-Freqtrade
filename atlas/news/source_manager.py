@@ -69,7 +69,7 @@ class NewsSourceManager:
                 "published_at": getattr(article, "published_at", ""),
             }
 
-        return {
+        normalized = {
             "title": str(data.get("title", "")).strip(),
             "source": str(data.get("source", "")).strip(),
             "summary": str(data.get("summary", "")).strip(),
@@ -77,6 +77,16 @@ class NewsSourceManager:
             "sentiment": str(data.get("sentiment", "neutral")).lower(),
             "published_at": str(data.get("published_at", "")).strip(),
         }
+
+        related_tickers = data.get("related_tickers")
+        if isinstance(related_tickers, list):
+            normalized["related_tickers"] = [
+                dict(item)
+                for item in related_tickers
+                if isinstance(item, dict)
+            ]
+
+        return normalized
 
     @staticmethod
     def _identity(article: dict) -> tuple:
