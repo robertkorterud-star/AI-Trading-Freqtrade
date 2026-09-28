@@ -409,3 +409,43 @@ def test_alpha_vantage_market_news_preserves_related_tickers(monkeypatch):
         },
     ]
 
+def test_market_research_preserves_related_tickers_through_manager():
+    class MarketNewsAdapter:
+        def market_news(self, limit=50):
+            return [
+                {
+                    "title": "Chip demand accelerates",
+                    "source": "Example News",
+                    "summary": "Semiconductor shares react.",
+                    "url": "https://example.com/chips",
+                    "sentiment": "positive",
+                    "published_at": "20260928100000",
+                    "related_tickers": [
+                        {
+                            "symbol": "AMD",
+                            "relevance_score": 0.91,
+                            "sentiment_score": 0.42,
+                            "sentiment": "positive",
+                        }
+                    ],
+                }
+            ]
+
+    class MarketNewsSource:
+        adapter = MarketNewsAdapter()
+
+    manager = NewsSourceManager(
+        sources={"alpha_vantage": MarketNewsSource()}
+    )
+
+    result = manager.market_research(limit=10)
+
+    assert result[0]["related_tickers"] == [
+        {
+            "symbol": "AMD",
+            "relevance_score": 0.91,
+            "sentiment_score": 0.42,
+            "sentiment": "positive",
+        }
+    ]
+
