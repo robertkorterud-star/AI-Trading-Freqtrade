@@ -112,6 +112,11 @@ def test_atlas_engine_decide_candidates_carries_expected_return_availability():
         ready = True
 
     class StubExpectedReturnService:
+        def estimate(self, symbol, action):
+            assert symbol == "BTC-USD"
+            assert action == Action.BUY
+            return 0.0
+
         def estimate_with_status(self, symbol, action):
             assert symbol == "BTC-USD"
             assert action == Action.BUY
