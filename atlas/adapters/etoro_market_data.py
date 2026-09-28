@@ -109,13 +109,43 @@ class EtoroMarketDataClient:
         return payload.get("instrumentTypes", [])
 
     def get_instruments(self, instrument_type_id: int) -> list[dict]:
-        """Read every search page, including explicit platform status fields.
+        """Join the typed display catalog with search status by instrument ID."""
+        payload = self._get("/market-data/instruments", {
+            "instrumentTypeIds": instrument_type_id,
+        })
+        catalog = payload.get("instrumentDisplayDatas")
+        if not isinstance(catalog, list):
+            raise RuntimeError("eToro returned invalid instrument display data.")
+        by_id = {
+            _integer(item.get("instrumentID")): item
+            for item in catalog
+            if _integer(item.get("instrumentTypeID")) == instrument_type_id
+            and _integer(item.get("instrumentID")) is not None
+        }
+        if not by_id:
+            return []
+        results = []
+        for status in self._get_instrument_statuses():
+            item = by_id.get(_integer(status.get("instrumentId")))
+            if item is None:
+                continue
+            results.append({
+                **status,
+                "instrumentTypeID": instrument_type_id,
+                "internalSymbolFull": item.get("symbolFull"),
+                "displayname": item.get("instrumentDisplayName"),
+                "isInternalInstrument": item.get("isInternalInstrument"),
+            })
+        return results
 
-        Search filters may be ignored by eToro, so the provider also validates
-        instrument type and status locally. Status is not account suitability.
+    def _get_instrument_statuses(self) -> list[dict]:
+        """Read the whole search catalog; live API uses page, not pageNumber.
+
+        Search instrumentTypeID is ignored and omitted from projected results.
+        Type filtering therefore uses the separate display catalog above.
         """
         fields = (
-            "instrumentId,instrumentTypeID,internalSymbolFull,displayname,"
+            "instrumentId,internalSymbolFull,displayname,"
             "isInternalInstrument,isHiddenFromClient,isDelisted,"
             "isCurrentlyTradable,isActiveInPlatform,isBuyEnabled"
         )
@@ -124,26 +154,27 @@ class EtoroMarketDataClient:
         page = 1
         while True:
             payload = self._get("/market-data/search", {
-                "instrumentTypeID": instrument_type_id,
                 "fields": fields,
-                "pageNumber": page,
+                "page": page,
                 "pageSize": 100,
             })
             items = payload.get("items")
             total = _integer(payload.get("totalItems"))
             if not isinstance(items, list) or total is None or total < 0:
                 raise RuntimeError("eToro returned invalid instrument search data.")
+            if _integer(payload.get("page")) != page:
+                raise RuntimeError("eToro instrument search returned the wrong page.")
             if not items:
-                if len(results) < total:
+                if len(seen) < total:
                     raise RuntimeError("eToro instrument search ended before all pages arrived.")
                 return results
             new_ids = {_integer(item.get("instrumentId")) for item in items}
             new_ids.discard(None)
-            if not new_ids - seen:
+            if len(new_ids) != len(items) or new_ids & seen:
                 raise RuntimeError("eToro instrument search repeated a page.")
             seen.update(new_ids)
             results.extend(items)
-            if len(results) >= total:
+            if len(seen) >= total:
                 return results
             page += 1
 
