@@ -22,6 +22,8 @@ class BacktestEngine:
 
     MA_FAST = 20
     MA_SLOW = 50
+    MOMENTUM_LOOKBACK = 10
+    VOLUME_LOOKBACK = 20
     MIN_BARS = 50
 
     def __init__(self, decision_engine: DecisionEngine | None = None):
@@ -155,8 +157,8 @@ class BacktestEngine:
     ) -> BacktestResult:
         """Walk historical bars through DecisionEngine (dry-run only).
 
-        Technical evidence is derived from rolling MA20/MA50 on closed
-        bars. The canonical DecisionEngine owns the final BUY/SELL/HOLD.
+        Each bar produces multi-signal evidence (trend, momentum, volume)
+        that is passed to the canonical DecisionEngine. No live orders.
         """
 
         bars = list(data.bars)
@@ -164,18 +166,22 @@ class BacktestEngine:
             return self._empty_result(strategy_name, data.symbol)
 
         closes = [bar.close for bar in bars]
+        volumes = [bar.volume for bar in bars]
         trades: list[float] = []
         position: dict[str, float] | None = None
 
         for index in range(self.MIN_BARS - 1, len(bars)):
-            window = closes[: index + 1]
+            close_window = closes[: index + 1]
+            volume_window = volumes[: index + 1]
             bar = bars[index]
-            analysis = self._technical_analysis(
+
+            analyses = self._build_analyses(
                 symbol=data.symbol,
-                closes=window,
+                closes=close_window,
+                volumes=volume_window,
             )
 
-            decision = self.decision_engine.evaluate([analysis])
+            decision = self.decision_engine.evaluate(analyses)
             action = decision.action
             price = bar.close
 
@@ -216,41 +222,58 @@ class BacktestEngine:
             strategy_name="Decision Engine",
         )
 
-    def _technical_analysis(
+    def _build_analyses(
+        self,
+        *,
+        symbol: str,
+        closes: list[float],
+        volumes: list[float],
+    ) -> list[AnalysisResult]:
+        """Build multi-signal AnalysisResult list for one bar."""
+
+        return [
+            self._trend_analysis(symbol=symbol, closes=closes),
+            self._momentum_analysis(symbol=symbol, closes=closes),
+            self._volume_analysis(
+                symbol=symbol,
+                closes=closes,
+                volumes=volumes,
+            ),
+        ]
+
+    def _trend_analysis(
         self,
         *,
         symbol: str,
         closes: list[float],
     ) -> AnalysisResult:
-        """Build a single technical AnalysisResult from rolling closes."""
+        """MA trend signal aligned with ATLAS technical direction rules."""
 
         ma_fast = sum(closes[-self.MA_FAST :]) / self.MA_FAST
         ma_slow = sum(closes[-self.MA_SLOW :]) / self.MA_SLOW
         price = closes[-1]
 
-        if ma_fast > ma_slow and price >= ma_fast:
+        if price > ma_fast > ma_slow:
             action = Action.BUY
             confidence = 70.0
             evidence = 75.0
             reasoning = [
-                f"MA{self.MA_FAST} above MA{self.MA_SLOW}.",
-                "Price holds above the fast average.",
+                "price_above_ma20",
+                "ma20_above_ma50",
             ]
-        elif ma_fast < ma_slow and price <= ma_fast:
+        elif price < ma_fast < ma_slow:
             action = Action.SELL
             confidence = 70.0
             evidence = 75.0
             reasoning = [
-                f"MA{self.MA_FAST} below MA{self.MA_SLOW}.",
-                "Price holds below the fast average.",
+                "price_below_ma20",
+                "ma20_below_ma50",
             ]
         else:
             action = Action.HOLD
             confidence = 55.0
             evidence = 50.0
-            reasoning = [
-                "No clear MA trend alignment.",
-            ]
+            reasoning = ["mixed_market_trend"]
 
         return AnalysisResult(
             analyst="technical:ma_trend",
@@ -264,6 +287,130 @@ class BacktestEngine:
                 "ma_fast": ma_fast,
                 "ma_slow": ma_slow,
                 "price": price,
+            },
+        )
+
+    def _momentum_analysis(
+        self,
+        *,
+        symbol: str,
+        closes: list[float],
+    ) -> AnalysisResult:
+        """Short-horizon momentum from rate-of-change."""
+
+        lookback = min(self.MOMENTUM_LOOKBACK, len(closes) - 1)
+        if lookback <= 0:
+            return AnalysisResult(
+                analyst="technical:momentum",
+                symbol=symbol,
+                action=Action.HOLD,
+                confidence=50.0,
+                evidence=40.0,
+                reasoning=["insufficient_momentum_history"],
+                signal_confidence=50.0,
+            )
+
+        start = closes[-lookback - 1]
+        price = closes[-1]
+        if start <= 0:
+            roc = 0.0
+        else:
+            roc = (price - start) / start * 100.0
+
+        if roc >= 3.0:
+            action = Action.BUY
+            confidence = min(85.0, 60.0 + roc)
+            evidence = min(90.0, 55.0 + abs(roc) * 2.0)
+            reasoning = [f"positive_momentum_{roc:.2f}pct"]
+        elif roc <= -3.0:
+            action = Action.SELL
+            confidence = min(85.0, 60.0 + abs(roc))
+            evidence = min(90.0, 55.0 + abs(roc) * 2.0)
+            reasoning = [f"negative_momentum_{roc:.2f}pct"]
+        else:
+            action = Action.HOLD
+            confidence = 55.0
+            evidence = 45.0
+            reasoning = [f"neutral_momentum_{roc:.2f}pct"]
+
+        return AnalysisResult(
+            analyst="technical:momentum",
+            symbol=symbol,
+            action=action,
+            confidence=round(confidence, 2),
+            evidence=round(evidence, 2),
+            reasoning=reasoning,
+            signal_confidence=round(confidence, 2),
+            metadata={"roc_pct": roc, "lookback": lookback},
+        )
+
+    def _volume_analysis(
+        self,
+        *,
+        symbol: str,
+        closes: list[float],
+        volumes: list[float],
+    ) -> AnalysisResult:
+        """Volume confirmation relative to recent average.
+
+        Volume does not invent direction alone; it follows short-term
+        price change and scales confidence/evidence.
+        """
+
+        lookback = min(self.VOLUME_LOOKBACK, len(volumes))
+        recent = volumes[-lookback:]
+        average_volume = sum(recent) / lookback if lookback else 0.0
+        volume = volumes[-1]
+        volume_ratio = (
+            volume / average_volume if average_volume > 0 else 1.0
+        )
+
+        price_change = 0.0
+        if len(closes) >= 2 and closes[-2] > 0:
+            price_change = (closes[-1] - closes[-2]) / closes[-2] * 100.0
+
+        if volume_ratio >= 1.5 and price_change > 0:
+            action = Action.BUY
+            confidence = min(80.0, 55.0 + volume_ratio * 8.0)
+            evidence = min(85.0, 50.0 + volume_ratio * 10.0)
+            reasoning = [
+                f"volume_{volume_ratio:.2f}x_average",
+                "volume_supports_up_move",
+            ]
+        elif volume_ratio >= 1.5 and price_change < 0:
+            action = Action.SELL
+            confidence = min(80.0, 55.0 + volume_ratio * 8.0)
+            evidence = min(85.0, 50.0 + volume_ratio * 10.0)
+            reasoning = [
+                f"volume_{volume_ratio:.2f}x_average",
+                "volume_supports_down_move",
+            ]
+        elif volume_ratio < 0.75:
+            action = Action.HOLD
+            confidence = 50.0
+            evidence = 40.0
+            reasoning = [
+                f"low_volume_{volume_ratio:.2f}x_average",
+            ]
+        else:
+            action = Action.HOLD
+            confidence = 55.0
+            evidence = 45.0
+            reasoning = [
+                f"normal_volume_{volume_ratio:.2f}x_average",
+            ]
+
+        return AnalysisResult(
+            analyst="technical:volume",
+            symbol=symbol,
+            action=action,
+            confidence=round(confidence, 2),
+            evidence=round(evidence, 2),
+            reasoning=reasoning,
+            signal_confidence=round(confidence, 2),
+            metadata={
+                "volume_ratio": volume_ratio,
+                "price_change_pct": price_change,
             },
         )
 
