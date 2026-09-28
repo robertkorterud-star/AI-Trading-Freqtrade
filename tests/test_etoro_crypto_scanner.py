@@ -197,7 +197,7 @@ def test_etoro_search_reads_all_pages_and_requests_status():
         query = parse_qs(urlparse(request.full_url).query)
         queries.append(query)
         assert urlparse(request.full_url).path.endswith("/market-data/search")
-        page = int(query["pageNumber"][0])
+        page = int(query.get("page", ["1"])[0])
         # Server may use smaller pages than requested.
         return FakeResponse(json.dumps({
             "items": [instrument(page, f"COIN{page}")],
@@ -206,17 +206,17 @@ def test_etoro_search_reads_all_pages_and_requests_status():
 
     client = EtoroMarketDataClient("app", "user", opener=opener,
                                   sleeper=lambda _: None)
-    items = client.get_instruments(9)
+    items = client._get_instrument_statuses()
     assert [item["instrumentId"] for item in items] == [1, 2, 3]
-    assert all(query["instrumentTypeID"] == ["9"] for query in queries)
+    assert [query["page"] for query in queries] == [["1"], ["2"], ["3"]]
     assert "isDelisted" in queries[0]["fields"][0]
     assert "isCurrentlyTradable" in queries[0]["fields"][0]
 
 
 def test_etoro_search_rejects_incomplete_or_repeated_pages():
     for response in (
-        {"items": [], "totalItems": 2},
-        {"items": [instrument(1, "BTC")], "totalItems": 2},
+        {"items": [], "totalItems": 2, "page": 1},
+        {"items": [instrument(1, "BTC")], "totalItems": 2, "page": 1},
         {"instrumentDisplayDatas": []},
     ):
         client = EtoroMarketDataClient(
@@ -224,8 +224,39 @@ def test_etoro_search_rejects_incomplete_or_repeated_pages():
             opener=lambda request, timeout: FakeResponse(json.dumps(response).encode()),
         )
         try:
-            client.get_instruments(9)
+            client._get_instrument_statuses()
         except RuntimeError:
             pass
         else:
             raise AssertionError("Incomplete universe must fail explicitly")
+
+
+def test_etoro_joins_status_to_display_catalog_when_search_omits_type():
+    def opener(request, timeout):
+        path = urlparse(request.full_url).path
+        if path.endswith("/market-data/instruments"):
+            payload = {"instrumentDisplayDatas": [
+                {"instrumentID": 1, "instrumentTypeID": 9, "symbolFull": "BTC",
+                 "instrumentDisplayName": "Bitcoin", "isInternalInstrument": False},
+                # Even if the server ignores the type filter, exclude stocks.
+                {"instrumentID": 2, "instrumentTypeID": 4, "symbolFull": "STOCK",
+                 "isInternalInstrument": False},
+            ]}
+        else:
+            crypto = instrument(1, "SEARCH_SYMBOL")
+            del crypto["instrumentTypeID"]
+            stock = instrument(2, "STOCK")
+            del stock["instrumentTypeID"]
+            payload = {"page": 1, "totalItems": 3, "items": [
+                {"instrumentId": -100000}, crypto, stock,
+            ]}
+        return FakeResponse(json.dumps(payload).encode())
+
+    client = EtoroMarketDataClient("app", "user", opener=opener,
+                                  sleeper=lambda _: None)
+    items = client.get_instruments(9)
+    assert len(items) == 1
+    assert items[0]["instrumentId"] == 1
+    assert items[0]["instrumentTypeID"] == 9
+    assert items[0]["internalSymbolFull"] == "BTC"
+    assert items[0]["isActiveInPlatform"] is True
