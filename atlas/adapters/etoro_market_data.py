@@ -7,6 +7,8 @@ API credentials are read from ETORO_API_KEY and ETORO_USER_KEY.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import math
 import json
 import os
 from pathlib import Path
@@ -209,8 +211,19 @@ class EtoroMarketDataClient:
 class EtoroCryptoMarketDataProvider:
     """Convert all eToro-listed crypto instruments into scanner observations."""
 
-    def __init__(self, client: EtoroMarketDataClient) -> None:
+    def __init__(
+        self, client: EtoroMarketDataClient, *,
+        max_spread_percent: float = 2.0,
+        max_quote_age_seconds: float = 300.0,
+        now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
+        for value in (max_spread_percent, max_quote_age_seconds):
+            if _number(value) is None or value <= 0:
+                raise ValueError("Quote limits must be finite and positive.")
         self.client = client
+        self.max_spread_percent = max_spread_percent
+        self.max_quote_age_seconds = max_quote_age_seconds
+        self._now = now
 
     @classmethod
     def from_env(
@@ -283,34 +296,32 @@ class EtoroCryptoMarketDataProvider:
             rate = rates.get(instrument.instrument_id)
             if rate is None:
                 continue
-            price = _number(rate.get("lastExecution"))
-            if price is None or price <= 0:
-                price = _number(rate.get("bid"))
-            if price is None or price <= 0:
+            bid, ask = _number(rate.get("bid")), _number(rate.get("ask"))
+            if bid is None or ask is None or bid <= 0 or ask < bid:
+                continue
+            price = bid / 2.0 + ask / 2.0
+            spread_percent = (ask - bid) / price * 100.0
+            quoted_at = _timestamp(rate.get("date"))
+            if quoted_at is None:
+                continue
+            age = (self._now() - quoted_at).total_seconds()
+            if age < -30 or age > self.max_quote_age_seconds:
+                continue
+            if spread_percent > self.max_spread_percent:
                 continue
 
-            try:
-                candles = self.client.get_daily_candles(instrument.instrument_id)
-            except RuntimeError:
-                # Keep a failed instrument from blocking the rest of the market.
-                continue
+            # Authentication, rate-limit and transport failures must be visible.
+            candles = self.client.get_daily_candles(instrument.instrument_id)
 
             closes = [_number(item.get("close")) for item in candles]
-            closes = [value for value in closes if value is not None and value > 0]
-            previous_close = closes[-2] if len(closes) >= 2 else None
-            week_ago_close = closes[0] if len(closes) >= 2 else None
-            change_percent = (
-                ((price / previous_close) - 1.0) * 100.0
-                if previous_close
-                else 0.0
-            )
-            weekly_change = (
-                ((price / week_ago_close) - 1.0) * 100.0
-                if week_ago_close
-                else 0.0
-            )
+            if len(closes) < 2 or any(value is None or value <= 0 for value in closes):
+                continue
+            previous_close = closes[-2]
+            change_percent = ((price / previous_close) - 1.0) * 100.0
+            if not math.isfinite(change_percent):
+                continue
 
-            volumes = [_number(item.get("volume")) or 0.0 for item in candles]
+            volumes = [max(0.0, _number(item.get("volume")) or 0.0) for item in candles]
             current_volume = volumes[-1] if volumes else 0.0
             historical_volumes = volumes[:-1][-7:]
             average_volume = (
@@ -326,7 +337,9 @@ class EtoroCryptoMarketDataProvider:
                     volume=current_volume,
                     average_volume=average_volume,
                     change_percent=change_percent,
-                    breakout_percent=weekly_change,
+                    # Weekly return does not establish a price breakout.
+                    breakout_percent=0.0,
+                    bid_ask_spread_percent=spread_percent,
                     liquid=True,
                 )
             )
@@ -368,7 +381,7 @@ def _number(value) -> float | None:
         result = float(value)
     except (TypeError, ValueError):
         return None
-    return result if result == result else None
+    return result if math.isfinite(result) else None
 
 
 def _integer(value) -> int | None:
@@ -376,3 +389,15 @@ def _integer(value) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _timestamp(value) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
