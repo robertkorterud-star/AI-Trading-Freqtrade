@@ -321,3 +321,35 @@ def test_engine_research_candidates_forwards_horizon_to_market_discovery(monkeyp
     )
 
     assert discovery.received_horizon == TradingHorizon.SWING
+
+def test_engine_can_expand_universe_from_researched_candidate():
+    engine = object.__new__(AtlasEngine)
+    engine.asset_universe = AssetUniverse(assets=[])
+
+    class FakeDynamicAssetService:
+        def resolve_and_add(self, query):
+            assert query == "AMD"
+            return engine.asset_universe.add(
+                Asset(
+                    symbol="AMD",
+                    name="AMD",
+                    asset_type=AssetType.STOCK,
+                    market="US",
+                    currency="USD",
+                )
+            )
+
+    engine.dynamic_asset_service = FakeDynamicAssetService()
+    candidates = [
+        Candidate(
+            symbol="AMD",
+            source="ai_research",
+            score=92,
+            reason="research",
+        )
+    ]
+
+    added = engine.expand_universe_from_candidates(candidates)
+
+    assert added == 1
+    assert engine.asset_universe.get("AMD") is not None
