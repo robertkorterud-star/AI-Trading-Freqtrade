@@ -51,6 +51,12 @@ class FakeEngine:
         self.technical = FakeTechnicalService()
         self.starts = 0
 
+    def research_candidates(self):
+        return []
+
+    def expand_universe_from_candidates(self, candidates):
+        return 0
+
     def start(self):
         self.starts += 1
 
