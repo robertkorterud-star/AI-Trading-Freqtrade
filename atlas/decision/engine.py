@@ -13,6 +13,7 @@ from atlas.models.action import Action
 from atlas.trading.agent_weight_engine import AgentWeightEngine
 from atlas.models.decision_result import DecisionResult
 from atlas.trading.expected_return_service import ExpectedReturnService
+from atlas.trading.trading_cost_model import TradingCostModel
 from atlas.risk.manager import RiskManager, RiskAssessment
 from atlas.portfolio.manager import PortfolioManager, PortfolioAssessment, PortfolioPosition
 
@@ -20,7 +21,14 @@ from atlas.portfolio.manager import PortfolioManager, PortfolioAssessment, Portf
 class DecisionEngine:
     """Creates the final investment decision."""
 
-    def __init__(self, expected_return_service=None, risk_manager=None, portfolio_manager=None, position_exit_engine=None):
+    def __init__(
+        self,
+        expected_return_service=None,
+        risk_manager=None,
+        portfolio_manager=None,
+        position_exit_engine=None,
+        trading_cost_model=None,
+    ):
         self.aggregator = EvidenceAggregator()
         self.intelligence = IntelligenceLayer()
         self.signal_ensemble = SignalEnsemble()
@@ -29,6 +37,7 @@ class DecisionEngine:
         self.risk_manager = risk_manager
         self.portfolio_manager = portfolio_manager
         self.position_exit_engine = position_exit_engine
+        self.trading_cost_model = trading_cost_model
         self.last_intelligence = None
         self.last_ensemble_signal = None
         self.last_risk_assessment = None
@@ -291,6 +300,37 @@ class DecisionEngine:
             elif position_decision.action is PositionAction.HOLD:
                 action = Action.HOLD
 
+        expected_return = 0.0
+        expected_return_ready = False
+        if self.expected_return_service is not None:
+            estimate_with_status = getattr(
+                self.expected_return_service,
+                "estimate_with_status",
+                None,
+            )
+            if estimate_with_status is not None:
+                estimate = estimate_with_status(
+                    symbol=results[0].symbol,
+                    action=action,
+                )
+                expected_return = estimate.value
+                expected_return_ready = estimate.ready
+            else:
+                expected_return = self.expected_return_service.estimate(
+                    symbol=results[0].symbol,
+                    action=action,
+                )
+
+        economic_gate_blocked = False
+        if (
+            action is Action.BUY
+            and expected_return_ready
+            and self.trading_cost_model is not None
+            and self.trading_cost_model.net_return(expected_return) <= 0.0
+        ):
+            action = Action.HOLD
+            economic_gate_blocked = True
+
         risk_assessment: RiskAssessment | None = None
         if self.risk_manager is not None:
             if price is None or equity is None:
@@ -344,27 +384,6 @@ class DecisionEngine:
             robustness_level = "MODERATE"
         else:
             robustness_level = "WEAK"
-
-        expected_return = 0.0
-        expected_return_ready = False
-        if self.expected_return_service is not None:
-            estimate_with_status = getattr(
-                self.expected_return_service,
-                "estimate_with_status",
-                None,
-            )
-            if estimate_with_status is not None:
-                estimate = estimate_with_status(
-                    symbol=results[0].symbol,
-                    action=action,
-                )
-                expected_return = estimate.value
-                expected_return_ready = estimate.ready
-            else:
-                expected_return = self.expected_return_service.estimate(
-                    symbol=results[0].symbol,
-                    action=action,
-                )
 
         reasoning = [
             "Decision based on combined analyst evidence.",
@@ -443,6 +462,12 @@ class DecisionEngine:
         if self.expected_return_service is not None:
             reasoning.append(
                 f"Expected gross return: {expected_return * 100:.2f}%."
+            )
+
+        if economic_gate_blocked:
+            reasoning.append(
+                "Economic gate blocked BUY because expected net return "
+                "after trading costs is not positive; final action is HOLD."
             )
 
         return DecisionResult(
