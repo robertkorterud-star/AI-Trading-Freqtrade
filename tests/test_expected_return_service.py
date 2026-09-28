@@ -44,3 +44,26 @@ def test_service_handles_hold():
     service = ExpectedReturnService(provider)
 
     assert service.estimate("BTCUSDT", Action.HOLD) == 0.0
+
+def test_service_exposes_whether_expected_return_has_enough_history():
+    ready_service = ExpectedReturnService(
+        FakeProvider([0.02] * 10),
+    )
+    unknown_service = ExpectedReturnService(
+        FakeProvider([0.02] * 9),
+    )
+
+    ready = ready_service.estimate_with_status(
+        "BTCUSDT",
+        Action.BUY,
+    )
+    unknown = unknown_service.estimate_with_status(
+        "BTCUSDT",
+        Action.BUY,
+    )
+
+    assert ready.value == 0.01
+    assert ready.ready is True
+    assert unknown.value == 0.0
+    assert unknown.ready is False
+
