@@ -7705,3 +7705,18 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
         sell_events[0]["payload"]["analysis_snapshot_id"]
         == trades[0]["analysis_snapshot_id"]
     )
+
+def test_atlas_engine_shares_candidate_trading_cost_model_with_decision_engine(
+    tmp_path,
+):
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+    )
+
+    engine = AtlasEngine(config=config)
+
+    assert engine.decision_engine.trading_cost_model is (
+        engine.candidate_decision_ranker.cost_model
+    )
+
