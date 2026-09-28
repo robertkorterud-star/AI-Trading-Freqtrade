@@ -33,6 +33,7 @@ class DecisionResult:
     robustness_level: str = "WEAK"
     reasoning: list[str] = field(default_factory=list)
     expected_return: float = 0.0
+    expected_return_ready: bool = False
     ensemble_action: Action | None = None
     ensemble_confidence: float = 0.0
     risk_assessment: object | None = None
