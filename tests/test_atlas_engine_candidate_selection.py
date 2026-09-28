@@ -43,3 +43,29 @@ def test_atlas_engine_selects_candidate_with_best_risk_adjusted_net_return():
     assert selected["ranking_evidence"].net_expected_return > 0.0
     assert selected["ranking_evidence"].risk_adjusted_net_return > 0.0
     assert selected["selection_report"].symbol == "HIGH-RETURN"
+
+def test_atlas_engine_can_filter_only_known_economically_ineligible_buy():
+    engine = AtlasEngine.__new__(AtlasEngine)
+    engine.candidate_decision_ranker = CandidateDecisionRanker()
+    engine.logger = get_logger("ATLAS-test")
+
+    known_unprofitable = make_candidate(
+        "KNOWN-UNPROFITABLE",
+        0.0024,
+    )
+    known_unprofitable["decision"].expected_return_ready = True
+
+    unknown = make_candidate(
+        "UNKNOWN",
+        0.0,
+    )
+    unknown["decision"].expected_return_ready = False
+
+    selected = engine.select_best_candidate(
+        [known_unprofitable, unknown],
+        economically_eligible_only=True,
+    )
+
+    assert selected is not None
+    assert selected["symbol"] == "UNKNOWN"
+
