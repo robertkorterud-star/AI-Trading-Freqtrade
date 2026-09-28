@@ -7706,3 +7706,35 @@ def test_atlas_engine_restart_restores_position_for_modern_paper_sell(
         == trades[0]["analysis_snapshot_id"]
     )
 
+def test_atlas_engine_start_selects_only_investable_candidates(monkeypatch, tmp_path):
+    config = AtlasConfig(
+        agent_performance_storage=str(tmp_path / "agent_performance.json"),
+        database_path=str(tmp_path / "atlas_test.db"),
+        trading_mode="paper",
+        paper_trading=True,
+    )
+    engine = AtlasEngine(config=config)
+
+    captured = {}
+
+    monkeypatch.setattr(engine, "decide_candidates", lambda limit=3: [])
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda current_prices_usd: [],
+    )
+
+    def fake_select_best_candidate(candidates, investable_only=False):
+        captured["investable_only"] = investable_only
+        return None
+
+    monkeypatch.setattr(
+        engine,
+        "select_best_candidate",
+        fake_select_best_candidate,
+    )
+
+    engine.start()
+
+    assert captured["investable_only"] is True
+
