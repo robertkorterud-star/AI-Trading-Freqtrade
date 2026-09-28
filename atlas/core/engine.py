@@ -185,7 +185,9 @@ class AtlasEngine:
         self.algorithm_pipeline = AlgorithmPipeline(algorithm_registry)
         self.market_regime_engine = MarketRegimeEngine()
 
-        self.decision_engine = DecisionEngine()
+        self.decision_engine = DecisionEngine(
+            trading_cost_model=self.candidate_decision_ranker.cost_model,
+        )
 
         self.strategy_memory_decision_integration = (
             StrategyMemoryRegimeDecisionIntegration()
