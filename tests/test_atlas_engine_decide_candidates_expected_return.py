@@ -93,3 +93,36 @@ def test_atlas_engine_decide_candidates_without_expected_return_service_preserve
     decision = decisions[0]["decision"]
     assert decision.action == Action.BUY
     assert decision.expected_return == 0.0
+
+def test_atlas_engine_decide_candidates_carries_expected_return_availability():
+    engine = AtlasEngine(
+        config=AtlasConfig(
+            trading_mode="paper",
+            paper_trading=True,
+        )
+    )
+
+    engine.asset_discovery = StubAssetDiscovery()
+    engine.candidate_selector = StubCandidateSelector()
+    engine.market_data = StubMarketData()
+    engine.analysis_service = StubAnalysisService(_buy_analysis())
+
+    class StubEstimate:
+        value = 0.0
+        ready = True
+
+    class StubExpectedReturnService:
+        def estimate_with_status(self, symbol, action):
+            assert symbol == "BTC-USD"
+            assert action == Action.BUY
+            return StubEstimate()
+
+    engine.expected_return_service = StubExpectedReturnService()
+    engine.decision_engine.expected_return_service = engine.expected_return_service
+
+    decisions = engine.decide_candidates(limit=1)
+
+    decision = decisions[0]["decision"]
+    assert decision.expected_return == 0.0
+    assert decision.expected_return_ready is True
+
