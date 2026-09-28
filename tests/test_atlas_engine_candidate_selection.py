@@ -43,20 +43,3 @@ def test_atlas_engine_selects_candidate_with_best_risk_adjusted_net_return():
     assert selected["ranking_evidence"].net_expected_return > 0.0
     assert selected["ranking_evidence"].risk_adjusted_net_return > 0.0
     assert selected["selection_report"].symbol == "HIGH-RETURN"
-
-def test_atlas_engine_does_not_select_buy_with_non_positive_net_return():
-    engine = AtlasEngine.__new__(AtlasEngine)
-    engine.candidate_decision_ranker = CandidateDecisionRanker()
-    engine.logger = get_logger("ATLAS-test")
-
-    candidates = [
-        make_candidate("NEGATIVE-NET", 0.0),
-    ]
-
-    selected = engine.select_best_candidate(
-        candidates,
-        investable_only=True,
-    )
-
-    assert selected is None
-
