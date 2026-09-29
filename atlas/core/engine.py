@@ -79,6 +79,7 @@ from atlas.database.strategy_memory_repository import (
 from atlas.database.analysis_snapshot_repository import (
     AnalysisSnapshotRepository,
 )
+from atlas.database.asset_repository import AssetRepository
 from atlas.services.analysis_snapshot_builder import (
     AnalysisSnapshotBuilder,
 )
@@ -160,11 +161,6 @@ class AtlasEngine:
 
         self.asset_universe = AssetUniverse()
 
-        self.dynamic_asset_service = DynamicAssetService(
-            resolver=InternetAssetResolver(YFinanceSearchClient()),
-            universe=self.asset_universe,
-        )
-
         self.asset_discovery = AssetDiscoveryService(
             market_data=self.market_data,
         )
@@ -212,6 +208,20 @@ class AtlasEngine:
 
         initialize_database(
             self.database
+        )
+
+        self.asset_repository = AssetRepository(
+            self.database
+        )
+
+        self.asset_universe.add_all(
+            self.asset_repository.get_all()
+        )
+
+        self.dynamic_asset_service = DynamicAssetService(
+            resolver=InternetAssetResolver(YFinanceSearchClient()),
+            universe=self.asset_universe,
+            repository=self.asset_repository,
         )
 
         # Expose service instances for testability and adapter wiring.

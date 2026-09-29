@@ -6,6 +6,18 @@ from atlas.database.connection import Database
 
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS assets (
+    symbol TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    asset_type TEXT NOT NULL,
+    market TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_assets_active
+ON assets(active);
+
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,

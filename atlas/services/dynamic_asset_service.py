@@ -8,9 +8,25 @@ class DynamicAssetService:
         self,
         resolver,
         universe: AssetUniverse,
+        repository=None,
     ):
         self.resolver = resolver
         self.universe = universe
+        self.repository = repository
+
+    def _add_all(self, assets) -> int:
+        added = 0
+
+        for asset in assets:
+            if not self.universe.add(asset):
+                continue
+
+            if self.repository is not None:
+                self.repository.save(asset)
+
+            added += 1
+
+        return added
 
     def resolve_and_add(
         self,
@@ -20,7 +36,7 @@ class DynamicAssetService:
 
         assets = self.resolver.resolve(query)
 
-        return self.universe.add_all(
+        return self._add_all(
             assets
         )
 
@@ -43,6 +59,6 @@ class DynamicAssetService:
             if asset.symbol.strip().upper() == normalized
         ]
 
-        return self.universe.add_all(
+        return self._add_all(
             exact_matches
         )
