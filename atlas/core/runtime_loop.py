@@ -7,6 +7,7 @@ import time
 
 from atlas.core.config import AtlasConfig
 from atlas.core.engine import AtlasEngine
+from atlas.services.settings_service import SettingsService
 from atlas.market.candidates.research_scheduler import CandidateResearchScheduler
 from atlas.market.trigger import MarketState, MarketStateTrigger
 
@@ -113,7 +114,14 @@ class AtlasRuntimeLoop:
 
 def run(config: AtlasConfig | None = None, interval_seconds: float = 30.0):
     """Start the continuous canonical ATLAS runtime."""
-    runtime_config = config or AtlasConfig(load_persisted_settings=True)
+    if config is None:
+        runtime_config = AtlasConfig(load_persisted_settings=True)
+        runtime_config = SettingsService(
+            config=runtime_config,
+        ).get_config()
+    else:
+        runtime_config = config
+
     AtlasRuntimeLoop(
         engine=AtlasEngine(config=runtime_config),
         interval_seconds=interval_seconds,

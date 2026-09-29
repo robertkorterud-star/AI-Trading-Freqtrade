@@ -200,3 +200,43 @@ def test_runtime_reports_research_universe_expansion():
         "ATLAS research candidates: PLTR, AMD; "
         "added=1; active_universe=2"
     ) in engine.logger.messages
+
+
+def test_runtime_run_applies_persisted_settings_before_engine_is_created(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.core.config import AtlasConfig
+    from atlas.services.settings_service import SettingsService
+    import atlas.core.runtime_loop as runtime_loop
+
+    database_path = str(tmp_path / "runtime-settings.db")
+
+    persisted_config = AtlasConfig(
+        database_path=database_path,
+        load_persisted_settings=True,
+    )
+    settings = SettingsService(config=persisted_config)
+    settings.set_trading_mode("paper")
+
+    captured = {}
+
+    class FakeAtlasEngine:
+        def __init__(self, config=None):
+            captured["config"] = config
+
+    class FakeRuntimeLoop:
+        def __init__(self, engine=None, interval_seconds=30.0):
+            captured["engine"] = engine
+
+        def run_forever(self):
+            captured["started"] = True
+
+    monkeypatch.setenv("ATLAS_DATABASE_PATH", database_path)
+    monkeypatch.setattr(runtime_loop, "AtlasEngine", FakeAtlasEngine)
+    monkeypatch.setattr(runtime_loop, "AtlasRuntimeLoop", FakeRuntimeLoop)
+
+    runtime_loop.run()
+
+    assert captured["config"].trading_mode == "paper"
+    assert captured["config"].paper_trading is True
