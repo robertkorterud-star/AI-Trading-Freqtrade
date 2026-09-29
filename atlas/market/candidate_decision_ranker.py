@@ -32,7 +32,11 @@ class CandidateDecisionRanker:
     def _net_return_details(self, decision: DecisionResult):
         """Return gross, net and risk-adjusted expected return."""
         gross_return = float(getattr(decision, "expected_return", 0.0))
-        net_return = self.cost_model.net_return(gross_return)
+        net_return = (
+            gross_return
+            if decision.action is Action.HOLD
+            else self.cost_model.net_return(gross_return)
+        )
         risk_adjusted = net_return * (
             max(0.0, min(100.0, float(decision.robustness))) / 100.0
         )
@@ -80,7 +84,11 @@ class CandidateDecisionRanker:
         # This classmethod remains for backwards compatibility and uses defaults.
         cost_model = TradingCostModel()
         gross_return = float(getattr(decision, "expected_return", 0.0))
-        net_return = cost_model.net_return(gross_return)
+        net_return = (
+            gross_return
+            if decision.action is Action.HOLD
+            else cost_model.net_return(gross_return)
+        )
         risk_adjusted_net_return = net_return * (
             max(0.0, min(100.0, float(decision.robustness))) / 100.0
         )

@@ -310,3 +310,24 @@ def test_ranker_economic_eligibility_rejects_only_ready_non_positive_net_buy():
     assert ranker.is_economically_eligible(unknown) is True
     assert ranker.is_economically_eligible(sell) is True
 
+def test_hold_has_no_trading_cost_return_penalty():
+    import pytest
+
+    decision = make_decision(
+        "BTC-USD",
+        Action.HOLD,
+        80.0,
+        80.0,
+        80.0,
+        20.0,
+        expected_return=0.0,
+    )
+
+    evidence = CandidateDecisionRanker().rank_with_evidence(
+        [decision]
+    )[0]
+
+    assert evidence.expected_return == pytest.approx(0.0)
+    assert evidence.net_expected_return == pytest.approx(0.0)
+    assert evidence.risk_adjusted_net_return == pytest.approx(0.0)
+
