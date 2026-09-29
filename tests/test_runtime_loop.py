@@ -48,7 +48,7 @@ class FakeEngine:
     def expand_universe_from_candidates(self, candidates):
         return 0
 
-    def start(self):
+    def start(self, trigger_symbol=None):
         self.calls += 1
 
 

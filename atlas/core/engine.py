@@ -454,6 +454,7 @@ class AtlasEngine:
         limit: int = 3,
         minimum_score: float = 0.0,
         horizon: TradingHorizon | None = None,
+        trigger_symbol: str | None = None,
     ):
         'Discover and select assets for deeper analysis.'
 
@@ -467,10 +468,16 @@ class AtlasEngine:
                 horizon=horizon,
             )
 
+        selector_kwargs = {
+            "limit": limit,
+            "minimum_score": minimum_score,
+        }
+        if trigger_symbol is not None:
+            selector_kwargs["trigger_symbol"] = trigger_symbol
+
         return self.candidate_selector.select(
             discovered,
-            limit=limit,
-            minimum_score=minimum_score,
+            **selector_kwargs,
         )
 
     def analyze_candidates(
@@ -478,20 +485,36 @@ class AtlasEngine:
         limit: int = 3,
         minimum_score: float = 0.0,
         horizon: TradingHorizon | None = None,
+        trigger_symbol: str | None = None,
     ):
         """Analyze the selected discovery candidates."""
 
         if horizon is None:
-            candidates = self.discover_candidates(
-                limit=limit,
-                minimum_score=minimum_score,
-            )
+            if trigger_symbol is None:
+                candidates = self.discover_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                )
+            else:
+                candidates = self.discover_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                    trigger_symbol=trigger_symbol,
+                )
         else:
-            candidates = self.discover_candidates(
-                limit=limit,
-                minimum_score=minimum_score,
-                horizon=horizon,
-            )
+            if trigger_symbol is None:
+                candidates = self.discover_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                    horizon=horizon,
+                )
+            else:
+                candidates = self.discover_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                    horizon=horizon,
+                    trigger_symbol=trigger_symbol,
+                )
 
         results = []
 
@@ -616,20 +639,36 @@ class AtlasEngine:
         limit: int = 3,
         minimum_score: float = 0.0,
         horizon: TradingHorizon | None = None,
+        trigger_symbol: str | None = None,
     ):
         'Create a DecisionResult for each analyzed candidate.'
 
         if horizon is None:
-            analyzed = self.analyze_candidates(
-                limit=limit,
-                minimum_score=minimum_score,
-            )
+            if trigger_symbol is None:
+                analyzed = self.analyze_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                )
+            else:
+                analyzed = self.analyze_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                    trigger_symbol=trigger_symbol,
+                )
         else:
-            analyzed = self.analyze_candidates(
-                limit=limit,
-                minimum_score=minimum_score,
-                horizon=horizon,
-            )
+            if trigger_symbol is None:
+                analyzed = self.analyze_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                    horizon=horizon,
+                )
+            else:
+                analyzed = self.analyze_candidates(
+                    limit=limit,
+                    minimum_score=minimum_score,
+                    horizon=horizon,
+                    trigger_symbol=trigger_symbol,
+                )
 
         results = []
 
@@ -884,7 +923,10 @@ class AtlasEngine:
 
         return report.selection_snapshot
 
-    def start(self):
+    def start(
+        self,
+        trigger_symbol: str | None = None,
+    ):
 
         self.logger.info("Starting ATLAS")
 
@@ -931,11 +973,15 @@ class AtlasEngine:
                 {"evaluated_predictions": len(evaluation_results)},
             )
 
-        candidate_decisions = (
-            self.decide_candidates(
+        if trigger_symbol is None:
+            candidate_decisions = self.decide_candidates(
                 limit=3,
             )
-        )
+        else:
+            candidate_decisions = self.decide_candidates(
+                limit=3,
+                trigger_symbol=trigger_symbol,
+            )
 
         selected = self.select_best_candidate(
             candidate_decisions,

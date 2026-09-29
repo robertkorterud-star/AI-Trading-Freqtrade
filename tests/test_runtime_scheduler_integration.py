@@ -60,7 +60,7 @@ class FakeEngine:
     def expand_universe_from_candidates(self, candidates):
         return 0
 
-    def start(self):
+    def start(self, trigger_symbol=None):
         self.starts += 1
 
 
@@ -133,3 +133,28 @@ def test_market_state_is_the_runtime_trigger_input():
 
     assert state.symbol == "AAPL"
     assert state.percent_move == 1.01
+
+
+def test_runtime_forwards_trigger_symbol_to_canonical_engine_cycle():
+    class TriggerAwareEngine(FakeEngine):
+        def __init__(self):
+            super().__init__()
+            self.trigger_symbols = []
+
+        def start(self, trigger_symbol=None):
+            self.starts += 1
+            self.trigger_symbols.append(trigger_symbol)
+
+    engine = TriggerAwareEngine()
+
+    loop = AtlasRuntimeLoop(
+        engine=engine,
+        interval_seconds=30,
+        research_scheduler=CandidateResearchScheduler(
+            service=engine.candidate_research_service,
+        ),
+    )
+
+    assert loop.run_once() is True
+    assert engine.starts == 1
+    assert engine.trigger_symbols == ["AAPL"]

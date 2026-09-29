@@ -101,3 +101,146 @@ def test_selector_returns_all_valid_candidates_when_limit_is_none():
         "MSFT",
         "AAPL",
     ]
+
+
+def test_triggered_candidate_is_included_in_deep_analysis_selection():
+    candidates = [
+        make_score("XRP-USD", 95.0, AssetType.CRYPTO),
+        make_score("ETH-USD", 90.0, AssetType.CRYPTO),
+        make_score("GRML", 85.0),
+        make_score("AMD", 70.0),
+    ]
+
+    selector = CandidateSelector()
+
+    selected = selector.select(
+        candidates,
+        limit=3,
+        trigger_symbol="AMD",
+    )
+
+    assert [item.symbol for item in selected] == [
+        "XRP-USD",
+        "ETH-USD",
+        "AMD",
+    ]
+
+
+def test_engine_discovery_can_preserve_triggered_candidate(monkeypatch, tmp_path):
+    from atlas.core.config import AtlasConfig
+    from atlas.core.engine import AtlasEngine
+
+    engine = AtlasEngine(
+        config=AtlasConfig(
+            database_path=str(tmp_path / "atlas.db"),
+        )
+    )
+
+    discovered = [
+        make_score("XRP-USD", 95.0, AssetType.CRYPTO),
+        make_score("ETH-USD", 90.0, AssetType.CRYPTO),
+        make_score("GRML", 85.0),
+        make_score("AMD", 70.0),
+    ]
+
+    monkeypatch.setattr(
+        engine.asset_discovery,
+        "discover",
+        lambda *args, **kwargs: discovered,
+    )
+
+    selected = engine.discover_candidates(
+        limit=3,
+        trigger_symbol="AMD",
+    )
+
+    assert [item.symbol for item in selected] == [
+        "XRP-USD",
+        "ETH-USD",
+        "AMD",
+    ]
+
+
+def test_engine_decision_candidates_preserve_trigger_symbol(monkeypatch, tmp_path):
+    from atlas.core.config import AtlasConfig
+    from atlas.core.engine import AtlasEngine
+
+    engine = AtlasEngine(
+        config=AtlasConfig(
+            database_path=str(tmp_path / "atlas.db"),
+        )
+    )
+
+    captured = {}
+
+    def fake_analyze_candidates(
+        limit=3,
+        minimum_score=0.0,
+        horizon=None,
+        trigger_symbol=None,
+    ):
+        captured["trigger_symbol"] = trigger_symbol
+        return []
+
+    monkeypatch.setattr(
+        engine,
+        "analyze_candidates",
+        fake_analyze_candidates,
+    )
+
+    result = engine.decide_candidates(
+        limit=3,
+        trigger_symbol="AMD",
+    )
+
+    assert result == []
+    assert captured["trigger_symbol"] == "AMD"
+
+
+def test_engine_start_forwards_trigger_symbol_to_candidate_decisions(
+    monkeypatch,
+    tmp_path,
+):
+    from atlas.core.config import AtlasConfig
+    from atlas.core.engine import AtlasEngine
+
+    engine = AtlasEngine(
+        config=AtlasConfig(
+            database_path=str(tmp_path / "atlas.db"),
+        )
+    )
+
+    captured = {}
+
+    monkeypatch.setattr(
+        engine.asset_universe,
+        "all",
+        lambda: [],
+    )
+
+    monkeypatch.setattr(
+        engine.prediction_evaluator,
+        "evaluate_ready",
+        lambda **kwargs: [],
+    )
+
+    def fake_decide_candidates(
+        limit=3,
+        minimum_score=0.0,
+        horizon=None,
+        trigger_symbol=None,
+    ):
+        captured["trigger_symbol"] = trigger_symbol
+        return []
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+
+    result = engine.start(
+        trigger_symbol="AMD",
+    )
+
+    assert captured["trigger_symbol"] == "AMD"

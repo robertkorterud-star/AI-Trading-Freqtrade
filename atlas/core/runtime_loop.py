@@ -89,7 +89,9 @@ class AtlasRuntimeLoop:
 
         for state in self._get_market_states():
             if self._get_trigger(state.symbol).should_analyze(state):
-                self.engine.start()
+                self.engine.start(
+                    trigger_symbol=state.symbol,
+                )
                 return True
 
         return False
