@@ -18,6 +18,7 @@ class AlgorithmSignal:
     confidence: float
     expected_edge: float | None = None
     reasoning: list[str] = field(default_factory=list)
+    evidence_family: str | None = None
 
     def as_dict(self) -> dict:
         """Return a JSON-friendly representation of the signal."""
@@ -31,6 +32,7 @@ class AlgorithmSignal:
             "confidence": self.confidence,
             "expected_edge": self.expected_edge,
             "reasoning": list(self.reasoning),
+            "evidence_family": self.evidence_family,
         }
 
 

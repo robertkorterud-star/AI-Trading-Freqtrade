@@ -57,20 +57,22 @@ class SignalFusion:
         if any(signal.timeframe != timeframe for signal in signals):
             raise ValueError("all signals must use the same timeframe")
 
+        effective_signals = self._effective_signals(signals)
+
         buy_count = sum(
             signal.action is Action.BUY
-            for signal in signals
+            for signal in effective_signals
         )
         sell_count = sum(
             signal.action is Action.SELL
-            for signal in signals
+            for signal in effective_signals
         )
         hold_count = sum(
             signal.action is Action.HOLD
-            for signal in signals
+            for signal in effective_signals
         )
 
-        total = len(signals)
+        total = len(effective_signals)
 
         buy_ratio = buy_count / total
         sell_ratio = sell_count / total
@@ -87,7 +89,7 @@ class SignalFusion:
 
         weighted_score = sum(
             self._direction_score(signal)
-            for signal in signals
+            for signal in effective_signals
         ) / total
 
         score = round(
@@ -142,6 +144,98 @@ class SignalFusion:
             signals=tuple(signals),
             reasoning=reasoning,
         )
+
+    @staticmethod
+    def _effective_signals(
+        signals: list[AlgorithmSignal],
+    ) -> list[AlgorithmSignal]:
+        """Collapse correlated evidence families into one effective signal."""
+
+        grouped: dict[str, list[AlgorithmSignal]] = {}
+        effective: list[AlgorithmSignal] = []
+
+        for signal in signals:
+            if signal.evidence_family is None:
+                effective.append(signal)
+                continue
+
+            grouped.setdefault(
+                signal.evidence_family,
+                [],
+            ).append(signal)
+
+        for family, family_signals in grouped.items():
+            if len(family_signals) == 1:
+                effective.append(family_signals[0])
+                continue
+
+            buy_count = sum(
+                signal.action is Action.BUY
+                for signal in family_signals
+            )
+            sell_count = sum(
+                signal.action is Action.SELL
+                for signal in family_signals
+            )
+            hold_count = sum(
+                signal.action is Action.HOLD
+                for signal in family_signals
+            )
+
+            counts = {
+                Action.BUY: buy_count,
+                Action.SELL: sell_count,
+                Action.HOLD: hold_count,
+            }
+            highest = max(counts.values())
+            winners = [
+                action
+                for action, count in counts.items()
+                if count == highest
+            ]
+
+            action = (
+                winners[0]
+                if len(winners) == 1
+                else Action.HOLD
+            )
+
+            directional = [
+                signal
+                for signal in family_signals
+                if signal.action is action
+            ]
+            score_source = (
+                directional
+                if directional
+                else family_signals
+            )
+            score = sum(
+                signal.score
+                for signal in score_source
+            ) / len(score_source)
+            confidence = sum(
+                signal.confidence
+                for signal in family_signals
+            ) / len(family_signals)
+
+            effective.append(
+                AlgorithmSignal(
+                    algorithm=f"evidence_family:{family}",
+                    symbol=family_signals[0].symbol,
+                    timeframe=family_signals[0].timeframe,
+                    action=action,
+                    score=score,
+                    confidence=confidence,
+                    evidence_family=family,
+                    reasoning=[
+                        f"Combined {len(family_signals)} "
+                        f"signals from evidence family {family}."
+                    ],
+                )
+            )
+
+        return effective
 
     @staticmethod
     def _direction_score(
