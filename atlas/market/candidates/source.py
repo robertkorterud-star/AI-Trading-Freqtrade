@@ -35,7 +35,12 @@ class CandidatePool:
         candidates: dict[str, Candidate] = {}
 
         for source in self.sources:
-            for candidate in source.discover():
+            try:
+                discovered = source.discover()
+            except Exception:
+                continue
+
+            for candidate in discovered:
                 symbol = candidate.symbol.strip().upper()
 
                 if not symbol:

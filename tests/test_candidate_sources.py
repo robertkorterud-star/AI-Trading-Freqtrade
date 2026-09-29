@@ -242,3 +242,25 @@ def test_research_ticker_source_creates_candidates_from_related_tickers():
     assert candidates[0].metadata["relevance_score"] == 0.91
     assert candidates[0].metadata["sentiment"] == "positive"
 
+
+
+def test_candidate_pool_continues_when_one_source_fails():
+    class FailingSource:
+        def discover(self):
+            raise TimeoutError("research source unavailable")
+
+    healthy = FakeSource(
+        [
+            Candidate(
+                symbol="AMD",
+                source="research_ticker",
+                score=91.0,
+                reason="Healthy research source",
+            )
+        ]
+    )
+
+    result = CandidatePool([FailingSource(), healthy]).collect()
+
+    assert healthy.calls == 1
+    assert [candidate.symbol for candidate in result] == ["AMD"]
