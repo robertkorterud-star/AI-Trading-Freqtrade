@@ -87,14 +87,20 @@ class AtlasRuntimeLoop:
                     f"active_universe={self.engine.asset_universe.count()}"
                 )
 
+        trigger_symbol = None
+
         for state in self._get_market_states():
             if self._get_trigger(state.symbol).should_analyze(state):
-                self.engine.start(
-                    trigger_symbol=state.symbol,
-                )
-                return True
+                if trigger_symbol is None:
+                    trigger_symbol = state.symbol
 
-        return False
+        if trigger_symbol is None:
+            return False
+
+        self.engine.start(
+            trigger_symbol=trigger_symbol,
+        )
+        return True
 
     def run_forever(self):
         """Run the runtime scheduler continuously until interrupted."""

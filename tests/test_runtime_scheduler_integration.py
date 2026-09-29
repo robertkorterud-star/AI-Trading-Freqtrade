@@ -118,7 +118,8 @@ def test_runtime_keeps_market_trigger_state_per_symbol():
     )
 
     assert loop.run_once() is True
-    assert set(loop._market_state_triggers) == {"AAPL"}
+    assert set(loop._market_state_triggers) == {"AAPL", "MSFT"}
+    assert engine.starts == 1
 
 
 def test_market_state_is_the_runtime_trigger_input():
@@ -158,3 +159,68 @@ def test_runtime_forwards_trigger_symbol_to_canonical_engine_cycle():
     assert loop.run_once() is True
     assert engine.starts == 1
     assert engine.trigger_symbols == ["AAPL"]
+
+
+def test_runtime_observes_all_market_states_before_starting_engine_cycle():
+    class MultiAssetUniverse:
+        def all(self):
+            return [
+                SimpleNamespace(symbol="AAPL"),
+                SimpleNamespace(symbol="MSFT"),
+                SimpleNamespace(symbol="NVDA"),
+            ]
+
+        def count(self):
+            return 3
+
+    class MultiAssetTechnicalService:
+        def get_snapshot(self, symbol):
+            prices = {
+                "AAPL": 100.0,
+                "MSFT": 200.0,
+                "NVDA": 300.0,
+            }
+            return SimpleNamespace(
+                symbol=symbol,
+                price=prices[symbol],
+                previous_close=prices[symbol] - 1.0,
+                change_percent=1.01,
+                trend="Bullish",
+                volume_ratio=1.5,
+            )
+
+    engine = FakeEngine()
+    engine.asset_universe = MultiAssetUniverse()
+    engine.technical = MultiAssetTechnicalService()
+
+    trigger_symbols = []
+
+    def start(trigger_symbol=None):
+        engine.starts += 1
+        trigger_symbols.append(trigger_symbol)
+
+    engine.start = start
+
+    loop = AtlasRuntimeLoop(
+        engine=engine,
+        interval_seconds=30,
+        research_scheduler=CandidateResearchScheduler(
+            service=engine.candidate_research_service,
+        ),
+    )
+
+    assert loop.run_once() is True
+
+    # The first eligible symbol owns this cycle, but every symbol must have
+    # established its lightweight trigger baseline during the same scan.
+    assert trigger_symbols == ["AAPL"]
+    assert set(loop._market_state_triggers) == {
+        "AAPL",
+        "MSFT",
+        "NVDA",
+    }
+
+    # Unchanged states must not cause the remaining first-observation
+    # triggers to start expensive engine cycles on subsequent runtime passes.
+    assert loop.run_once() is False
+    assert trigger_symbols == ["AAPL"]
