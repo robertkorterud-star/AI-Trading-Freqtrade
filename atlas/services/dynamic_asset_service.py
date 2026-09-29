@@ -23,3 +23,26 @@ class DynamicAssetService:
         return self.universe.add_all(
             assets
         )
+
+    def resolve_and_add_symbol(
+        self,
+        symbol: str,
+    ) -> int:
+        """Resolve and add only the explicitly requested symbol."""
+
+        normalized = (symbol or "").strip().upper()
+
+        if not normalized:
+            return 0
+
+        assets = self.resolver.resolve(normalized)
+
+        exact_matches = [
+            asset
+            for asset in assets
+            if asset.symbol.strip().upper() == normalized
+        ]
+
+        return self.universe.add_all(
+            exact_matches
+        )

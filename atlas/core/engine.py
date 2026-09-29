@@ -434,7 +434,7 @@ class AtlasEngine:
             if self.asset_universe.get(candidate.symbol) is not None:
                 continue
             added += int(
-                self.dynamic_asset_service.resolve_and_add(candidate.symbol)
+                self.dynamic_asset_service.resolve_and_add_symbol(candidate.symbol)
             )
 
         return added

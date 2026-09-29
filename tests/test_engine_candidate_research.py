@@ -328,7 +328,7 @@ def test_engine_can_expand_universe_from_researched_candidate():
     engine.asset_universe = AssetUniverse(assets=[])
 
     class FakeDynamicAssetService:
-        def resolve_and_add(self, query):
+        def resolve_and_add_symbol(self, query):
             assert query == "AMD"
             return engine.asset_universe.add(
                 Asset(
