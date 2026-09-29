@@ -116,3 +116,36 @@ def test_market_data_discovery_ranks_real_assets():
         "NVDA",
         "BTC-USD",
     ]
+
+def test_discovery_liquidity_is_not_duplicated_from_relative_volume():
+    """High relative volume alone must not imply perfect liquidity."""
+
+    asset = Asset(
+        symbol="TEST",
+        name="Test Asset",
+        asset_type=AssetType.STOCK,
+        market="US",
+        currency="USD",
+    )
+
+    market_data = SimpleNamespace(
+        price=100.0,
+        previous_close=99.0,
+        change_percent=1.0,
+        ma20=99.0,
+        ma50=98.0,
+        volume=5_000.0,
+        average_volume=1_000.0,
+        volume_ratio=5.0,
+    )
+
+    discovery = AssetDiscoveryService(
+        market_data=FakeMarketDataProvider(
+            {"TEST": market_data}
+        )
+    )
+
+    result = discovery.market_input(asset)
+
+    assert result.volume_score == 100.0
+    assert result.liquidity_score < result.volume_score

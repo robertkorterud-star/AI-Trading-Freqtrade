@@ -93,7 +93,16 @@ class AssetDiscoveryService:
             ((float(data.price) / float(data.ma50)) - 1.0) * 1000.0
         )
         volatility_score = self._clamp(abs(float(data.change_percent)) * 10.0)
-        liquidity_score = self._clamp(float(data.volume_ratio) * 50.0)
+        average_volume = getattr(data, "average_volume", None)
+        if average_volume is None:
+            liquidity_score = 50.0
+        else:
+            average_dollar_volume = (
+                float(data.price) * float(average_volume)
+            )
+            liquidity_score = self._clamp(
+                average_dollar_volume / 100_000.0
+            )
 
         return DiscoveryInput(
             volume_score=volume_score,

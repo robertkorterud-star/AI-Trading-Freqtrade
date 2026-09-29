@@ -297,7 +297,7 @@ def test_discovery_preserves_normalized_input_as_evidence():
     assert result.discovery_input.momentum_score == 100.0
     assert result.discovery_input.volatility_score == 20.0
     assert result.discovery_input.volume_score == 100.0
-    assert result.discovery_input.liquidity_score == 100.0
+    assert result.discovery_input.liquidity_score == 50.0
 
 
 def test_discovery_score_preserves_horizon_as_ranking_context():
