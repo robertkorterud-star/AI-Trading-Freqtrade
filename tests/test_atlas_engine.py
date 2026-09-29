@@ -3098,11 +3098,13 @@ def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
         market_snapshot=None,
         algorithm_signals=None,
         fusion_result=None,
+        horizon_signal=None,
     ):
         captured["analysis"] = analysis
         captured["market_snapshot"] = market_snapshot
         captured["algorithm_signals"] = algorithm_signals
         captured["fusion_result"] = fusion_result
+        captured["horizon_signal"] = horizon_signal
         return "decision"
 
     engine._evaluate_candidate_decision = evaluate
@@ -3113,6 +3115,7 @@ def test_decide_candidates_forwards_algorithm_evidence_to_decision_boundary():
     assert captured["analysis"] == ["analyst-evidence"]
     assert captured["algorithm_signals"] is algorithm_signals
     assert captured["fusion_result"] is None
+    assert captured["horizon_signal"] is None
 
 
 def test_candidate_algorithm_evidence_uses_fusion_without_double_counting():
@@ -7931,3 +7934,184 @@ def test_atlas_engine_analysis_builds_horizon_signal_when_fusion_is_unavailable(
     assert horizon_signal.horizon is TradingHorizon.SWING
     assert horizon_signal.action is Action.BUY
     assert horizon_signal.score > 50.0
+
+
+def test_atlas_engine_decision_passes_horizon_signal_to_decision_boundary():
+    """Explicit horizon evidence must reach the canonical candidate decision boundary."""
+    from types import SimpleNamespace
+
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    horizon_signal = HorizonSignal(
+        horizon=TradingHorizon.SWING,
+        action=Action.BUY,
+        score=75.0,
+        confidence=80.0,
+    )
+
+    engine.analyze_candidates = lambda **kwargs: [
+        {
+            "symbol": "NVDA",
+            "discovery_score": 80.0,
+            "discovery_input": None,
+            "horizon": TradingHorizon.SWING,
+            "horizon_signal": horizon_signal,
+            "analysis": [],
+            "algorithm_signals": [],
+            "fusion_result": None,
+            "market_snapshot": SimpleNamespace(regime=None),
+        }
+    ]
+
+    received = {}
+
+    def evaluate(analysis, **kwargs):
+        received.update(kwargs)
+        return DecisionResult(
+            symbol="NVDA",
+            action=Action.HOLD,
+            confidence=50.0,
+            evidence=50.0,
+        )
+
+    engine._evaluate_candidate_decision = evaluate
+
+    result = engine.decide_candidates(
+        horizon=TradingHorizon.SWING,
+    )[0]
+
+    assert received["horizon_signal"] is horizon_signal
+    assert result["horizon_signal"] is horizon_signal
+
+
+def test_atlas_engine_candidate_decision_includes_horizon_evidence():
+    """Horizon evidence must reach the canonical DecisionEngine as analysis."""
+    from types import SimpleNamespace
+
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    base_analysis = AnalysisResult(
+        analyst="technical",
+        symbol="NVDA",
+        action=Action.HOLD,
+        confidence=50.0,
+        evidence=50.0,
+        reasoning=[],
+    )
+
+    horizon_signal = HorizonSignal(
+        horizon=TradingHorizon.SWING,
+        action=Action.BUY,
+        score=75.0,
+        confidence=80.0,
+    )
+
+    received = {}
+
+    class DecisionEngineStub:
+        def evaluate(self, results):
+            received["results"] = results
+            return DecisionResult(
+                symbol="NVDA",
+                action=Action.HOLD,
+                confidence=50.0,
+                evidence=50.0,
+            )
+
+    engine.decision_engine = DecisionEngineStub()
+
+    engine._evaluate_candidate_decision(
+        [base_analysis],
+        market_snapshot=SimpleNamespace(price=100.0),
+        horizon_signal=horizon_signal,
+    )
+
+    horizon_results = [
+        result
+        for result in received["results"]
+        if result.analyst == "horizon:swing"
+    ]
+
+    assert len(horizon_results) == 1
+    assert horizon_results[0].symbol == "NVDA"
+    assert horizon_results[0].action is Action.BUY
+    assert horizon_results[0].confidence == 80.0
+    assert horizon_results[0].evidence == 50.0
+
+
+def test_atlas_engine_candidate_decision_does_not_double_count_fused_horizon():
+    """A HorizonSignal derived from fusion must not duplicate the same evidence."""
+    from types import SimpleNamespace
+
+    from atlas.algorithms.fusion import FusionResult
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+    from atlas.models.decision_result import DecisionResult
+
+    engine = object.__new__(AtlasEngine)
+
+    base_analysis = AnalysisResult(
+        analyst="technical",
+        symbol="NVDA",
+        action=Action.HOLD,
+        confidence=50.0,
+        evidence=50.0,
+    )
+
+    fusion_result = FusionResult(
+        symbol="NVDA",
+        timeframe="1h",
+        action=Action.BUY,
+        score=75.0,
+        confidence=80.0,
+        agreement=1.0,
+        signals=(),
+        reasoning=[],
+    )
+
+    horizon_signal = HorizonSignal.from_fusion(
+        TradingHorizon.SWING,
+        fusion_result,
+    )
+
+    received = {}
+
+    class DecisionEngineStub:
+        def evaluate(self, results):
+            received["results"] = results
+            return DecisionResult(
+                symbol="NVDA",
+                action=Action.HOLD,
+                confidence=50.0,
+                evidence=50.0,
+            )
+
+    engine.decision_engine = DecisionEngineStub()
+
+    engine._evaluate_candidate_decision(
+        [base_analysis],
+        market_snapshot=SimpleNamespace(price=100.0),
+        fusion_result=fusion_result,
+        horizon_signal=horizon_signal,
+    )
+
+    analysts = [result.analyst for result in received["results"]]
+
+    assert analysts.count("signal_fusion") == 1
+    assert "horizon:swing" not in analysts

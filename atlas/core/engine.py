@@ -13,6 +13,7 @@ from atlas.agents.news_analyst import NewsAnalyst
 
 from atlas.decision.engine import DecisionEngine
 from atlas.models.action import Action
+from atlas.models.analysis_result import AnalysisResult
 from atlas.algorithms.position_exit import PositionExitEngine
 from atlas.algorithms.regime import MarketRegimeEngine
 from atlas.algorithms.pipeline import AlgorithmPipeline
@@ -628,6 +629,7 @@ class AtlasEngine:
                 market_snapshot=item.get("market_snapshot"),
                 algorithm_signals=item.get("algorithm_signals"),
                 fusion_result=item.get("fusion_result"),
+                horizon_signal=item.get("horizon_signal"),
             )
 
             market_regime = item.get("market_regime")
@@ -680,6 +682,9 @@ class AtlasEngine:
                     ),
                     "fusion_result": item.get(
                         "fusion_result"
+                    ),
+                    "horizon_signal": item.get(
+                        "horizon_signal"
                     ),
                     "market_snapshot": item.get(
                         "market_snapshot"
@@ -1149,6 +1154,7 @@ class AtlasEngine:
         market_snapshot=None,
         algorithm_signals=None,
         fusion_result=None,
+        horizon_signal=None,
     ):
         """Invoke `DecisionEngine.evaluate` with combined evidence and runtime context."""
         combined_analysis = analysis
@@ -1162,6 +1168,29 @@ class AtlasEngine:
             combined_analysis.extend(
                 DecisionEngine._algorithm_signal_to_analysis(signal)
                 for signal in algorithm_signals
+            )
+
+        if horizon_signal is not None and fusion_result is None:
+            combined_analysis = list(combined_analysis)
+            combined_analysis.append(
+                AnalysisResult(
+                    analyst=f"horizon:{horizon_signal.horizon.value}",
+                    symbol=combined_analysis[0].symbol,
+                    action=horizon_signal.action,
+                    confidence=horizon_signal.confidence,
+                    evidence=max(
+                        0.0,
+                        min(
+                            100.0,
+                            abs(float(horizon_signal.score) - 50.0) * 2.0,
+                        ),
+                    ),
+                    signal_confidence=horizon_signal.confidence,
+                    metadata={
+                        "horizon": horizon_signal.horizon.value,
+                        "score": horizon_signal.score,
+                    },
+                )
             )
 
         params = inspect.signature(self.decision_engine.evaluate).parameters
