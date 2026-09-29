@@ -230,3 +230,115 @@ def test_invalid_threshold_raises():
         MultiHorizonDecisionEngine(
             decision_threshold=2.0,
         )
+
+
+def test_horizon_signal_from_fused_algorithm_evidence():
+    """Fused algorithm evidence can be normalized into one horizon signal."""
+    from types import SimpleNamespace
+
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+
+    fused = SimpleNamespace(
+        action=Action.BUY,
+        score=82.5,
+        confidence=74.0,
+    )
+
+    signal = HorizonSignal.from_fusion(
+        TradingHorizon.SWING,
+        fused,
+    )
+
+    assert signal == HorizonSignal(
+        horizon=TradingHorizon.SWING,
+        action=Action.BUY,
+        score=82.5,
+        confidence=74.0,
+    )
+
+
+def test_horizon_signal_from_candles_uses_existing_indicator_features():
+    """Horizon evidence is derived from canonical OHLCV indicator features."""
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.trading.market_data import Candle
+
+    candles = tuple(
+        Candle(
+            timestamp=float(index + 1),
+            open=100.0 + index,
+            high=101.0 + index,
+            low=99.0 + index,
+            close=100.0 + index,
+            volume=1_000.0,
+        )
+        for index in range(60)
+    )
+
+    signal = HorizonSignal.from_candles(
+        TradingHorizon.SWING,
+        candles,
+    )
+
+    assert signal.horizon is TradingHorizon.SWING
+    assert signal.action is Action.BUY
+    assert 0.0 <= signal.score <= 100.0
+    assert 0.0 <= signal.confidence <= 100.0
+
+
+def test_horizon_signal_from_candles_generates_bearish_evidence():
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.trading.market_data import Candle
+
+    candles = tuple(
+        Candle(
+            timestamp=float(index + 1),
+            open=160.0 - index,
+            high=161.0 - index,
+            low=159.0 - index,
+            close=160.0 - index,
+            volume=1_000.0,
+        )
+        for index in range(60)
+    )
+
+    signal = HorizonSignal.from_candles(
+        TradingHorizon.SWING,
+        candles,
+    )
+
+    assert signal.action is Action.SELL
+    assert signal.score < 50.0
+
+
+def test_horizon_signal_from_insufficient_candles_is_neutral():
+    from atlas.algorithms.multi_horizon import HorizonSignal
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.trading.market_data import Candle
+
+    candles = tuple(
+        Candle(
+            timestamp=float(index + 1),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.0,
+            volume=1_000.0,
+        )
+        for index in range(10)
+    )
+
+    signal = HorizonSignal.from_candles(
+        TradingHorizon.SWING,
+        candles,
+    )
+
+    assert signal.action is Action.HOLD
+    assert signal.score == 50.0
+    assert signal.confidence == 50.0

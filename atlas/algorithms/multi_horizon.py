@@ -14,6 +14,67 @@ class HorizonSignal:
     score: float
     confidence: float
 
+    @classmethod
+    def from_fusion(
+        cls,
+        horizon: TradingHorizon,
+        fusion_result,
+    ) -> "HorizonSignal":
+        """Normalize fused algorithm evidence into one horizon signal."""
+        return cls(
+            horizon=horizon,
+            action=fusion_result.action,
+            score=fusion_result.score,
+            confidence=fusion_result.confidence,
+        )
+
+    @classmethod
+    def from_candles(
+        cls,
+        horizon: TradingHorizon,
+        candles,
+    ) -> "HorizonSignal":
+        """Derive directional horizon evidence from canonical OHLCV candles."""
+        from atlas.trading.indicator_engine import IndicatorEngine
+
+        indicators = IndicatorEngine().calculate(list(candles))
+
+        if (
+            indicators.sma20 is None
+            or indicators.sma50 is None
+            or indicators.close <= 0
+        ):
+            return cls(
+                horizon=horizon,
+                action=Action.HOLD,
+                score=50.0,
+                confidence=50.0,
+            )
+
+        spread = (
+            indicators.sma20 - indicators.sma50
+        ) / indicators.close
+        strength = min(1.0, abs(spread))
+
+        if indicators.close > indicators.sma20 > indicators.sma50:
+            action = Action.BUY
+            score = 50.0 + 50.0 * strength
+        elif indicators.close < indicators.sma20 < indicators.sma50:
+            action = Action.SELL
+            score = 50.0 - 50.0 * strength
+        else:
+            action = Action.HOLD
+            score = 50.0
+
+        confidence = 50.0 + 40.0 * strength
+
+        return cls(
+            horizon=horizon,
+            action=action,
+            score=round(score, 4),
+            confidence=round(confidence, 4),
+        )
+
     def __post_init__(self):
         if not 0.0 <= self.score <= 100.0:
             raise ValueError("score must be between 0 and 100")

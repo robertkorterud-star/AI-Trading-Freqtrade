@@ -7801,3 +7801,133 @@ def test_start_records_economic_hold_without_paper_trade(
     assert predictions[0]["action"] == "HOLD"
     assert engine.trading_service.count() == before_trade_count
 
+
+
+def test_atlas_engine_analysis_exposes_horizon_signal_from_fused_evidence():
+    """Horizon analysis preserves fused evidence as one HorizonSignal."""
+    from types import SimpleNamespace
+
+    from atlas.algorithms.fusion import FusionResult
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.asset import Asset
+    from atlas.market.asset_type import AssetType
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+
+    engine = object.__new__(AtlasEngine)
+
+    candidate = SimpleNamespace(
+        symbol="NVDA",
+        score=91.0,
+        horizon=TradingHorizon.SWING,
+        asset=Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        ),
+    )
+
+    fusion_result = FusionResult(
+        symbol="NVDA",
+        timeframe="1h",
+        action=Action.BUY,
+        score=82.5,
+        confidence=74.0,
+        agreement=1.0,
+        signals=(),
+        reasoning=[],
+    )
+
+    normalized_snapshot = object()
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: [],
+    )
+    engine.market_data = SimpleNamespace(
+        snapshot_for_horizon=lambda symbol, horizon, limit: normalized_snapshot,
+    )
+    engine.algorithm_pipeline = SimpleNamespace(
+        analyze=lambda symbol, snapshot: (fusion_result, []),
+    )
+    engine._get_market_snapshot = lambda symbol: object()
+
+    result = engine.analyze_candidates(
+        horizon=TradingHorizon.SWING,
+    )
+
+    horizon_signal = result[0]["horizon_signal"]
+
+    assert horizon_signal.horizon is TradingHorizon.SWING
+    assert horizon_signal.action is Action.BUY
+    assert horizon_signal.score == 82.5
+    assert horizon_signal.confidence == 74.0
+
+
+def test_atlas_engine_analysis_builds_horizon_signal_when_fusion_is_unavailable():
+    """Explicit horizon derives evidence from its canonical base candles."""
+    from types import SimpleNamespace
+
+    from atlas.core.engine import AtlasEngine
+    from atlas.market.asset import Asset
+    from atlas.market.asset_type import AssetType
+    from atlas.market.trading_horizon import TradingHorizon
+    from atlas.models.action import Action
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    engine = object.__new__(AtlasEngine)
+
+    candidate = SimpleNamespace(
+        symbol="NVDA",
+        score=91.0,
+        horizon=TradingHorizon.SWING,
+        asset=Asset(
+            symbol="NVDA",
+            name="NVIDIA",
+            asset_type=AssetType.STOCK,
+            market="US",
+            currency="USD",
+        ),
+    )
+
+    candles = tuple(
+        Candle(
+            timestamp=float(index + 1),
+            open=100.0 + index,
+            high=101.0 + index,
+            low=99.0 + index,
+            close=100.0 + index,
+            volume=1_000.0,
+        )
+        for index in range(60)
+    )
+
+    snapshot = MarketSnapshot.from_candles(
+        "NVDA",
+        candles,
+    )
+
+    engine.discover_candidates = lambda **kwargs: [candidate]
+    engine.analysis_service = SimpleNamespace(
+        analyze=lambda symbol: [],
+    )
+    engine.market_data = SimpleNamespace(
+        snapshot_for_horizon=lambda symbol, horizon, limit: snapshot,
+    )
+    engine.algorithm_pipeline = SimpleNamespace(
+        analyze=lambda symbol, snapshot: (None, []),
+    )
+    engine._get_market_snapshot = lambda symbol: object()
+
+    result = engine.analyze_candidates(
+        horizon=TradingHorizon.SWING,
+    )
+
+    horizon_signal = result[0]["horizon_signal"]
+
+    assert horizon_signal is not None
+    assert horizon_signal.horizon is TradingHorizon.SWING
+    assert horizon_signal.action is Action.BUY
+    assert horizon_signal.score > 50.0

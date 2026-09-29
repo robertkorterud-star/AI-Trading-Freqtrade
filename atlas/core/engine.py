@@ -16,6 +16,7 @@ from atlas.models.action import Action
 from atlas.algorithms.position_exit import PositionExitEngine
 from atlas.algorithms.regime import MarketRegimeEngine
 from atlas.algorithms.pipeline import AlgorithmPipeline
+from atlas.algorithms.multi_horizon import HorizonSignal
 from atlas.algorithms.registry import AlgorithmRegistry
 from atlas.algorithms import (
     IntradayMomentumAlgorithm,
@@ -490,6 +491,7 @@ class AtlasEngine:
 
             algorithm_signals = None
             fusion_result = None
+            horizon_signal = None
             market_regime = None
             if getattr(candidate, "asset", None) is not None:
                 if horizon is None:
@@ -508,6 +510,17 @@ class AtlasEngine:
                     candidate.symbol,
                     normalized_snapshot,
                 )
+                if horizon is not None:
+                    if fusion_result is not None:
+                        horizon_signal = HorizonSignal.from_fusion(
+                            horizon,
+                            fusion_result,
+                        )
+                    elif hasattr(normalized_snapshot, "candles"):
+                        horizon_signal = HorizonSignal.from_candles(
+                            horizon,
+                            normalized_snapshot.candles,
+                        )
                 if (
                     hasattr(self, "market_regime_engine")
                     and hasattr(normalized_snapshot, "candles")
@@ -538,6 +551,7 @@ class AtlasEngine:
                     "analysis": analysis,
                     "algorithm_signals": algorithm_signals,
                     "fusion_result": fusion_result,
+                    "horizon_signal": horizon_signal,
                     "market_regime": market_regime,
                     "market_snapshot": market_snapshot,
                 }
