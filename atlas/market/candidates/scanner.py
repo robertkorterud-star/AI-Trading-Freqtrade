@@ -1,6 +1,5 @@
 """Scanner candidate source for ATLAS research."""
 
-from atlas.market.asset_type import AssetType
 from atlas.market.candidates.source import Candidate
 
 
@@ -18,7 +17,13 @@ class ScannerCandidateSource:
         if not normalized:
             return ""
 
-        if asset_type is AssetType.CRYPTO and not normalized.endswith("-USD"):
+        asset_type_value = (
+            asset_type.value
+            if hasattr(asset_type, "value")
+            else str(asset_type)
+        )
+
+        if asset_type_value == "crypto" and not normalized.endswith("-USD"):
             return f"{normalized}-USD"
 
         return normalized

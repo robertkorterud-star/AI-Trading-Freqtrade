@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from atlas.market.asset_type import AssetType
+from atlas.market.market_scout import AssetType
 from atlas.market.candidates.scanner import ScannerCandidateSource
 from atlas.services.scanner_service import ScannerResult
 
