@@ -411,3 +411,71 @@ def test_engine_research_candidates_includes_structured_research_tickers(
     assert pltr.score == 91.0
     assert pltr.metadata["relevance_score"] == 0.91
 
+
+
+def test_engine_research_candidates_includes_scanner_source(monkeypatch):
+    engine = object.__new__(AtlasEngine)
+    engine.config = SimpleNamespace(
+        ai_provider="openai",
+        language="en",
+    )
+    engine.asset_discovery = FakeDiscovery()
+    engine.asset_universe = object()
+    engine.candidate_research_service = FakeResearchService()
+
+    class EmptyAI:
+        def discover_candidates(self, research):
+            return []
+
+    class FakeScannerSource:
+        def discover(self):
+            return [
+                Candidate(
+                    symbol="QNT-USD",
+                    source="etoro_scanner",
+                    score=99.0,
+                    reason="Scanner candidate",
+                )
+            ]
+
+    engine.scanner_candidate_source = FakeScannerSource()
+
+    monkeypatch.setattr(
+        "atlas.core.engine.AIProviderFactory.create",
+        lambda config: EmptyAI(),
+    )
+
+    candidates = engine.research_candidates(
+        research="Explicit research.",
+        limit=10,
+    )
+
+    assert any(
+        candidate.symbol == "QNT-USD"
+        and candidate.source == "etoro_scanner"
+        for candidate in candidates
+    )
+
+
+def test_engine_initializes_etoro_scanner_candidate_source(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "ATLAS_DATABASE_PATH",
+        str(tmp_path / "atlas.db"),
+    )
+
+    engine = AtlasEngine()
+
+    from atlas.market.candidates.scanner import ScannerCandidateSource
+    from atlas.services.scanner_service import ScannerService
+
+    assert isinstance(
+        engine.scanner_candidate_source,
+        ScannerCandidateSource,
+    )
+    assert isinstance(
+        engine.scanner_candidate_source.scanner,
+        ScannerService,
+    )

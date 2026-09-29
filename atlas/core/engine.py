@@ -104,6 +104,8 @@ from atlas.market.candidates.ai_provider import AICandidateProvider
 from atlas.market.candidates.market_discovery import MarketDiscoverySource
 from atlas.market.candidates.research_service import CandidateResearchService
 from atlas.market.candidates.research_tickers import ResearchTickerSource
+from atlas.market.candidates.scanner import ScannerCandidateSource
+from atlas.services.scanner_service import ScannerService
 from atlas.core.ai_provider_factory import AIProviderFactory
 
 
@@ -143,6 +145,10 @@ class AtlasEngine:
         self.market_data = MarketDataAdapter()
 
         self.candidate_research_service = CandidateResearchService()
+
+        self.scanner_candidate_source = ScannerCandidateSource(
+            scanner=ScannerService(),
+        )
 
         self.registry = AgentRegistry()
 
@@ -422,6 +428,14 @@ class AtlasEngine:
             ai_candidates,
             market_candidates,
         ]
+
+        scanner_candidate_source = getattr(
+            self,
+            "scanner_candidate_source",
+            None,
+        )
+        if scanner_candidate_source is not None:
+            sources.append(scanner_candidate_source)
 
         if research_context is not None:
             sources.append(
