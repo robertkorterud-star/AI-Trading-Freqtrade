@@ -58,10 +58,18 @@ class StrategyMemoryRegimeEvidence:
                 robust_winner=False,
             )
 
-        run_ids = {
-            record.research_run_id
+        qualifying_records = tuple(
+            record
             for record in records
             if record.research_run_id
+            and not record.research_run_id.startswith(
+                "legacy-"
+            )
+        )
+
+        run_ids = {
+            record.research_run_id
+            for record in qualifying_records
         }
 
         independent_run_count = len(run_ids)
@@ -88,7 +96,7 @@ class StrategyMemoryRegimeEvidence:
         for run_id in run_ids:
             run_records = [
                 record
-                for record in records
+                for record in qualifying_records
                 if record.research_run_id == run_id
             ]
 
@@ -132,13 +140,13 @@ class StrategyMemoryRegimeEvidence:
         # negligible margin is not considered robust.
         strategy_returns = [
             record.total_return_percent
-            for record in records
+            for record in qualifying_records
             if record.strategy_name == strategy
         ]
 
         other_returns = [
             record.total_return_percent
-            for record in records
+            for record in qualifying_records
             if record.strategy_name != strategy
         ]
 
@@ -151,12 +159,12 @@ class StrategyMemoryRegimeEvidence:
             runner_up_average = max(
                 sum(
                     record.total_return_percent
-                    for record in records
+                    for record in qualifying_records
                     if record.strategy_name == other_strategy
                 )
                 / sum(
                     1
-                    for record in records
+                    for record in qualifying_records
                     if record.strategy_name == other_strategy
                 )
                 for other_strategy in strategies

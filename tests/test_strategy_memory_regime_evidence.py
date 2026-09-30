@@ -161,3 +161,39 @@ def test_empty_history_returns_no_robust_winner():
     assert result.confidence == 0.0
     assert result.independent_run_count == 0
     assert result.robust_winner is False
+
+
+def test_legacy_history_does_not_count_as_independent_research_runs():
+    records = (
+        _record(
+            strategy_name="Momentum",
+            research_run_id="legacy-1",
+            total_return=30.0,
+        ),
+        _record(
+            strategy_name="Trend Following",
+            research_run_id="legacy-2",
+            total_return=15.0,
+        ),
+        _record(
+            strategy_name="Momentum",
+            research_run_id="run-001",
+            total_return=30.0,
+        ),
+        _record(
+            strategy_name="Trend Following",
+            research_run_id="run-001",
+            total_return=15.0,
+        ),
+    )
+
+    result = StrategyMemoryRegimeEvidence().evaluate(
+        records,
+        symbol="BTC-USD",
+        regime="LOW_VOLATILITY",
+    )
+
+    assert result.recommended_strategy is None
+    assert result.confidence == 0.0
+    assert result.independent_run_count == 1
+    assert result.robust_winner is False
