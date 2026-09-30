@@ -12,7 +12,6 @@ No trading, orders, or DecisionEngine calls are performed.
 """
 
 from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 
 from atlas.adapters.coingecko import CoinGeckoAdapter
 from atlas.core.database_config import DatabaseConfig
@@ -36,6 +35,24 @@ from atlas.trading.strategy_memory_service import (
 from atlas.trading.strategy_regime_recommendation import (
     StrategyRegimeRecommender,
 )
+
+
+def build_research_run_id(
+    *,
+    symbol: str,
+    start: datetime,
+    end: datetime,
+) -> str:
+    """Identify one actual historical research period."""
+    normalized_symbol = (
+        symbol.strip().lower().replace("-", "_")
+    )
+
+    return (
+        f"{normalized_symbol}-regime-"
+        f"{start.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%S')}-"
+        f"{end.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
+    )
 
 
 def main() -> None:
@@ -105,9 +122,16 @@ def main() -> None:
         .run(data)
     )
 
-    research_run_id = (
-        f"btc-regime-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
-        f"-{uuid4().hex[:8]}"
+    if data.start is None or data.end is None:
+        raise RuntimeError(
+            "Historical BTC data must have an actual "
+            "start and end timestamp."
+        )
+
+    research_run_id = build_research_run_id(
+        symbol=symbol,
+        start=data.start,
+        end=data.end,
     )
 
     print(
