@@ -26,6 +26,9 @@ from atlas.trading.coingecko_ohlc import (
 from atlas.trading.regime_strategy_backtest import (
     RegimeStrategyBacktestResearch,
 )
+from atlas.trading.historical_market_data import (
+    HistoricalMarketData,
+)
 from atlas.trading.strategy_memory import (
     StrategyMemory,
 )
@@ -53,6 +56,115 @@ def build_research_run_id(
         f"{start.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%S')}-"
         f"{end.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
     )
+
+
+def split_research_periods(
+    data: HistoricalMarketData,
+    *,
+    period_size: int,
+) -> tuple[HistoricalMarketData, ...]:
+    """Split historical data into complete non-overlapping periods."""
+    if period_size <= 0:
+        raise ValueError(
+            "period_size must be positive."
+        )
+
+    periods = []
+
+    for start in range(
+        0,
+        len(data) - period_size + 1,
+        period_size,
+    ):
+        end = start + period_size
+
+        periods.append(
+            HistoricalMarketData(
+                symbol=data.symbol,
+                timeframe=data.timeframe,
+                source=data.source,
+                bars=list(data.bars[start:end]),
+            )
+        )
+
+    return tuple(periods)
+
+
+def research_periods(
+    *,
+    data: HistoricalMarketData,
+    period_size: int,
+    research,
+    memory_service,
+    warmup_size: int = 0,
+):
+    """Research and remember non-overlapping evaluation periods."""
+    if period_size <= 0:
+        raise ValueError("period_size must be positive.")
+
+    if warmup_size < 0:
+        raise ValueError("warmup_size cannot be negative.")
+
+    summaries = []
+
+    first_evaluation_start = warmup_size
+
+    for evaluation_start in range(
+        first_evaluation_start,
+        len(data) - period_size + 1,
+        period_size,
+    ):
+        evaluation_end = (
+            evaluation_start + period_size
+        )
+
+        context_start = (
+            evaluation_start - warmup_size
+        )
+
+        period = HistoricalMarketData(
+            symbol=data.symbol,
+            timeframe=data.timeframe,
+            source=data.source,
+            bars=list(
+                data.bars[
+                    context_start:evaluation_end
+                ]
+            ),
+        )
+
+        if warmup_size:
+            summary = research.run(
+                period,
+                evaluation_start_index=warmup_size,
+            )
+        else:
+            summary = research.run(period)
+
+        evaluation_start_time = (
+            data.bars[evaluation_start].timestamp
+        )
+        evaluation_end_time = (
+            data.bars[
+                evaluation_end - 1
+            ].timestamp
+        )
+
+        research_run_id = build_research_run_id(
+            symbol=data.symbol,
+            start=evaluation_start_time,
+            end=evaluation_end_time,
+        )
+
+        memory_service.remember(
+            symbol=data.symbol,
+            summary=summary,
+            research_run_id=research_run_id,
+        )
+
+        summaries.append(summary)
+
+    return tuple(summaries)
 
 
 def main() -> None:

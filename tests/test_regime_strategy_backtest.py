@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import datetime, timedelta
 
 from atlas.trading.historical_market_data import (
@@ -195,3 +197,182 @@ def test_research_is_deterministic():
     second = research.run(data)
 
     assert first == second
+
+
+def test_evaluation_start_excludes_warmup_trade_entries(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from atlas.trading.historical_market_data import (
+        HistoricalMarketData,
+        OHLCVBar,
+    )
+    from atlas.trading.regime_strategy_backtest import (
+        RegimeStrategyBacktestResearch,
+    )
+    from atlas.trading.trend_following_backtest import (
+        TrendFollowingBacktestResult,
+        TrendTrade,
+    )
+
+    start = datetime(
+        2026, 1, 1,
+        tzinfo=timezone.utc,
+    )
+
+    bars = [
+        OHLCVBar(
+            timestamp=start + timedelta(hours=index),
+            open=100.0 + index,
+            high=101.0 + index,
+            low=99.0 + index,
+            close=100.0 + index,
+            volume=1.0,
+        )
+        for index in range(10)
+    ]
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        timeframe="1h",
+        source="test",
+        bars=bars,
+    )
+
+    research = RegimeStrategyBacktestResearch()
+
+    monkeypatch.setattr(
+        research,
+        "_regimes",
+        lambda data: ["RANGING"] * len(data),
+    )
+
+    class FakeTrendBacktester:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, data):
+            return TrendFollowingBacktestResult(
+                initial_capital=10000.0,
+                final_capital=10300.0,
+                strategy_return_percent=3.0,
+                buy_and_hold_return_percent=0.0,
+                max_drawdown_percent=0.0,
+                trade_count=2,
+                winning_trades=2,
+                losing_trades=0,
+                win_rate_percent=100.0,
+                transaction_cost_percent=0.1,
+                slippage_percent=0.05,
+                trades=(
+                    TrendTrade(
+                        entry_index=2,
+                        exit_index=3,
+                        entry_price=102.0,
+                        exit_price=103.0,
+                        return_percent=1.0,
+                    ),
+                    TrendTrade(
+                        entry_index=7,
+                        exit_index=8,
+                        entry_price=107.0,
+                        exit_price=109.0,
+                        return_percent=2.0,
+                    ),
+                ),
+            )
+
+    class EmptyBacktest:
+        trades = ()
+
+    class FakeEmptyBacktester:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, data):
+            return EmptyBacktest()
+
+    monkeypatch.setattr(
+        "atlas.trading.regime_strategy_backtest."
+        "TrendFollowingBacktester",
+        FakeTrendBacktester,
+    )
+    monkeypatch.setattr(
+        "atlas.trading.regime_strategy_backtest."
+        "MeanReversionBacktester",
+        FakeEmptyBacktester,
+    )
+    monkeypatch.setattr(
+        "atlas.trading.regime_strategy_backtest."
+        "MomentumBacktester",
+        FakeEmptyBacktester,
+    )
+
+    summary = research.run(
+        data,
+        evaluation_start_index=5,
+    )
+
+    assert len(summary.results) == 1
+
+    result = summary.results[0]
+
+    assert result.strategy_name == "Trend Following"
+    assert result.regime == "RANGING"
+    assert result.trade_count == 1
+    assert result.winning_trades == 1
+    assert result.losing_trades == 0
+    assert result.total_return_percent == 2.0
+    assert result.average_trade_return_percent == 2.0
+
+
+def test_evaluation_start_rejects_invalid_boundaries():
+    from datetime import datetime, timedelta, timezone
+
+    from atlas.trading.historical_market_data import (
+        HistoricalMarketData,
+        OHLCVBar,
+    )
+
+    start = datetime(
+        2026, 1, 1,
+        tzinfo=timezone.utc,
+    )
+
+    bars = [
+        OHLCVBar(
+            timestamp=start + timedelta(hours=index),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.0,
+            volume=1.0,
+        )
+        for index in range(3)
+    ]
+
+    data = HistoricalMarketData(
+        symbol="BTC-USD",
+        timeframe="1h",
+        source="test",
+        bars=bars,
+    )
+
+    research = RegimeStrategyBacktestResearch()
+
+    with pytest.raises(
+        ValueError,
+        match="evaluation_start_index",
+    ):
+        research.run(
+            data,
+            evaluation_start_index=-1,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="evaluation_start_index",
+    ):
+        research.run(
+            data,
+            evaluation_start_index=4,
+        )

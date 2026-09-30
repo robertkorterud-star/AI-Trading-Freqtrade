@@ -152,7 +152,18 @@ class RegimeStrategyBacktestResearch:
     def run(
         self,
         data: HistoricalMarketData,
+        *,
+        evaluation_start_index: int = 0,
     ) -> RegimeStrategyBacktestSummary:
+
+        if (
+            evaluation_start_index < 0
+            or evaluation_start_index > len(data)
+        ):
+            raise ValueError(
+                "evaluation_start_index must be between "
+                "0 and len(data)."
+            )
 
         regimes = self._regimes(data)
 
@@ -205,6 +216,9 @@ class RegimeStrategyBacktestResearch:
                     entry_index < 0
                     or entry_index >= len(regimes)
                 ):
+                    continue
+
+                if entry_index < evaluation_start_index:
                     continue
 
                 regime = regimes[entry_index]
