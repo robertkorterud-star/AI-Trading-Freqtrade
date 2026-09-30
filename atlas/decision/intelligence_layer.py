@@ -26,30 +26,41 @@ class IntelligenceLayer:
                 "No analysis results provided."
             )
 
+        active_results = [
+            result
+            for result in results
+            if result.confidence > 0.0 or result.evidence > 0.0
+        ]
+
+        # Fully uninformative analysis carries no directional decision weight.
+        # Keep it in the original results for reporting, but do not let a
+        # zero-confidence, zero-evidence result create conflict or dilute evidence.
+        decision_results = active_results or results
+
         buy_count = sum(
-            1 for result in results
+            1 for result in decision_results
             if result.action == Action.BUY
         )
 
         hold_count = sum(
-            1 for result in results
+            1 for result in decision_results
             if result.action == Action.HOLD
         )
 
         sell_count = sum(
-            1 for result in results
+            1 for result in decision_results
             if result.action == Action.SELL
         )
 
-        total = len(results)
+        total = len(decision_results)
 
         evidence = (
-            sum(result.evidence for result in results)
+            sum(result.evidence for result in decision_results)
             / total
         )
 
         confidence = (
-            sum(result.confidence for result in results)
+            sum(result.confidence for result in decision_results)
             / total
         )
 

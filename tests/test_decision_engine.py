@@ -1133,3 +1133,128 @@ def test_decision_engine_preserves_buy_when_expected_return_is_unknown():
     assert decision.expected_return == 0.0
     assert decision.expected_return_ready is False
 
+
+def test_zero_confidence_hold_does_not_block_strong_buy():
+    """A zero-confidence HOLD must not veto otherwise strong BUY evidence."""
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong bullish technical evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            reasoning=["Strong bullish news evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="signal_fusion",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Algorithms strongly agree on BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="market_intelligence",
+            action=Action.HOLD,
+            confidence=0.0,
+            evidence=0.0,
+            reasoning=["No confident directional intelligence."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action is Action.BUY
+
+
+def test_confident_hold_still_blocks_strong_buy():
+    """A genuinely confident HOLD remains real conflicting evidence."""
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong bullish technical evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            reasoning=["Strong bullish news evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="signal_fusion",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Algorithms strongly agree on BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="market_intelligence",
+            action=Action.HOLD,
+            confidence=70.0,
+            evidence=70.0,
+            reasoning=["Confident neutral market intelligence."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action is Action.HOLD
+    assert decision.opposing_analysts == ["market_intelligence"]
+
+
+
+def test_zero_confidence_with_evidence_remains_active():
+    """Zero confidence alone must not discard explicit analyst evidence."""
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong bullish technical evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.HOLD,
+            confidence=0.0,
+            evidence=60.0,
+            reasoning=["No relevant news available."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action is Action.HOLD
+    assert decision.evidence == 77.5
+    assert decision.opposing_analysts == ["News Analyst"]

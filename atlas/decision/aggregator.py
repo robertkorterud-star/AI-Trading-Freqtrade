@@ -20,6 +20,16 @@ class EvidenceAggregator:
                 "confidence": 0.0,
             }
 
+        active_results = [
+            result
+            for result in results
+            if result.confidence > 0.0 or result.evidence > 0.0
+        ]
+
+        # Fully uninformative analysis remains available for reporting but
+        # carries no weight in aggregate decision evidence or confidence.
+        decision_results = active_results or results
+
         if weights is None:
             weights = {}
 
@@ -28,7 +38,7 @@ class EvidenceAggregator:
                 0.0,
                 float(weights.get(result.analyst, 0.0)),
             )
-            for result in results
+            for result in decision_results
         }
 
         total_weight = sum(
@@ -41,21 +51,21 @@ class EvidenceAggregator:
         if total_weight <= 0:
             effective_weights = {
                 result.analyst: 1.0
-                for result in results
+                for result in decision_results
             }
 
-            total_weight = float(len(results))
+            total_weight = float(len(decision_results))
 
         evidence = sum(
             result.evidence
             * effective_weights[result.analyst]
-            for result in results
+            for result in decision_results
         ) / total_weight
 
         confidence = sum(
             result.confidence
             * effective_weights[result.analyst]
-            for result in results
+            for result in decision_results
         ) / total_weight
 
         return {
