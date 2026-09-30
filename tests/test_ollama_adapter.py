@@ -100,6 +100,7 @@ def test_ollama_adapter_parses_json_response():
 
     assert payload["model"] == "qwen3:4b"
     assert payload["stream"] is False
+    assert payload["think"] is False
 
     schema = payload["format"]
 

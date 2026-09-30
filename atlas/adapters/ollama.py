@@ -289,6 +289,7 @@ NEWS:
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
+                "think": False,
                 "format": {
                     "type": "object",
                     "properties": {
