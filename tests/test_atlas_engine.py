@@ -1673,7 +1673,7 @@ def test_atlas_engine_analysis_uses_horizon_market_snapshot_for_algorithm_eviden
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: [],
+        analyze=lambda symbol, exclude=None: [],
     )
 
     def snapshot_for_horizon(symbol, horizon, limit):
@@ -1751,7 +1751,7 @@ def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
 
     analyzed_symbols = []
 
-    def fake_analyze(symbol):
+    def fake_analyze(symbol, exclude=None):
         analyzed_symbols.append(symbol)
         return []
 
@@ -1760,6 +1760,10 @@ def test_atlas_engine_analyzes_selected_candidates(monkeypatch):
         "analyze",
         fake_analyze,
     )
+
+    engine.market_data.snapshot = lambda symbol, interval="5m", limit=100: object()
+    engine.algorithm_pipeline.analyze = lambda symbol, snapshot: (None, [])
+    engine._get_market_snapshot = lambda symbol: object()
 
     results = engine.analyze_candidates(
         limit=2,
@@ -1820,6 +1824,64 @@ def test_atlas_engine_ranks_candidate_decisions():
     ]
 
 
+
+def test_atlas_engine_excludes_company_analyst_for_crypto_candidates(
+    monkeypatch,
+):
+    from atlas.market.asset import Asset
+    from atlas.market.asset_discovery import DiscoveryScore
+    from atlas.market.asset_type import AssetType
+
+    engine = AtlasEngine()
+
+    candidates = [
+        DiscoveryScore(
+            asset=Asset(
+                symbol="NVDA",
+                name="NVIDIA",
+                asset_type=AssetType.STOCK,
+                market="US",
+                currency="USD",
+            ),
+            score=95.0,
+        ),
+        DiscoveryScore(
+            asset=Asset(
+                symbol="BTC-USD",
+                name="Bitcoin",
+                asset_type=AssetType.CRYPTO,
+                market="crypto",
+                currency="USD",
+            ),
+            score=90.0,
+        ),
+    ]
+
+    monkeypatch.setattr(
+        engine,
+        "discover_candidates",
+        lambda limit=3, minimum_score=0.0: candidates[:limit],
+    )
+
+    calls = []
+
+    def fake_analyze(symbol, exclude=None):
+        calls.append((symbol, exclude))
+        return []
+
+    monkeypatch.setattr(
+        engine.analysis_service,
+        "analyze",
+        fake_analyze,
+    )
+
+    engine.analyze_candidates(limit=2)
+
+    assert calls == [
+        ("NVDA", None),
+        ("BTC-USD", {"Company Analyst"}),
+    ]
+
 def test_atlas_engine_decides_analyzed_candidates(monkeypatch):
     from atlas.market.asset import Asset
     from atlas.market.asset_discovery import DiscoveryScore
@@ -1862,7 +1924,7 @@ def test_atlas_engine_decides_analyzed_candidates(monkeypatch):
     monkeypatch.setattr(
         engine.analysis_service,
         "analyze",
-        lambda symbol: [
+        lambda symbol, exclude=None: [
             AnalysisResult(
                 analyst="Technical Analyst",
                 symbol=symbol,
@@ -3043,7 +3105,7 @@ def test_analyze_candidates_generates_algorithm_evidence_from_normalized_snapsho
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: ["analyst-evidence"],
+        analyze=lambda symbol, exclude=None: ["analyst-evidence"],
     )
     engine.market_data = SimpleNamespace(
         snapshot=lambda symbol, interval, limit: (
@@ -3167,7 +3229,7 @@ def test_candidate_algorithm_evidence_uses_fusion_without_double_counting():
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: ["analyst-evidence"],
+        analyze=lambda symbol, exclude=None: ["analyst-evidence"],
     )
     engine.market_data = SimpleNamespace(
         snapshot=lambda symbol, interval, limit: normalized_snapshot,
@@ -3297,7 +3359,7 @@ def test_atlas_engine_analysis_preserves_discovery_evidence():
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: [],
+        analyze=lambda symbol, exclude=None: [],
     )
     engine.market_data = SimpleNamespace(
         snapshot_for_horizon=lambda symbol, horizon, limit: object(),
@@ -3503,12 +3565,13 @@ def test_analyze_candidates_classifies_regime_from_normalized_market_data():
     from types import SimpleNamespace
 
     from atlas.core.engine import AtlasEngine
+    from atlas.market.asset_type import AssetType
 
     engine = object.__new__(AtlasEngine)
     candidate = SimpleNamespace(
         symbol="BTC-USD",
         score=91.0,
-        asset=object(),
+        asset=SimpleNamespace(asset_type=AssetType.CRYPTO),
         discovery_input=None,
         horizon=None,
     )
@@ -3519,7 +3582,7 @@ def test_analyze_candidates_classifies_regime_from_normalized_market_data():
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: [],
+        analyze=lambda symbol, exclude=None: [],
     )
     engine.market_data = SimpleNamespace(
         snapshot=lambda *args, **kwargs: normalized_snapshot,
@@ -3544,6 +3607,7 @@ def test_decide_candidates_uses_classified_market_regime_for_strategy_memory():
 
     from atlas.algorithms.regime import MarketRegime
     from atlas.core.engine import AtlasEngine
+    from atlas.market.asset_type import AssetType
     from atlas.models.action import Action
     from atlas.models.decision_result import DecisionResult
 
@@ -5433,7 +5497,7 @@ def test_atlas_engine_start_runs_real_algorithm_pipeline_to_modern_paper_buy(
     monkeypatch.setattr(
         engine.analysis_service,
         "analyze",
-        lambda symbol: analyst_evidence,
+        lambda symbol, exclude=None: analyst_evidence,
     )
     monkeypatch.setattr(
         engine.market_data,
@@ -7870,7 +7934,7 @@ def test_atlas_engine_analysis_exposes_horizon_signal_from_fused_evidence():
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: [],
+        analyze=lambda symbol, exclude=None: [],
     )
     engine.market_data = SimpleNamespace(
         snapshot_for_horizon=lambda symbol, horizon, limit: normalized_snapshot,
@@ -7937,7 +8001,7 @@ def test_atlas_engine_analysis_builds_horizon_signal_when_fusion_is_unavailable(
 
     engine.discover_candidates = lambda **kwargs: [candidate]
     engine.analysis_service = SimpleNamespace(
-        analyze=lambda symbol: [],
+        analyze=lambda symbol, exclude=None: [],
     )
     engine.market_data = SimpleNamespace(
         snapshot_for_horizon=lambda symbol, horizon, limit: snapshot,

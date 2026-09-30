@@ -1,3 +1,4 @@
+from atlas.market.asset_type import AssetType
 from types import SimpleNamespace
 
 from atlas.core.config import AtlasConfig
@@ -10,13 +11,13 @@ class StubAnalysisService:
     def __init__(self, results):
         self.results = results
 
-    def analyze(self, symbol):
+    def analyze(self, symbol, exclude=None):
         return list(self.results)
 
 
 class StubAssetDiscovery:
     def discover(self, universe):
-        return [SimpleNamespace(symbol="BTC-USD", score=1.0)]
+        return [SimpleNamespace(symbol="BTC-USD", score=1.0, asset=SimpleNamespace(asset_type=AssetType.CRYPTO))]
 
 
 class StubCandidateSelector:
@@ -25,8 +26,16 @@ class StubCandidateSelector:
 
 
 class StubMarketData:
+    def snapshot(self, symbol, interval="5m", limit=100):
+        return object()
+
     def get_snapshot(self, symbol):
         return SimpleNamespace(price=100.0, regime=None)
+
+
+class StubAlgorithmPipeline:
+    def analyze(self, symbol, snapshot):
+        return None, []
 
 
 def _buy_analysis():
@@ -53,6 +62,7 @@ def test_atlas_engine_decide_candidates_carries_expected_return():
     engine.asset_discovery = StubAssetDiscovery()
     engine.candidate_selector = StubCandidateSelector()
     engine.market_data = StubMarketData()
+    engine.algorithm_pipeline = StubAlgorithmPipeline()
     engine.analysis_service = StubAnalysisService(_buy_analysis())
 
     class StubExpectedReturnService:
@@ -83,6 +93,7 @@ def test_atlas_engine_decide_candidates_without_expected_return_service_preserve
     engine.asset_discovery = StubAssetDiscovery()
     engine.candidate_selector = StubCandidateSelector()
     engine.market_data = StubMarketData()
+    engine.algorithm_pipeline = StubAlgorithmPipeline()
     engine.analysis_service = StubAnalysisService(_buy_analysis())
     engine.expected_return_service = None
     engine.decision_engine.expected_return_service = None
@@ -105,6 +116,7 @@ def test_atlas_engine_decide_candidates_carries_expected_return_availability():
     engine.asset_discovery = StubAssetDiscovery()
     engine.candidate_selector = StubCandidateSelector()
     engine.market_data = StubMarketData()
+    engine.algorithm_pipeline = StubAlgorithmPipeline()
     engine.analysis_service = StubAnalysisService(_buy_analysis())
 
     class StubEstimate:
@@ -142,6 +154,7 @@ def test_atlas_engine_decide_candidates_holds_known_buy_without_positive_net_ret
     engine.asset_discovery = StubAssetDiscovery()
     engine.candidate_selector = StubCandidateSelector()
     engine.market_data = StubMarketData()
+    engine.algorithm_pipeline = StubAlgorithmPipeline()
     engine.analysis_service = StubAnalysisService(_buy_analysis())
 
     class StubEstimate:

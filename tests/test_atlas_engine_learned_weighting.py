@@ -4,6 +4,8 @@ from atlas.algorithms.base import Action
 from atlas.core.config import AtlasConfig
 from atlas.core.engine import AtlasEngine
 from atlas.models.analysis_result import AnalysisResult
+from atlas.market.asset import Asset
+from atlas.market.asset_type import AssetType
 from atlas.trading.agent_performance_tracker import (
     AgentPerformanceTracker,
 )
@@ -42,7 +44,7 @@ def test_atlas_engine_uses_persisted_learned_agent_weights(
 
     engine = AtlasEngine(config=config)
 
-    def fake_analyze(symbol):
+    def fake_analyze(symbol, exclude=None):
         return [
             AnalysisResult(
                 symbol=symbol,
@@ -78,10 +80,20 @@ def test_atlas_engine_uses_persisted_learned_agent_weights(
                 {
                     "symbol": "BTC-USD",
                     "score": 1.0,
+                    "asset": Asset(
+                        symbol="BTC-USD",
+                        name="Bitcoin",
+                        asset_type=AssetType.CRYPTO,
+                        market="crypto",
+                        currency="USD",
+                    ),
                 },
             )()
         ],
     )
+
+    engine.market_data.snapshot = lambda symbol, interval="5m", limit=100: object()
+    engine.algorithm_pipeline.analyze = lambda symbol, snapshot: (None, [])
 
     results = engine.decide_candidates(
         limit=1,

@@ -88,6 +88,7 @@ from atlas.services.internet_asset_resolver import InternetAssetResolver
 from atlas.services.yfinance_search_client import YFinanceSearchClient
 
 from atlas.market.asset_universe import AssetUniverse
+from atlas.market.asset_type import AssetType
 from atlas.market.asset_discovery import AssetDiscoveryService
 from atlas.market.candidate_selector import CandidateSelector
 from atlas.market.trading_horizon import TradingHorizon
@@ -533,8 +534,13 @@ class AtlasEngine:
         results = []
 
         for candidate in candidates:
+            exclude = None
+            if candidate.asset.asset_type is AssetType.CRYPTO:
+                exclude = {"Company Analyst"}
+
             analysis = self.analysis_service.analyze(
-                candidate.symbol
+                candidate.symbol,
+                exclude=exclude,
             )
 
             algorithm_signals = None
