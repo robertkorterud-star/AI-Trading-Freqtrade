@@ -1436,6 +1436,29 @@ def test_atlas_engine_start_evaluates_previous_predictions(
     def fake_print_decision(decision):
         calls.append("report")
 
+    def fake_decide_candidates(
+        limit=3,
+        minimum_score=0.0,
+        horizon=None,
+        trigger_symbol=None,
+    ):
+        analysis = engine.analysis_service.analyze("BTC-USD")
+        decision = engine.decision_engine.evaluate(analysis)
+        return [
+            {
+                "symbol": "BTC-USD",
+                "discovery_score": 100.0,
+                "analysis": analysis,
+                "decision": decision,
+            }
+        ]
+
+    monkeypatch.setattr(
+        engine,
+        "decide_candidates",
+        fake_decide_candidates,
+    )
+
     monkeypatch.setattr(
         engine,
         "_get_market_snapshot",

@@ -237,13 +237,25 @@ class DecisionEngine:
         opposing_analysts = [
             result.analyst
             for result in results
-            if result.action != dominant_action
+            if (
+                result.action != dominant_action
+                and (
+                    result.confidence > 0.0
+                    or result.evidence > 0.0
+                )
+            )
         ]
 
+        active_result_count = (
+            intelligence.buy_count
+            + intelligence.hold_count
+            + intelligence.sell_count
+        )
+
         unanimous = (
-            intelligence.buy_count == len(results)
-            or intelligence.hold_count == len(results)
-            or intelligence.sell_count == len(results)
+            intelligence.buy_count == active_result_count
+            or intelligence.hold_count == active_result_count
+            or intelligence.sell_count == active_result_count
         )
 
         policy_action = determine_action(

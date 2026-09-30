@@ -1258,3 +1258,94 @@ def test_zero_confidence_with_evidence_remains_active():
     assert decision.action is Action.HOLD
     assert decision.evidence == 77.5
     assert decision.opposing_analysts == ["News Analyst"]
+
+
+def test_fully_uninformative_hold_is_not_reported_as_opposition():
+    """A 0/0 HOLD excluded from decision evidence must not remain opposition."""
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=95.0,
+            evidence=95.0,
+            reasoning=["Strong bullish technical evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=90.0,
+            evidence=90.0,
+            reasoning=["Strong bullish news evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="signal_fusion",
+            action=Action.BUY,
+            confidence=100.0,
+            evidence=100.0,
+            reasoning=["Algorithms strongly agree on BUY."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="market_intelligence",
+            action=Action.HOLD,
+            confidence=0.0,
+            evidence=0.0,
+            reasoning=["No confident directional intelligence."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action is Action.BUY
+    assert decision.opposing_analysts == []
+    assert not any(
+        line == "Opposing analysts: market_intelligence."
+        for line in decision.reasoning
+    )
+
+
+def test_fully_uninformative_hold_does_not_break_active_unanimity():
+    """A 0/0 HOLD must not break unanimity among informative signals."""
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="Technical Analyst",
+            action=Action.BUY,
+            confidence=75.0,
+            evidence=75.0,
+            reasoning=["Directional BUY evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="News Analyst",
+            action=Action.BUY,
+            confidence=75.0,
+            evidence=75.0,
+            reasoning=["Directional BUY evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="market_intelligence",
+            action=Action.HOLD,
+            confidence=0.0,
+            evidence=0.0,
+            reasoning=["No decision information."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action is Action.BUY
+    assert decision.dominant_action is Action.BUY
+    assert decision.opposing_analysts == []
