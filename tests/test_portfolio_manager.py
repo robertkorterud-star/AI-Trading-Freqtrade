@@ -101,3 +101,25 @@ def test_position_rejects_invalid_values() -> None:
 
     with pytest.raises(ValueError):
         PortfolioPosition("", 1_000)
+
+
+def test_allows_allocation_with_only_floating_point_noise_at_position_limit() -> None:
+    manager = PortfolioManager(
+        max_exposure_pct=100.0,
+        max_single_position_pct=20.0,
+    )
+
+    equity = 104215.0398143138
+    exact_limit = equity * 20.0 / 100.0
+    requested = 20843.007962862765
+
+    assert requested > exact_limit
+
+    result = manager.assess(
+        "BTC-USD",
+        requested_value=requested,
+        equity=equity,
+    )
+
+    assert result.allowed is True
+    assert result.approved_value == round(exact_limit, 2)

@@ -98,7 +98,15 @@ class PortfolioManager:
             single_position_capacity,
         )
 
-        allowed = requested_value <= approved_value + 1e-12
+        allowed = (
+            requested_value <= approved_value
+            or math.isclose(
+                requested_value,
+                approved_value,
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            )
+        )
         resulting_exposure = current_exposure + approved_value
         reasons: list[str] = []
 
