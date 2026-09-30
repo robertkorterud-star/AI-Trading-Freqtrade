@@ -87,7 +87,7 @@ class StrategyMemoryRegimeEvidence:
         strategies = sorted(
             {
                 record.strategy_name
-                for record in records
+                for record in qualifying_records
             }
         )
 
