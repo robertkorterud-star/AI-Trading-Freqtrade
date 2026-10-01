@@ -63,3 +63,93 @@ def test_binance_scanner_returns_ranked_candidates():
     assert result.candidates[0].symbol == "BTCUSDT"
     assert 0.0 < result.candidates[0].score < result.candidates[0].momentum_score
     assert "strong daily momentum" in result.candidates[0].reasons
+
+
+def test_binance_scanner_enrichment_balances_volume_and_momentum():
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=FakeBinanceAdapter()),
+        volume_enrichment_limit=1,
+    )
+
+    eligible = [
+        ("VOLUMEUSDT", 10.0, 10_000_000.0, 1.0, 0.50),
+        ("MOMENTUMUSDT", 10.0, 1_000_000.0, 12.0, 0.40),
+        ("CALMUSDT", 10.0, 500_000.0, 0.5, 0.30),
+    ]
+
+    selected = service._select_volume_enrichment_symbols(eligible)
+
+    assert selected == {"VOLUMEUSDT", "MOMENTUMUSDT"}
+
+
+def test_enrichment_includes_candidate_near_24h_high():
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=FakeBinanceAdapter()),
+        volume_enrichment_limit=1,
+    )
+
+    eligible = [
+        ("VOLUMEUSDT", 10.0, 10_000_000.0, 1.0, 0.50),
+        ("MOMENTUMUSDT", 10.0, 1_000_000.0, 12.0, 0.60),
+        ("EARLYUSDT", 10.0, 500_000.0, 1.0, 0.98),
+    ]
+
+    selected = service._select_volume_enrichment_symbols(eligible)
+
+    assert selected == {
+        "VOLUMEUSDT",
+        "MOMENTUMUSDT",
+        "EARLYUSDT",
+    }
+
+
+def test_observations_uses_24h_range_position_for_enrichment_selection():
+    class RangeFakeBinanceAdapter(FakeBinanceAdapter):
+        def get_24hr_tickers(self):
+            return [
+                {
+                    "symbol": "VOLUMEUSDT",
+                    "lastPrice": "50",
+                    "highPrice": "100",
+                    "lowPrice": "0",
+                    "quoteVolume": "10000000",
+                    "priceChangePercent": "1",
+                },
+                {
+                    "symbol": "MOMENTUMUSDT",
+                    "lastPrice": "60",
+                    "highPrice": "100",
+                    "lowPrice": "0",
+                    "quoteVolume": "1000000",
+                    "priceChangePercent": "12",
+                },
+                {
+                    "symbol": "EARLYUSDT",
+                    "lastPrice": "98",
+                    "highPrice": "100",
+                    "lowPrice": "0",
+                    "quoteVolume": "500000",
+                    "priceChangePercent": "1",
+                },
+            ]
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=RangeFakeBinanceAdapter()),
+        volume_enrichment_limit=1,
+    )
+
+    selected = set()
+    service._enrich_volume_data = lambda symbols: selected.update(symbols) or {}
+
+    observations = service.observations()
+
+    assert [item.symbol for item in observations] == [
+        "VOLUMEUSDT",
+        "MOMENTUMUSDT",
+        "EARLYUSDT",
+    ]
+    assert selected == {
+        "VOLUMEUSDT",
+        "MOMENTUMUSDT",
+        "EARLYUSDT",
+    }

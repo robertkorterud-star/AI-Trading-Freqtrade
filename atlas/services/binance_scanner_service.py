@@ -91,7 +91,7 @@ class BinanceScannerService:
     def observations(self) -> list[MarketObservation]:
         """Convert eligible USDT/USDC tickers into scanner observations."""
         tickers = self.market_data.adapter.get_24hr_tickers()
-        eligible: list[tuple[str, float, float, float]] = []
+        eligible: list[tuple[str, float, float, float, float]] = []
 
         for ticker in tickers:
             symbol = str(ticker.get("symbol", "")).strip().upper()
@@ -103,20 +103,32 @@ class BinanceScannerService:
                 price = float(ticker.get("lastPrice", 0.0))
                 quote_volume = float(ticker.get("quoteVolume", 0.0))
                 change_percent = float(ticker.get("priceChangePercent", 0.0))
+                high_price = float(ticker.get("highPrice", 0.0))
+                low_price = float(ticker.get("lowPrice", 0.0))
             except (TypeError, ValueError):
                 continue
 
             if price <= 0.0 or quote_volume < self.min_quote_volume:
                 continue
-            eligible.append((symbol, price, quote_volume, change_percent))
+
+            range_position = 0.0
+            if high_price > low_price:
+                range_position = min(
+                    1.0,
+                    max(0.0, (price - low_price) / (high_price - low_price)),
+                )
+
+            eligible.append(
+                (symbol, price, quote_volume, change_percent, range_position)
+            )
 
         enriched_symbols = self._select_volume_enrichment_symbols(eligible)
         catalyst_symbols = self._catalyst_symbols_for_universe(
-            symbol for symbol, _, _, _ in eligible
+            symbol for symbol, _, _, _, _ in eligible
         )
         volume_data = self._enrich_volume_data(enriched_symbols)
         observations: list[MarketObservation] = []
-        for symbol, price, quote_volume, change_percent in eligible:
+        for symbol, price, quote_volume, change_percent, _ in eligible:
             volume = quote_volume
             average_volume = quote_volume
             breakout_percent = 0.0
@@ -256,7 +268,7 @@ class BinanceScannerService:
 
     def _select_volume_enrichment_symbols(
         self,
-        eligible: list[tuple[str, float, float, float]],
+        eligible: list[tuple[str, float, float, float, float]],
     ) -> set[str]:
         """Bound candle requests to the most relevant ticker candidates."""
         if self.volume_enrichment_limit == 0 or not eligible:
@@ -264,10 +276,16 @@ class BinanceScannerService:
 
         by_volume = sorted(eligible, key=lambda item: (-item[2], item[0]))
         by_momentum = sorted(eligible, key=lambda item: (-abs(item[3]), item[0]))
+        by_range_position = sorted(
+            eligible,
+            key=lambda item: (-item[4], item[0]),
+        )
         selected: set[str] = set()
         for item in by_volume[: self.volume_enrichment_limit]:
             selected.add(item[0])
         for item in by_momentum[: self.volume_enrichment_limit]:
+            selected.add(item[0])
+        for item in by_range_position[: self.volume_enrichment_limit]:
             selected.add(item[0])
         return selected
 
