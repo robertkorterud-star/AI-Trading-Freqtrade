@@ -46,6 +46,11 @@ def test_intelligence_source_adapter_combines_sources():
     adapter = IntelligenceSourceAdapter(
         youtube=FakeYouTube(),
         finnhub=FakeFinnhub(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = adapter.get("NVDA")
@@ -68,6 +73,11 @@ def test_intelligence_source_adapter_handles_no_sources():
     adapter = IntelligenceSourceAdapter(
         youtube=EmptyYouTube(),
         finnhub=EmptyFinnhub(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     assert adapter.get("NVDA") == []
@@ -362,6 +372,11 @@ def test_intelligence_source_adapter_can_skip_youtube_transcripts():
         youtube=FakeYouTube(),
         finnhub=EmptyFinnhub(),
         transcript=FailingTranscript(),
+        direct_publishers=type(
+            "EmptyDirectPublishers",
+            (),
+            {"search": lambda self, symbol: []},
+        )(),
     )
 
     results = adapter.get("NVDA", include_transcripts=False)
