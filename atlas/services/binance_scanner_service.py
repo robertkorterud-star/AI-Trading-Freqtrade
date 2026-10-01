@@ -79,6 +79,10 @@ class BinanceScannerService:
             tuple[float, float, float, float, float]
             | tuple[float, None, None, None, None],
         ] = {}
+        self._relative_volume_5m_cache: dict[
+            str,
+            tuple[float, float | None],
+        ] = {}
         self._catalyst_cache_at = 0.0
         self._catalyst_symbols: set[str] = set()
 
@@ -133,6 +137,7 @@ class BinanceScannerService:
             symbol for symbol, _, _, _, _ in eligible
         )
         volume_data = self._enrich_volume_data(enriched_symbols)
+        relative_volume_5m = self._enrich_relative_volume_5m(enriched_symbols)
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent, _ in eligible:
             volume = quote_volume
@@ -154,10 +159,71 @@ class BinanceScannerService:
                     news_catalyst=symbol in catalyst_symbols,
                     breakout_percent=breakout_percent,
                     atr_percent=atr_percent,
+                    relative_volume_5m=relative_volume_5m.get(symbol, 0.0),
                     liquid=True,
                 )
             )
         return observations
+
+    def _enrich_relative_volume_5m(
+        self,
+        symbols: set[str],
+    ) -> dict[str, float]:
+        """Fetch completed 5m relative quote-volume concurrently."""
+        if not symbols:
+            return {}
+
+        workers = min(self.DEFAULT_ENRICHMENT_WORKERS, len(symbols))
+        results: dict[str, float] = {}
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(self._relative_volume_5m, symbol): symbol
+                for symbol in symbols
+            }
+            for future in as_completed(futures):
+                symbol = futures[future]
+                try:
+                    relative_volume = future.result()
+                except Exception:
+                    continue
+                if relative_volume is not None:
+                    results[symbol] = relative_volume
+        return results
+
+    def _relative_volume_5m(self, symbol: str) -> float | None:
+        """Compare the latest completed 5m quote-volume with its prior average."""
+        now = time.monotonic()
+        cached = self._relative_volume_5m_cache.get(symbol)
+        if cached is not None:
+            cached_at, relative_volume = cached
+            if now - cached_at < self.volume_cache_ttl_seconds:
+                return relative_volume
+
+        try:
+            klines = self.market_data.adapter.get_klines(
+                symbol,
+                interval="5m",
+                limit=self.volume_samples + 1,
+            )
+        except Exception:
+            self._relative_volume_5m_cache[symbol] = (now, None)
+            return None
+
+        candles = self._completed_market_candles(klines)
+        if candles is None or len(candles) < self.volume_samples + 1:
+            self._relative_volume_5m_cache[symbol] = (now, None)
+            return None
+
+        current = candles[-1][2]
+        previous = candles[-(self.volume_samples + 1) : -1]
+        average = sum(candle[2] for candle in previous) / len(previous)
+        if current <= 0.0 or average <= 0.0:
+            self._relative_volume_5m_cache[symbol] = (now, None)
+            return None
+
+        relative_volume = current / average
+        self._relative_volume_5m_cache[symbol] = (now, relative_volume)
+        return relative_volume
 
     def _enrich_volume_data(
         self,
