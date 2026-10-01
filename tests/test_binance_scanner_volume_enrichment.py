@@ -46,7 +46,10 @@ def test_volume_enrichment_is_bounded_to_volume_and_momentum_shortlists():
     assert {call[0] for call in adapter.klines_calls} == {"AUSDT", "BUSDT", "CUSDT", "DUSDT"}
     assert len(adapter.klines_calls) == 8
     assert {call[1] for call in adapter.klines_calls} == {"1h", "5m"}
-    assert all(call[2] == 25 for call in adapter.klines_calls)
+    assert all(
+        call[2] == (26 if call[1] == "5m" else 25)
+        for call in adapter.klines_calls
+    )
 
 
 def test_historical_volume_is_cached_between_observation_builds():
@@ -65,7 +68,7 @@ def test_historical_volume_is_cached_between_observation_builds():
     assert second[0].volume == 2500000
     assert sorted(adapter.klines_calls) == [
         ("BTCUSDT", "1h", 25),
-        ("BTCUSDT", "5m", 25),
+        ("BTCUSDT", "5m", 26),
     ]
 
 
@@ -122,7 +125,7 @@ def test_historical_volume_uses_binance_quote_volume_field():
     assert observations[0].volume == 1000000
     assert sorted(adapter.klines_calls) == [
         ("BTCUSDT", "1h", 4),
-        ("BTCUSDT", "5m", 4),
+        ("BTCUSDT", "5m", 5),
     ]
 
 
@@ -143,7 +146,7 @@ def test_failed_volume_enrichment_falls_back_to_current_volume():
     assert observations[0].average_volume == observations[0].volume
     assert sorted(adapter.klines_calls) == [
         ("BTCUSDT", "1h", 25),
-        ("BTCUSDT", "5m", 25),
+        ("BTCUSDT", "5m", 26),
     ]
 
 
@@ -192,7 +195,7 @@ def test_binance_enrichment_exposes_completed_5m_relative_volume():
 
             step_ms = 300_000 if interval == "5m" else 3_600_000
             quote_volumes = (
-                [1_000_000] * 24 + [5_000_000]
+                [1_000_000] * 24 + [5_000_000, 99_000_000]
                 if interval == "5m"
                 else [1_000_000] * limit
             )
@@ -206,7 +209,11 @@ def test_binance_enrichment_exposes_completed_5m_relative_volume():
                     "99",
                     "100",
                     "1000",
-                    (index + 1) * step_ms - 1,
+                    (
+                        9_999_999_999_999
+                        if interval == "5m" and index == len(quote_volumes) - 1
+                        else (index + 1) * step_ms - 1
+                    ),
                     str(quote_volume),
                 ])
             return rows
@@ -229,4 +236,4 @@ def test_binance_enrichment_exposes_completed_5m_relative_volume():
     observations = service.observations()
 
     assert observations[0].relative_volume_5m == 5.0
-    assert ("BTCUSDT", "5m", 25) in adapter.klines_calls
+    assert ("BTCUSDT", "5m", 26) in adapter.klines_calls

@@ -203,7 +203,7 @@ class BinanceScannerService:
             klines = self.market_data.adapter.get_klines(
                 symbol,
                 interval="5m",
-                limit=self.volume_samples + 1,
+                limit=self.volume_samples + 2,
             )
         except Exception:
             self._relative_volume_5m_cache[symbol] = (now, None)
