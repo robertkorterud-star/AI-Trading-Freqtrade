@@ -21,6 +21,7 @@ class BinanceScannerService:
     DEFAULT_VOLUME_INTERVAL = "1h"
     DEFAULT_VOLUME_SAMPLES = 24
     DEFAULT_VOLUME_ENRICHMENT_LIMIT = 15
+    DEFAULT_RELATIVE_VOLUME_5M_DISCOVERY_LIMIT = 100
     DEFAULT_VOLUME_CACHE_TTL_SECONDS = 300.0
     DEFAULT_CATALYST_CACHE_TTL_SECONDS = 3600.0
     DEFAULT_ENRICHMENT_WORKERS = 8
@@ -60,6 +61,7 @@ class BinanceScannerService:
         volume_interval: str = DEFAULT_VOLUME_INTERVAL,
         volume_samples: int = DEFAULT_VOLUME_SAMPLES,
         volume_enrichment_limit: int = DEFAULT_VOLUME_ENRICHMENT_LIMIT,
+        relative_volume_5m_discovery_limit: int = DEFAULT_RELATIVE_VOLUME_5M_DISCOVERY_LIMIT,
         volume_cache_ttl_seconds: float = DEFAULT_VOLUME_CACHE_TTL_SECONDS,
         news_adapter=None,
         catalyst_cache_ttl_seconds: float = DEFAULT_CATALYST_CACHE_TTL_SECONDS,
@@ -71,6 +73,9 @@ class BinanceScannerService:
         self.volume_interval = volume_interval
         self.volume_samples = max(1, volume_samples)
         self.volume_enrichment_limit = max(0, volume_enrichment_limit)
+        self.relative_volume_5m_discovery_limit = max(
+            0, relative_volume_5m_discovery_limit
+        )
         self.volume_cache_ttl_seconds = max(0.0, volume_cache_ttl_seconds)
         self.news_adapter = news_adapter
         self.catalyst_cache_ttl_seconds = max(0.0, catalyst_cache_ttl_seconds)
@@ -133,11 +138,17 @@ class BinanceScannerService:
             )
 
         enriched_symbols = self._select_volume_enrichment_symbols(eligible)
+        relative_volume_5m_symbols = self._select_volume_enrichment_symbols(
+            eligible,
+            limit=self.relative_volume_5m_discovery_limit,
+        )
         catalyst_symbols = self._catalyst_symbols_for_universe(
             symbol for symbol, _, _, _, _ in eligible
         )
         volume_data = self._enrich_volume_data(enriched_symbols)
-        relative_volume_5m = self._enrich_relative_volume_5m(enriched_symbols)
+        relative_volume_5m = self._enrich_relative_volume_5m(
+            relative_volume_5m_symbols
+        )
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent, _ in eligible:
             volume = quote_volume
@@ -343,9 +354,13 @@ class BinanceScannerService:
     def _select_volume_enrichment_symbols(
         self,
         eligible: list[tuple[str, float, float, float, float]],
+        limit: int | None = None,
     ) -> set[str]:
         """Bound candle requests to the most relevant ticker candidates."""
-        if self.volume_enrichment_limit == 0 or not eligible:
+        enrichment_limit = (
+            self.volume_enrichment_limit if limit is None else max(0, limit)
+        )
+        if enrichment_limit == 0 or not eligible:
             return set()
 
         by_volume = sorted(eligible, key=lambda item: (-item[2], item[0]))
@@ -355,11 +370,11 @@ class BinanceScannerService:
             key=lambda item: (-item[4], item[0]),
         )
         selected: set[str] = set()
-        for item in by_volume[: self.volume_enrichment_limit]:
+        for item in by_volume[:enrichment_limit]:
             selected.add(item[0])
-        for item in by_momentum[: self.volume_enrichment_limit]:
+        for item in by_momentum[:enrichment_limit]:
             selected.add(item[0])
-        for item in by_range_position[: self.volume_enrichment_limit]:
+        for item in by_range_position[:enrichment_limit]:
             selected.add(item[0])
         return selected
 

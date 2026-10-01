@@ -43,9 +43,19 @@ def test_volume_enrichment_is_bounded_to_volume_and_momentum_shortlists():
     observations = service.observations()
 
     assert len(observations) == 5
-    assert {call[0] for call in adapter.klines_calls} == {"AUSDT", "BUSDT", "CUSDT", "DUSDT"}
-    assert len(adapter.klines_calls) == 8
-    assert {call[1] for call in adapter.klines_calls} == {"1h", "5m"}
+    one_hour_symbols = {
+        symbol
+        for symbol, interval, _ in adapter.klines_calls
+        if interval == "1h"
+    }
+    five_minute_symbols = {
+        symbol
+        for symbol, interval, _ in adapter.klines_calls
+        if interval == "5m"
+    }
+    assert one_hour_symbols == {"AUSDT", "BUSDT", "CUSDT", "DUSDT"}
+    assert five_minute_symbols == {"AUSDT", "BUSDT", "CUSDT", "DUSDT", "EUSDT"}
+    assert len(adapter.klines_calls) == 9
     assert all(
         call[2] == (26 if call[1] == "5m" else 25)
         for call in adapter.klines_calls
@@ -237,3 +247,47 @@ def test_binance_enrichment_exposes_completed_5m_relative_volume():
 
     assert observations[0].relative_volume_5m == 5.0
     assert ("BTCUSDT", "5m", 26) in adapter.klines_calls
+
+
+def test_5m_discovery_can_be_broader_than_deep_volume_enrichment():
+    tickers = [
+        {
+            "symbol": "AUSDT",
+            "lastPrice": "10",
+            "highPrice": "11",
+            "lowPrice": "9",
+            "quoteVolume": "5000000",
+            "priceChangePercent": "1",
+        },
+        {
+            "symbol": "BUSDT",
+            "lastPrice": "10",
+            "highPrice": "11",
+            "lowPrice": "9",
+            "quoteVolume": "4000000",
+            "priceChangePercent": "0.5",
+        },
+    ]
+    adapter = FakeAdapter(
+        tickers,
+        {"AUSDT": 100000, "BUSDT": 100000},
+    )
+    service = BinanceScannerService(
+        MarketData(adapter),
+        volume_enrichment_limit=1,
+        relative_volume_5m_discovery_limit=2,
+    )
+
+    service.observations()
+
+    one_hour_symbols = {
+        symbol for symbol, interval, _ in adapter.klines_calls
+        if interval == "1h"
+    }
+    five_minute_symbols = {
+        symbol for symbol, interval, _ in adapter.klines_calls
+        if interval == "5m"
+    }
+
+    assert one_hour_symbols == {"AUSDT"}
+    assert five_minute_symbols == {"AUSDT", "BUSDT"}
