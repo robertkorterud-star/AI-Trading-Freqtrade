@@ -6,9 +6,11 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from atlas.adapters.binance_market_data import BinanceMarketData
 from atlas.adapters.news import NewsAdapter
 from atlas.market.market_scout import AssetType, MarketObservation
 from atlas.services.scanner_service import ScannerResult, ScannerService
+from atlas.trading.indicator_engine import IndicatorEngine
 
 
 class BinanceScannerService:
@@ -72,7 +74,11 @@ class BinanceScannerService:
         self.volume_cache_ttl_seconds = max(0.0, volume_cache_ttl_seconds)
         self.news_adapter = news_adapter
         self.catalyst_cache_ttl_seconds = max(0.0, catalyst_cache_ttl_seconds)
-        self._volume_cache: dict[str, tuple[float, float, float, float] | tuple[float, None, None, None]] = {}
+        self._volume_cache: dict[
+            str,
+            tuple[float, float, float, float, float]
+            | tuple[float, None, None, None, None],
+        ] = {}
         self._catalyst_cache_at = 0.0
         self._catalyst_symbols: set[str] = set()
 
@@ -132,9 +138,10 @@ class BinanceScannerService:
             volume = quote_volume
             average_volume = quote_volume
             breakout_percent = 0.0
+            atr_percent = 0.0
             enriched = volume_data.get(symbol)
             if enriched is not None:
-                volume, average_volume, breakout_percent = enriched
+                volume, average_volume, breakout_percent, atr_percent = enriched
 
             observations.append(
                 MarketObservation(
@@ -146,6 +153,7 @@ class BinanceScannerService:
                     change_percent=change_percent,
                     news_catalyst=symbol in catalyst_symbols,
                     breakout_percent=breakout_percent,
+                    atr_percent=atr_percent,
                     liquid=True,
                 )
             )
@@ -154,13 +162,13 @@ class BinanceScannerService:
     def _enrich_volume_data(
         self,
         symbols: set[str],
-    ) -> dict[str, tuple[float, float, float]]:
+    ) -> dict[str, tuple[float, float, float, float]]:
         """Fetch independent volume enrichments concurrently."""
         if not symbols:
             return {}
 
         workers = min(self.DEFAULT_ENRICHMENT_WORKERS, len(symbols))
-        results: dict[str, tuple[float, float, float]] = {}
+        results: dict[str, tuple[float, float, float, float]] = {}
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
                 executor.submit(self._current_average_and_breakout, symbol): symbol
@@ -289,16 +297,16 @@ class BinanceScannerService:
             selected.add(item[0])
         return selected
 
-    def _current_average_and_breakout(self, symbol: str) -> tuple[float, float, float] | None:
+    def _current_average_and_breakout(self, symbol: str) -> tuple[float, float, float, float] | None:
         """Return current completed volume, prior average, and breakout pressure."""
         now = time.monotonic()
         cached = self._volume_cache.get(symbol)
         if cached is not None:
-            cached_at, current, average, breakout = cached
+            cached_at, current, average, breakout, atr_percent = cached
             if now - cached_at < self.volume_cache_ttl_seconds:
                 if current is None or average is None or breakout is None:
                     return None
-                return current, average, breakout
+                return current, average, breakout, atr_percent
 
         try:
             klines = self.market_data.adapter.get_klines(
@@ -307,14 +315,14 @@ class BinanceScannerService:
                 limit=self.volume_samples + 1,
             )
         except Exception:
-            self._volume_cache[symbol] = (now, None, None, None)
+            self._volume_cache[symbol] = (now, None, None, None, None)
             return None
 
         candles = self._completed_market_candles(klines)
         if candles is None:
             volumes = self._parse_volume_candles(klines)
             if len(volumes) < self.volume_samples + 1:
-                self._volume_cache[symbol] = (now, None, None, None)
+                self._volume_cache[symbol] = (now, None, None, None, None)
                 return None
             current = volumes[-1]
             previous = volumes[-(self.volume_samples + 1) : -1]
@@ -322,7 +330,7 @@ class BinanceScannerService:
             breakout = 0.0
         else:
             if len(candles) < self.volume_samples + 1:
-                self._volume_cache[symbol] = (now, None, None, None)
+                self._volume_cache[symbol] = (now, None, None, None, None)
                 return None
             current = candles[-1][2]
             previous = candles[-(self.volume_samples + 1) : -1]
@@ -332,12 +340,26 @@ class BinanceScannerService:
             breakout = max(0.0, (close / previous_high - 1.0) * 100.0) if previous_high > 0 else 0.0
 
         if current <= 0.0 or average <= 0.0:
-            self._volume_cache[symbol] = (now, None, None, None)
+            self._volume_cache[symbol] = (now, None, None, None, None)
             return None
 
         breakout = round(max(0.0, breakout), 6)
-        self._volume_cache[symbol] = (now, current, average, breakout)
-        return current, average, breakout
+        atr_percent = 0.0
+        try:
+            normalized = [
+                BinanceMarketData._candle_from_kline(kline)
+                for kline in klines
+            ]
+            indicators = IndicatorEngine().calculate(normalized)
+            if indicators.atr_percent is not None:
+                atr_percent = indicators.atr_percent
+        except (TypeError, ValueError):
+            pass
+
+        self._volume_cache[symbol] = (
+            now, current, average, breakout, atr_percent
+        )
+        return current, average, breakout, atr_percent
 
     @staticmethod
     def _parse_volume_candles(klines) -> list[float]:

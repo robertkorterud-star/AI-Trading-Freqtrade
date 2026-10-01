@@ -135,3 +135,41 @@ def test_failed_volume_enrichment_falls_back_to_current_volume():
 
     assert observations[0].average_volume == observations[0].volume
     assert adapter.klines_calls == [("BTCUSDT", "1h", 25)]
+
+
+def test_binance_enrichment_exposes_canonical_atr_percent():
+    class VolatilityAdapter(FakeAdapter):
+        def get_klines(self, symbol, interval="1h", limit=24):
+            self.klines_calls.append((symbol, interval, limit))
+            rows = []
+            for index in range(limit):
+                close = 100.0 + index
+                rows.append([
+                    index * 3_600_000,
+                    str(close - 1.0),
+                    str(close + 2.0),
+                    str(close - 2.0),
+                    str(close),
+                    "1000",
+                    (index + 1) * 3_600_000 - 1,
+                    "1000000",
+                ])
+            return rows
+
+    tickers = [{
+        "symbol": "BTCUSDT",
+        "lastPrice": "124",
+        "highPrice": "125",
+        "lowPrice": "95",
+        "quoteVolume": "500000000",
+        "priceChangePercent": "2",
+    }]
+    adapter = VolatilityAdapter(tickers)
+    service = BinanceScannerService(
+        MarketData(adapter),
+        volume_enrichment_limit=1,
+    )
+
+    observations = service.observations()
+
+    assert observations[0].atr_percent > 0.0
