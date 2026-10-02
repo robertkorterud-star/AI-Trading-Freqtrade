@@ -75,6 +75,7 @@ def test_momentum_returns_hold_when_directions_do_not_align():
     signal = algorithm.generate_signal("BTC-USD", candles)
 
     assert signal.action is Action.HOLD
+    assert signal.score == 50.0
 
 
 def test_momentum_returns_sell_for_bearish_alignment():
@@ -100,6 +101,7 @@ def test_momentum_returns_sell_for_bearish_alignment():
     signal = algorithm.generate_signal("BTC-USD", candles)
 
     assert signal.action is Action.SELL
+    assert signal.score < 50.0
 
 
 def test_momentum_requires_enough_candles():

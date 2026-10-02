@@ -95,6 +95,7 @@ def test_vwap_returns_hold_without_confirmation():
     )
 
     assert signal.action is Action.HOLD
+    assert signal.score == 50.0
 
 
 def test_vwap_uses_volume_weighting():

@@ -84,10 +84,14 @@ class IntradayMeanReversionAlgorithm:
             else 0.0,
         )
 
-        score = round(
-            50.0 + 50.0 * strength,
-            4,
-        )
+        if action is Action.BUY:
+            score = 50.0 + 50.0 * strength
+        elif action is Action.SELL:
+            score = 50.0 - 50.0 * strength
+        else:
+            score = 50.0
+
+        score = round(score, 4)
 
         confidence = round(
             50.0 + 40.0 * strength,

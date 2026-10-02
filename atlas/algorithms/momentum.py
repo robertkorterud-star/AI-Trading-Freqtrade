@@ -164,7 +164,13 @@ class IntradayMomentumAlgorithm:
             action = Action.HOLD
 
         strength = min(1.0, abs(average_evidence))
-        score = round(50.0 + 50.0 * tanh(strength * 2.0), 4)
+        score = 50.0 + 50.0 * tanh(strength * 2.0)
+        if action is Action.HOLD:
+            score = 50.0
+        elif action is Action.SELL:
+            score = 100.0 - score
+
+        score = round(score, 4)
         confidence = round(50.0 + 40.0 * strength, 4)
 
         reasoning.append(f"Momentum indicator agreement: {average_evidence:.2f}.")

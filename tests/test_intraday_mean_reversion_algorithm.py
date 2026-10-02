@@ -85,6 +85,7 @@ def test_mean_reversion_returns_sell_signal():
     )
 
     assert signal.action is Action.SELL
+    assert signal.score < 50.0
 
 
 def test_mean_reversion_returns_hold_near_mean():
@@ -114,6 +115,7 @@ def test_mean_reversion_returns_hold_near_mean():
     )
 
     assert signal.action is Action.HOLD
+    assert signal.score == 50.0
 
 
 def test_mean_reversion_requires_enough_candles():

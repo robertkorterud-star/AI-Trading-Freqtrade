@@ -58,6 +58,7 @@ def test_trend_algorithm_generates_sell_signal():
     )
 
     assert result.action is Action.SELL
+    assert result.score < 50.0
 
 
 def test_trend_algorithm_can_hold():
@@ -73,6 +74,7 @@ def test_trend_algorithm_can_hold():
     )
 
     assert result.action is Action.HOLD
+    assert result.score == 50.0
 
 
 def test_trend_algorithm_rejects_insufficient_candles():

@@ -180,7 +180,9 @@ class IntradayVWAPAlgorithm:
 
         score = 50.0 + 50.0 * tanh(strength * 2.0)
 
-        if action is Action.SELL:
+        if action is Action.HOLD:
+            score = 50.0
+        elif action is Action.SELL:
             score = 100.0 - score
 
         confidence = 50.0 + 40.0 * strength
