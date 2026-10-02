@@ -5,6 +5,7 @@ Dashboard Service
 import time
 
 from atlas.adapters.binance_market_data import BinanceMarketDataAdapter
+from atlas.adapters.coingecko import CoinGeckoAdapter
 from atlas.services.binance_scanner_service import BinanceScannerService
 from atlas.services.dashboard_data_service import DashboardDataService
 from atlas.services.scanner_service import ScannerResult, ScannerService
@@ -72,7 +73,7 @@ class DashboardService:
                 return f"{value[:-len(quote_asset)]}-USD"
         return value
 
-    def __init__(self, config=None, binance_market_data=None):
+    def __init__(self, config=None, binance_market_data=None, crypto_metadata=None):
         resolved_config = config or AtlasConfig()
         database = Database(resolved_config.database_path)
         initialize_database(database)
@@ -104,6 +105,7 @@ class DashboardService:
         self.binance_scanner = BinanceScannerService(
             binance_market_data or BinanceMarketDataAdapter(),
             scanner=self.scanner,
+            crypto_metadata=crypto_metadata or CoinGeckoAdapter(),
         )
         self._scanner_cache = None
         self._scanner_cache_at = 0.0
