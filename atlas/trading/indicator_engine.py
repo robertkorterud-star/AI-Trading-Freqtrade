@@ -46,6 +46,18 @@ class IndicatorSnapshot:
     breakout20: bool
     breakout50: bool
 
+    swing_high: float | None
+    swing_low: float | None
+    swing_high_index: int | None
+    swing_low_index: int | None
+
+    fib_direction: str | None
+    fib_23_6: float | None
+    fib_38_2: float | None
+    fib_50_0: float | None
+    fib_61_8: float | None
+    fib_78_6: float | None
+
     data_quality: str
 
 
@@ -145,6 +157,31 @@ class IndicatorEngine:
             14,
         )
 
+        (
+            swing_high,
+            swing_low,
+            swing_high_index,
+            swing_low_index,
+        ) = self._confirmed_swings(
+            highs,
+            lows,
+            confirmation_bars=2,
+        )
+
+        (
+            fib_direction,
+            fib_23_6,
+            fib_38_2,
+            fib_50_0,
+            fib_61_8,
+            fib_78_6,
+        ) = self._fibonacci_retracement(
+            swing_high=swing_high,
+            swing_low=swing_low,
+            swing_high_index=swing_high_index,
+            swing_low_index=swing_low_index,
+        )
+
         return IndicatorSnapshot(
             close=close,
             sma20=sma20,
@@ -168,6 +205,16 @@ class IndicatorEngine:
             relative_volume=relative_volume,
             breakout20=breakout20,
             breakout50=breakout50,
+            swing_high=swing_high,
+            swing_low=swing_low,
+            swing_high_index=swing_high_index,
+            swing_low_index=swing_low_index,
+            fib_direction=fib_direction,
+            fib_23_6=fib_23_6,
+            fib_38_2=fib_38_2,
+            fib_50_0=fib_50_0,
+            fib_61_8=fib_61_8,
+            fib_78_6=fib_78_6,
             data_quality=self._data_quality(
                 len(closes)
             ),
@@ -198,6 +245,16 @@ class IndicatorEngine:
             relative_volume=None,
             breakout20=False,
             breakout50=False,
+            swing_high=None,
+            swing_low=None,
+            swing_high_index=None,
+            swing_low_index=None,
+            fib_direction=None,
+            fib_23_6=None,
+            fib_38_2=None,
+            fib_50_0=None,
+            fib_61_8=None,
+            fib_78_6=None,
             data_quality="MISSING",
         )
 
@@ -486,6 +543,131 @@ class IndicatorEngine:
             return None
 
         return volumes[-1] / average
+
+    @staticmethod
+    def _confirmed_swings(
+        highs: list[float],
+        lows: list[float],
+        confirmation_bars: int,
+    ) -> tuple[
+        float | None,
+        float | None,
+        int | None,
+        int | None,
+    ]:
+        """Return latest confirmed swing high and low.
+
+        A candidate must have ``confirmation_bars`` observations
+        on both sides. Only already-observed candles are inspected,
+        so a pivot cannot become visible before it is confirmed.
+        """
+
+        window = confirmation_bars * 2 + 1
+
+        if len(highs) < window or len(lows) < window:
+            return None, None, None, None
+
+        latest_high = None
+        latest_low = None
+        latest_high_index = None
+        latest_low_index = None
+
+        for index in range(
+            confirmation_bars,
+            len(highs) - confirmation_bars,
+        ):
+            left = index - confirmation_bars
+            right = index + confirmation_bars + 1
+
+            high = highs[index]
+            low = lows[index]
+
+            neighboring_highs = (
+                highs[left:index]
+                + highs[index + 1:right]
+            )
+            neighboring_lows = (
+                lows[left:index]
+                + lows[index + 1:right]
+            )
+
+            if all(
+                high > value
+                for value in neighboring_highs
+            ):
+                latest_high = high
+                latest_high_index = index
+
+            if all(
+                low < value
+                for value in neighboring_lows
+            ):
+                latest_low = low
+                latest_low_index = index
+
+        return (
+            latest_high,
+            latest_low,
+            latest_high_index,
+            latest_low_index,
+        )
+
+    @staticmethod
+    def _fibonacci_retracement(
+        *,
+        swing_high: float | None,
+        swing_low: float | None,
+        swing_high_index: int | None,
+        swing_low_index: int | None,
+    ) -> tuple[
+        str | None,
+        float | None,
+        float | None,
+        float | None,
+        float | None,
+        float | None,
+    ]:
+        """Calculate retracement levels from confirmed swing pivots."""
+
+        if (
+            swing_high is None
+            or swing_low is None
+            or swing_high_index is None
+            or swing_low_index is None
+            or swing_high <= swing_low
+            or swing_high_index == swing_low_index
+        ):
+            return (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+
+        swing_range = swing_high - swing_low
+
+        if swing_low_index < swing_high_index:
+            direction = "bullish"
+
+            def level(ratio: float) -> float:
+                return swing_high - swing_range * ratio
+
+        else:
+            direction = "bearish"
+
+            def level(ratio: float) -> float:
+                return swing_low + swing_range * ratio
+
+        return (
+            direction,
+            round(level(0.236), 8),
+            round(level(0.382), 8),
+            round(level(0.500), 8),
+            round(level(0.618), 8),
+            round(level(0.786), 8),
+        )
 
     @staticmethod
     def _breakout(
