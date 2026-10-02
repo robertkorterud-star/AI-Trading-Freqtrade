@@ -23,6 +23,7 @@ class BinanceScannerService:
     DEFAULT_VOLUME_ENRICHMENT_LIMIT = 15
     DEFAULT_RELATIVE_VOLUME_5M_DISCOVERY_LIMIT = 100
     DEFAULT_SPREAD_ENRICHMENT_LIMIT = 15
+    DEFAULT_MARKET_CAP_PAGES = 3
     DEFAULT_VOLUME_CACHE_TTL_SECONDS = 300.0
     DEFAULT_CATALYST_CACHE_TTL_SECONDS = 3600.0
     DEFAULT_ENRICHMENT_WORKERS = 8
@@ -203,8 +204,15 @@ class BinanceScannerService:
         if self.crypto_metadata is None:
             return {}
 
+        markets: list[dict] = []
+        previous_page = None
         try:
-            markets = self.crypto_metadata.get_markets()
+            for page in range(1, self.DEFAULT_MARKET_CAP_PAGES + 1):
+                current_page = self.crypto_metadata.get_markets(page=page)
+                if not current_page or current_page == previous_page:
+                    break
+                markets.extend(current_page)
+                previous_page = current_page
         except Exception:
             return {}
 

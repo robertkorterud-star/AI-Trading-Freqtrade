@@ -295,3 +295,45 @@ def test_binance_scanner_does_not_guess_market_cap_for_duplicate_crypto_symbol()
     by_symbol = {item.symbol: item for item in observations}
 
     assert by_symbol["BTCUSDT"].market_cap is None
+
+
+def test_binance_scanner_market_cap_enrichment_reads_later_pages():
+    class PaginatedCryptoMetadata:
+        def __init__(self):
+            self.calls = []
+
+        def get_markets(self, **kwargs):
+            self.calls.append(kwargs)
+            if kwargs.get("page", 1) == 1:
+                return [
+                    {
+                        "id": "bitcoin",
+                        "symbol": "btc",
+                        "market_cap": 2_000_000_000_000,
+                    },
+                ]
+            if kwargs["page"] == 2:
+                return [
+                    {
+                        "id": "ethereum",
+                        "symbol": "eth",
+                        "market_cap": 500_000_000_000,
+                    },
+                ]
+            return []
+
+    metadata = PaginatedCryptoMetadata()
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=FakeBinanceAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=0,
+        crypto_metadata=metadata,
+    )
+
+    observations = service.observations()
+    by_symbol = {item.symbol: item for item in observations}
+
+    assert by_symbol["BTCUSDT"].market_cap == 2_000_000_000_000
+    assert by_symbol["ETHUSDT"].market_cap == 500_000_000_000
+    assert any(call.get("page") == 2 for call in metadata.calls)
