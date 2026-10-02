@@ -207,3 +207,35 @@ def test_signal_evidence_marks_stale_market_data_poor():
 
     assert result.technical_quality == "GOOD"
     assert result.evidence_quality == "POOR"
+
+
+def test_signal_evidence_exposes_bullish_fibonacci_structure():
+    candles = [
+        {"open": 99, "high": 100, "low": 98, "close": 99, "volume": 1000},
+        {"open": 100, "high": 101, "low": 97, "close": 100, "volume": 1000},
+        {"open": 100, "high": 102, "low": 95, "close": 101, "volume": 1000},
+        {"open": 102, "high": 104, "low": 98, "close": 103, "volume": 1000},
+        {"open": 104, "high": 110, "low": 101, "close": 108, "volume": 1000},
+        {"open": 107, "high": 108, "low": 102, "close": 105, "volume": 1000},
+        {"open": 105, "high": 106, "low": 101, "close": 103, "volume": 1000},
+    ]
+
+    indicators = IndicatorEngine().calculate(candles)
+
+    result = SignalEvidenceAnalyzer().analyze(
+        indicators,
+        _mtf(),
+    )
+
+    assert result.fibonacci_signal == "BULLISH"
+
+
+def test_signal_evidence_marks_missing_fibonacci_unknown():
+    indicators = IndicatorEngine().calculate([])
+
+    result = SignalEvidenceAnalyzer().analyze(
+        indicators,
+        _mtf(),
+    )
+
+    assert result.fibonacci_signal == "UNKNOWN"

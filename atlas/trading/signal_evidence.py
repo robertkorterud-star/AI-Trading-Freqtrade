@@ -36,6 +36,8 @@ class SignalEvidence:
 
     evidence_quality: str
 
+    fibonacci_signal: str = "UNKNOWN"
+
 
 class SignalEvidenceAnalyzer:
     """Extract structured evidence from existing analysis."""
@@ -77,6 +79,10 @@ class SignalEvidenceAnalyzer:
             indicators
         )
 
+        fibonacci_signal = self._fibonacci(
+            indicators
+        )
+
         technical_quality = (
             indicators.data_quality
         )
@@ -97,6 +103,7 @@ class SignalEvidenceAnalyzer:
             macd_signal=macd_signal,
             bollinger_signal=bollinger_signal,
             adx_signal=adx_signal,
+            fibonacci_signal=fibonacci_signal,
             technical_quality=technical_quality,
             multi_timeframe_signal=(
                 multi_timeframe.overall_signal
@@ -269,6 +276,19 @@ class SignalEvidenceAnalyzer:
             return "WEAK_TREND"
 
         return "MODERATE_TREND"
+
+    @staticmethod
+    def _fibonacci(
+        indicators: IndicatorSnapshot,
+    ) -> str:
+
+        if indicators.fib_direction == "bullish":
+            return "BULLISH"
+
+        if indicators.fib_direction == "bearish":
+            return "BEARISH"
+
+        return "UNKNOWN"
 
     @staticmethod
     def _quality(
