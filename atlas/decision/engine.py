@@ -129,6 +129,9 @@ class DecisionEngine:
     def _algorithm_signal_to_analysis(signal) -> AnalysisResult:
         """Adapt one AlgorithmSignal to the canonical analysis contract."""
         score = float(getattr(signal, "score", 50.0))
+        algorithm = str(getattr(signal, "algorithm", ""))
+        if algorithm.startswith("agent:") or algorithm == "market_intelligence":
+            score = 50.0 + max(-1.0, min(1.0, score)) * 50.0
         evidence = max(0.0, min(100.0, abs(score - 50.0) * 2.0))
         confidence = DecisionEngine._normalize_algorithm_confidence(
             float(getattr(signal, "confidence", 0.0))

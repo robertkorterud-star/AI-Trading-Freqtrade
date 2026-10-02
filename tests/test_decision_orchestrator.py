@@ -583,3 +583,49 @@ def test_agent_bearish_signal_reaches_sell_decision():
 
     assert result.decision.action.value == "sell"
     assert result.decision.score <= -0.55
+
+
+def test_neutral_agent_does_not_create_maximum_hold_evidence():
+    from types import SimpleNamespace
+
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+
+    observation = SimpleNamespace(
+        agent="neutral_evidence_agent",
+        symbol="BTC-USD",
+        score=0.0,
+        confidence=0.5,
+        direction="neutral",
+        reason="no directional conviction",
+    )
+
+    result = DecisionOrchestrator().decide(
+        symbol="BTC-USD",
+        signals=[],
+        observations=[observation],
+    )
+
+    canonical = result.canonical_decision
+
+    assert canonical is not None
+    assert canonical.action is Action.HOLD
+    assert canonical.evidence == 0.0
+
+
+def test_neutral_market_intelligence_does_not_create_maximum_hold_evidence():
+    from atlas.algorithms.base import AlgorithmSignal
+    from atlas.decision.engine import DecisionEngine
+
+    signal = AlgorithmSignal(
+        algorithm="market_intelligence",
+        symbol="BTC-USD",
+        timeframe="multi",
+        action=Action.HOLD,
+        score=0.0,
+        confidence=0.5,
+    )
+
+    result = DecisionEngine().evaluate_algorithm_signals([signal])
+
+    assert result.action is Action.HOLD
+    assert result.evidence == 0.0
