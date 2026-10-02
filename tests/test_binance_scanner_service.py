@@ -3,6 +3,23 @@ from atlas.services.binance_scanner_service import BinanceScannerService
 
 
 class FakeBinanceAdapter:
+    def get_exchange_info(self, symbol=None):
+        symbols = [
+            {
+                "symbol": ticker["symbol"],
+                "status": "TRADING",
+                "isSpotTradingAllowed": True,
+            }
+            for ticker in self.get_24hr_tickers()
+            if str(ticker.get("symbol", "")).endswith(("USDT", "USDC"))
+        ]
+        if symbol is not None:
+            symbols = [
+                market for market in symbols
+                if market["symbol"] == symbol
+            ]
+        return {"symbols": symbols}
+
     def get_24hr_tickers(self):
         return [
             {
@@ -153,3 +170,48 @@ def test_observations_uses_24h_range_position_for_enrichment_selection():
         "MOMENTUMUSDT",
         "EARLYUSDT",
     }
+
+
+def test_binance_scanner_excludes_markets_not_currently_trading():
+    class MarketStatusAdapter(FakeBinanceAdapter):
+        def get_24hr_tickers(self):
+            return [
+                {
+                    "symbol": "BTCUSDT",
+                    "lastPrice": "100000",
+                    "quoteVolume": "500000000",
+                    "priceChangePercent": "2",
+                },
+                {
+                    "symbol": "CREAMUSDT",
+                    "lastPrice": "10",
+                    "quoteVolume": "5000000",
+                    "priceChangePercent": "65",
+                },
+            ]
+
+        def get_exchange_info(self, symbol=None):
+            return {
+                "symbols": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "status": "TRADING",
+                        "isSpotTradingAllowed": True,
+                    },
+                    {
+                        "symbol": "CREAMUSDT",
+                        "status": "BREAK",
+                        "isSpotTradingAllowed": True,
+                    },
+                ]
+            }
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=MarketStatusAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+    )
+
+    observations = service.observations()
+
+    assert [item.symbol for item in observations] == ["BTCUSDT"]

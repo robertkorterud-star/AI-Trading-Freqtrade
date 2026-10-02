@@ -4,6 +4,22 @@ from atlas.services.binance_scanner_service import BinanceScannerService
 
 
 class FakeAdapter:
+    def get_exchange_info(self, symbol=None):
+        symbols = [
+            {
+                "symbol": ticker["symbol"],
+                "status": "TRADING",
+                "isSpotTradingAllowed": True,
+            }
+            for ticker in self.tickers
+        ]
+        if symbol is not None:
+            symbols = [
+                market for market in symbols
+                if market["symbol"] == symbol
+            ]
+        return {"symbols": symbols}
+
     def __init__(self, tickers):
         self.tickers = tickers
         self.klines_calls = []

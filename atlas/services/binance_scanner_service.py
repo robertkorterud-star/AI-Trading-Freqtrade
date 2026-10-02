@@ -106,12 +106,21 @@ class BinanceScannerService:
     def observations(self) -> list[MarketObservation]:
         """Convert eligible USDT/USDC tickers into scanner observations."""
         tickers = self.market_data.adapter.get_24hr_tickers()
+        exchange_info = self.market_data.adapter.get_exchange_info()
+        trading_symbols = {
+            str(market.get("symbol", "")).strip().upper()
+            for market in exchange_info.get("symbols", [])
+            if market.get("status") == "TRADING"
+            and market.get("isSpotTradingAllowed") is True
+        }
         eligible: list[tuple[str, float, float, float, float]] = []
 
         for ticker in tickers:
             symbol = str(ticker.get("symbol", "")).strip().upper()
             quote_asset = self._quote_asset(symbol)
             if quote_asset not in self.quote_assets:
+                continue
+            if symbol not in trading_symbols:
                 continue
 
             try:
