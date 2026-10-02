@@ -67,6 +67,7 @@ class BinanceScannerService:
         volume_cache_ttl_seconds: float = DEFAULT_VOLUME_CACHE_TTL_SECONDS,
         news_adapter=None,
         catalyst_cache_ttl_seconds: float = DEFAULT_CATALYST_CACHE_TTL_SECONDS,
+        crypto_metadata=None,
     ) -> None:
         self.market_data = market_data
         self.scanner = scanner or ScannerService()
@@ -82,6 +83,7 @@ class BinanceScannerService:
         self.volume_cache_ttl_seconds = max(0.0, volume_cache_ttl_seconds)
         self.news_adapter = news_adapter
         self.catalyst_cache_ttl_seconds = max(0.0, catalyst_cache_ttl_seconds)
+        self.crypto_metadata = crypto_metadata
         self._volume_cache: dict[
             str,
             tuple[float, float, float, float, float]
@@ -166,6 +168,7 @@ class BinanceScannerService:
             relative_volume_5m_symbols
         )
         spreads = self._enrich_spreads(spread_symbols)
+        market_caps = self._market_caps()
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent, _ in eligible:
             volume = quote_volume
@@ -190,9 +193,51 @@ class BinanceScannerService:
                     relative_volume_5m=relative_volume_5m.get(symbol, 0.0),
                     liquid=True,
                     bid_ask_spread_percent=spreads.get(symbol),
+                    market_cap=market_caps.get(self._base_asset(symbol)),
                 )
             )
         return observations
+
+    def _market_caps(self) -> dict[str, float]:
+        """Return positive market caps keyed by normalized crypto symbol."""
+        if self.crypto_metadata is None:
+            return {}
+
+        try:
+            markets = self.crypto_metadata.get_markets()
+        except Exception:
+            return {}
+
+        market_caps: dict[str, float] = {}
+        ambiguous_symbols: set[str] = set()
+
+        for market in markets:
+            symbol = str(market.get("symbol", "")).strip().upper()
+            try:
+                market_cap = float(market.get("market_cap"))
+            except (TypeError, ValueError):
+                continue
+
+            if not symbol or market_cap <= 0.0:
+                continue
+
+            if symbol in market_caps:
+                ambiguous_symbols.add(symbol)
+                continue
+
+            market_caps[symbol] = market_cap
+
+        for symbol in ambiguous_symbols:
+            market_caps.pop(symbol, None)
+
+        return market_caps
+
+    def _base_asset(self, symbol: str) -> str:
+        """Return the base asset for a configured scanner quote pair."""
+        for quote_asset in sorted(self.quote_assets, key=len, reverse=True):
+            if symbol.endswith(quote_asset):
+                return symbol[:-len(quote_asset)]
+        return symbol
 
     def _enrich_spreads(
         self,

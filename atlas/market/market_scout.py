@@ -31,6 +31,7 @@ class MarketObservation:
     gap_percent: float = 0.0
     relative_volume_5m: float = 0.0
     float_shares: float | None = None
+    market_cap: float | None = None
     atr_percent: float = 0.0
     news_catalyst: bool = False
     liquid: bool = True

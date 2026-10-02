@@ -112,3 +112,16 @@ def test_scout_evidence_is_explainable_and_bounded():
     assert 0.0 <= evidence.breakout_score <= 100.0
     assert evidence.catalyst_score == 100.0
     assert evidence.reasons
+
+
+def test_market_observation_accepts_optional_market_cap():
+    observation = MarketObservation(
+        symbol="BTCUSDT",
+        asset_type=AssetType.CRYPTO,
+        price=100.0,
+        volume=1_000_000.0,
+        average_volume=500_000.0,
+        market_cap=50_000_000.0,
+    )
+
+    assert observation.market_cap == 50_000_000.0

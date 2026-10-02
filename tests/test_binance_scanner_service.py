@@ -215,3 +215,83 @@ def test_binance_scanner_excludes_markets_not_currently_trading():
     observations = service.observations()
 
     assert [item.symbol for item in observations] == ["BTCUSDT"]
+
+
+def test_binance_scanner_enriches_market_cap_from_crypto_metadata():
+    class FakeCryptoMetadata:
+        def get_markets(self, **kwargs):
+            return [
+                {
+                    "id": "bitcoin",
+                    "symbol": "btc",
+                    "market_cap": 2_000_000_000_000,
+                },
+                {
+                    "id": "ethereum",
+                    "symbol": "eth",
+                    "market_cap": 500_000_000_000,
+                },
+            ]
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=FakeBinanceAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=0,
+        crypto_metadata=FakeCryptoMetadata(),
+    )
+
+    observations = service.observations()
+    by_symbol = {item.symbol: item for item in observations}
+
+    assert by_symbol["BTCUSDT"].market_cap == 2_000_000_000_000
+    assert by_symbol["ETHUSDT"].market_cap == 500_000_000_000
+
+
+def test_binance_scanner_market_cap_enrichment_fails_open():
+    class FailingCryptoMetadata:
+        def get_markets(self, **kwargs):
+            raise RuntimeError("CoinGecko unavailable")
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=FakeBinanceAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=0,
+        crypto_metadata=FailingCryptoMetadata(),
+    )
+
+    observations = service.observations()
+
+    assert [item.symbol for item in observations] == ["BTCUSDT", "ETHUSDT"]
+    assert all(item.market_cap is None for item in observations)
+
+
+def test_binance_scanner_does_not_guess_market_cap_for_duplicate_crypto_symbol():
+    class DuplicateCryptoMetadata:
+        def get_markets(self, **kwargs):
+            return [
+                {
+                    "id": "foo-one",
+                    "symbol": "btc",
+                    "market_cap": 1_000_000,
+                },
+                {
+                    "id": "foo-two",
+                    "symbol": "btc",
+                    "market_cap": 9_000_000,
+                },
+            ]
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=FakeBinanceAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=0,
+        crypto_metadata=DuplicateCryptoMetadata(),
+    )
+
+    observations = service.observations()
+    by_symbol = {item.symbol: item for item in observations}
+
+    assert by_symbol["BTCUSDT"].market_cap is None
