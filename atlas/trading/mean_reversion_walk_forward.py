@@ -104,14 +104,26 @@ class MeanReversionWalkForward:
                 + test_size
             )
 
+            context_start = max(
+                0,
+                test_start - self.lookback_period,
+            )
+
             test_bars = list(
                 data.bars[
-                    test_start:test_end
+                    context_start:test_end
                 ]
             )
 
-            if len(test_bars) < test_size:
+            if (
+                test_end - test_start
+                < test_size
+            ):
                 break
+
+            evaluation_start_index = (
+                test_start - context_start
+            )
 
             test_data = HistoricalMarketData(
                 symbol=data.symbol,
@@ -133,7 +145,12 @@ class MeanReversionWalkForward:
                 slippage_percent=(
                     self.slippage_percent
                 ),
-            ).run(test_data)
+            ).run(
+                test_data,
+                evaluation_start_index=(
+                    evaluation_start_index
+                ),
+            )
 
             windows.append(
                 MeanReversionWalkForwardWindow(

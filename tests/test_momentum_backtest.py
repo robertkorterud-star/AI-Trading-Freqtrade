@@ -165,3 +165,34 @@ def test_momentum_handles_declining_market():
     )
 
     assert result.strategy_return_percent > -100.0
+
+
+def test_evaluation_start_uses_warmup_but_excludes_earlier_trades():
+
+    closes = [
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        105.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        110.0,
+        100.0,
+    ]
+
+    result = MomentumBacktester(
+        lookback_period=5,
+        transaction_cost_percent=0.0,
+        slippage_percent=0.0,
+    ).run(
+        _data(closes),
+        evaluation_start_index=10,
+    )
+
+    assert result.trade_count == 1
+    assert result.trades[0].entry_index == 10
+    assert result.trades[0].exit_index == 11

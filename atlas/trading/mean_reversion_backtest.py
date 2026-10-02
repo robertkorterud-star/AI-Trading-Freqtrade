@@ -62,9 +62,20 @@ class MeanReversionBacktester:
     def run(
         self,
         data: HistoricalMarketData,
+        *,
+        evaluation_start_index: int = 0,
     ) -> MeanReversionBacktestResult:
 
         closes = data.closes
+
+        if (
+            evaluation_start_index < 0
+            or evaluation_start_index > len(closes)
+        ):
+            raise ValueError(
+                "evaluation_start_index must be between "
+                "0 and len(data)."
+            )
 
         if len(closes) <= self.lookback_period:
             return MeanReversionBacktestResult(
@@ -93,7 +104,10 @@ class MeanReversionBacktester:
         )
 
         for index in range(
-            self.lookback_period,
+            max(
+                self.lookback_period,
+                evaluation_start_index,
+            ),
             len(closes),
         ):
 
@@ -220,10 +234,20 @@ class MeanReversionBacktester:
             capital - 1.0
         ) * 100.0
 
+        benchmark_start = max(
+            evaluation_start_index,
+            0,
+        )
+
         buy_and_hold = (
-            (closes[-1] - closes[0])
-            / closes[0]
+            (
+                closes[-1]
+                - closes[benchmark_start]
+            )
+            / closes[benchmark_start]
             * 100.0
+            if benchmark_start < len(closes)
+            else 0.0
         )
 
         peak = equity_curve[0]

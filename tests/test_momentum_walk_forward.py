@@ -163,3 +163,19 @@ def test_large_windows_produce_no_results():
     assert result.windows == ()
     assert result.positive_windows == 0
     assert result.negative_windows == 0
+
+
+def test_walk_forward_uses_pre_test_history_for_lookback():
+
+    result = MomentumWalkForward(
+        lookback_period=20,
+    ).evaluate(
+        _data(),
+        train_size=50,
+        test_size=20,
+    )
+
+    assert any(
+        window.strategy_return_percent != 0.0
+        for window in result.windows
+    )

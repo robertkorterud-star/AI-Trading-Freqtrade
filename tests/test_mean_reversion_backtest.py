@@ -189,3 +189,27 @@ def test_short_dataset_returns_zero_result():
 
     assert result.strategy_return_percent == 0.0
     assert result.trade_count == 0
+
+
+def test_evaluation_start_uses_warmup_but_excludes_earlier_trades():
+
+    closes = (
+        [100.0] * 5
+        + [90.0, 100.0]
+        + [100.0] * 3
+        + [90.0, 100.0]
+    )
+
+    result = MeanReversionBacktester(
+        lookback_period=5,
+        entry_deviation_percent=2.0,
+        transaction_cost_percent=0.0,
+        slippage_percent=0.0,
+    ).run(
+        _data(closes),
+        evaluation_start_index=10,
+    )
+
+    assert result.trade_count == 1
+    assert result.trades[0].entry_index == 10
+    assert result.trades[0].exit_index == 11
