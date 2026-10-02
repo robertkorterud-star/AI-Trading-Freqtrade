@@ -57,6 +57,8 @@ class IndicatorSnapshot:
     fib_50_0: float | None
     fib_61_8: float | None
     fib_78_6: float | None
+    fib_nearest_level: float | None
+    fib_distance_atr: float | None
 
     data_quality: str
 
@@ -182,6 +184,25 @@ class IndicatorEngine:
             swing_low_index=swing_low_index,
         )
 
+        fib_nearest_level = self._nearest_fibonacci_level(
+            close,
+            fib_23_6,
+            fib_38_2,
+            fib_50_0,
+            fib_61_8,
+            fib_78_6,
+        )
+
+        fib_distance_atr = (
+            abs(close - fib_nearest_level) / atr14
+            if (
+                fib_nearest_level is not None
+                and atr14 is not None
+                and atr14 > 0
+            )
+            else None
+        )
+
         return IndicatorSnapshot(
             close=close,
             sma20=sma20,
@@ -215,6 +236,8 @@ class IndicatorEngine:
             fib_50_0=fib_50_0,
             fib_61_8=fib_61_8,
             fib_78_6=fib_78_6,
+            fib_nearest_level=fib_nearest_level,
+            fib_distance_atr=fib_distance_atr,
             data_quality=self._data_quality(
                 len(closes)
             ),
@@ -255,6 +278,8 @@ class IndicatorEngine:
             fib_50_0=None,
             fib_61_8=None,
             fib_78_6=None,
+            fib_nearest_level=None,
+            fib_distance_atr=None,
             data_quality="MISSING",
         )
 
@@ -610,6 +635,25 @@ class IndicatorEngine:
             latest_low,
             latest_high_index,
             latest_low_index,
+        )
+
+    @staticmethod
+    def _nearest_fibonacci_level(
+        close: float,
+        *levels: float | None,
+    ) -> float | None:
+        available_levels = [
+            level
+            for level in levels
+            if level is not None
+        ]
+
+        if not available_levels:
+            return None
+
+        return min(
+            available_levels,
+            key=lambda level: abs(close - level),
         )
 
     @staticmethod

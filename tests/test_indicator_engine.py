@@ -1,3 +1,5 @@
+import pytest
+
 from atlas.trading.indicator_engine import (
     IndicatorEngine,
 )
@@ -217,3 +219,72 @@ def test_indicator_engine_calculates_bearish_fibonacci_from_confirmed_swing():
     assert result.fib_50_0 == 102.5
     assert result.fib_61_8 == 104.27
     assert result.fib_78_6 == 106.79
+
+
+def test_indicator_engine_finds_nearest_fibonacci_level():
+    candles = [
+        {"open": 99, "high": 100, "low": 98, "close": 99, "volume": 1000},
+        {"open": 100, "high": 101, "low": 97, "close": 100, "volume": 1000},
+        {"open": 100, "high": 102, "low": 95, "close": 101, "volume": 1000},
+        {"open": 102, "high": 104, "low": 98, "close": 103, "volume": 1000},
+        {"open": 104, "high": 110, "low": 101, "close": 108, "volume": 1000},
+        {"open": 107, "high": 108, "low": 102, "close": 105, "volume": 1000},
+        {"open": 105, "high": 106, "low": 101, "close": 103, "volume": 1000},
+    ]
+
+    result = IndicatorEngine().calculate(candles)
+
+    assert result.close == 103.0
+    assert result.fib_nearest_level == 102.5
+
+
+def test_indicator_engine_has_no_nearest_fibonacci_without_confirmed_swing():
+    result = IndicatorEngine().calculate([])
+
+    assert result.fib_nearest_level is None
+
+
+def test_indicator_engine_normalizes_nearest_fibonacci_distance_by_atr():
+    candles = [
+        {"open": 99, "high": 100, "low": 98, "close": 99, "volume": 1000},
+        {"open": 98, "high": 99, "low": 97, "close": 98, "volume": 1000},
+        {"open": 96, "high": 97, "low": 95, "close": 96, "volume": 1000},
+        {"open": 97, "high": 98, "low": 96, "close": 97, "volume": 1000},
+        {"open": 98, "high": 99, "low": 97, "close": 98, "volume": 1000},
+        {"open": 99, "high": 100, "low": 98, "close": 99, "volume": 1000},
+        {"open": 101, "high": 102, "low": 100, "close": 101, "volume": 1000},
+        {"open": 103, "high": 104, "low": 102, "close": 103, "volume": 1000},
+        {"open": 105, "high": 106, "low": 104, "close": 105, "volume": 1000},
+        {"open": 107, "high": 108, "low": 106, "close": 107, "volume": 1000},
+        {"open": 109, "high": 110, "low": 108, "close": 109, "volume": 1000},
+        {"open": 107, "high": 108, "low": 106, "close": 107, "volume": 1000},
+        {"open": 105, "high": 106, "low": 104, "close": 105, "volume": 1000},
+        {"open": 103, "high": 104, "low": 102, "close": 103, "volume": 1000},
+        {"open": 103, "high": 104, "low": 102, "close": 103, "volume": 1000},
+    ]
+
+    result = IndicatorEngine().calculate(candles)
+
+    assert result.swing_low == 95.0
+    assert result.swing_high == 110.0
+    assert result.fib_nearest_level == 102.5
+    assert result.atr14 == 2.642857142857143
+    assert result.fib_distance_atr == pytest.approx(0.1891891891891892)
+
+
+def test_indicator_engine_has_no_fibonacci_distance_without_atr():
+    candles = [
+        {"open": 99, "high": 100, "low": 98, "close": 99, "volume": 1000},
+        {"open": 100, "high": 101, "low": 97, "close": 100, "volume": 1000},
+        {"open": 100, "high": 102, "low": 95, "close": 101, "volume": 1000},
+        {"open": 102, "high": 104, "low": 98, "close": 103, "volume": 1000},
+        {"open": 104, "high": 110, "low": 101, "close": 108, "volume": 1000},
+        {"open": 107, "high": 108, "low": 102, "close": 105, "volume": 1000},
+        {"open": 105, "high": 106, "low": 101, "close": 103, "volume": 1000},
+    ]
+
+    result = IndicatorEngine().calculate(candles)
+
+    assert result.fib_nearest_level == 102.5
+    assert result.atr14 is None
+    assert result.fib_distance_atr is None
