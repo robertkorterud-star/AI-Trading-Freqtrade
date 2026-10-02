@@ -337,3 +337,33 @@ def test_binance_scanner_market_cap_enrichment_reads_later_pages():
     assert by_symbol["BTCUSDT"].market_cap == 2_000_000_000_000
     assert by_symbol["ETHUSDT"].market_cap == 500_000_000_000
     assert any(call.get("page") == 2 for call in metadata.calls)
+
+
+def test_binance_scanner_enriches_order_book_depth_for_shortlisted_markets():
+    class OrderBookDepthAdapter(FakeBinanceAdapter):
+        def get_order_book(self, symbol, limit=5):
+            assert limit == 5
+            if symbol == "BTCUSDT":
+                return {
+                    "bids": [
+                        ["99900", "2.0"],
+                        ["99800", "3.0"],
+                    ],
+                    "asks": [
+                        ["100100", "1.5"],
+                        ["100200", "2.5"],
+                    ],
+                }
+            return {"bids": [], "asks": []}
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=OrderBookDepthAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=1,
+    )
+
+    observations = service.observations()
+    by_symbol = {item.symbol: item for item in observations}
+
+    assert by_symbol["BTCUSDT"].order_book_depth_quote == 899_850.0

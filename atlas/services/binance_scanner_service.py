@@ -168,7 +168,7 @@ class BinanceScannerService:
         relative_volume_5m = self._enrich_relative_volume_5m(
             relative_volume_5m_symbols
         )
-        spreads = self._enrich_spreads(spread_symbols)
+        market_quality = self._enrich_market_quality(spread_symbols)
         market_caps = self._market_caps()
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent, _ in eligible:
@@ -193,7 +193,16 @@ class BinanceScannerService:
                     atr_percent=atr_percent,
                     relative_volume_5m=relative_volume_5m.get(symbol, 0.0),
                     liquid=True,
-                    bid_ask_spread_percent=spreads.get(symbol),
+                    bid_ask_spread_percent=(
+                        market_quality[symbol][0]
+                        if symbol in market_quality
+                        else None
+                    ),
+                    order_book_depth_quote=(
+                        market_quality[symbol][1]
+                        if symbol in market_quality
+                        else None
+                    ),
                     market_cap=market_caps.get(self._base_asset(symbol)),
                 )
             )
@@ -247,33 +256,33 @@ class BinanceScannerService:
                 return symbol[:-len(quote_asset)]
         return symbol
 
-    def _enrich_spreads(
+    def _enrich_market_quality(
         self,
         symbols: set[str],
-    ) -> dict[str, float]:
-        """Fetch best quoted bid/ask spreads concurrently."""
+    ) -> dict[str, tuple[float, float]]:
+        """Fetch quoted spread and visible order-book depth concurrently."""
         if not symbols:
             return {}
 
         workers = min(self.DEFAULT_ENRICHMENT_WORKERS, len(symbols))
-        results: dict[str, float] = {}
+        results: dict[str, tuple[float, float]] = {}
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
-                executor.submit(self._bid_ask_spread_percent, symbol): symbol
+                executor.submit(self._market_quality, symbol): symbol
                 for symbol in symbols
             }
             for future in as_completed(futures):
                 symbol = futures[future]
                 try:
-                    spread = future.result()
+                    quality = future.result()
                 except Exception:
                     continue
-                if spread is not None:
-                    results[symbol] = spread
+                if quality is not None:
+                    results[symbol] = quality
         return results
 
-    def _bid_ask_spread_percent(self, symbol: str) -> float | None:
-        """Return the best quoted bid/ask spread as percent of midpoint."""
+    def _market_quality(self, symbol: str) -> tuple[float, float] | None:
+        """Return quoted spread percent and visible depth in quote currency."""
         try:
             order_book = self.market_data.adapter.get_order_book(
                 symbol,
@@ -281,14 +290,20 @@ class BinanceScannerService:
             )
             best_bid = float(order_book["bids"][0][0])
             best_ask = float(order_book["asks"][0][0])
+            depth = sum(
+                float(price) * float(quantity)
+                for side in ("bids", "asks")
+                for price, quantity in order_book[side]
+            )
         except (KeyError, IndexError, TypeError, ValueError):
             return None
 
-        if best_bid <= 0.0 or best_ask <= best_bid:
+        if best_bid <= 0.0 or best_ask <= best_bid or depth <= 0.0:
             return None
 
         midpoint = (best_bid + best_ask) / 2.0
-        return (best_ask - best_bid) / midpoint * 100.0
+        spread = (best_ask - best_bid) / midpoint * 100.0
+        return spread, depth
 
     def _enrich_relative_volume_5m(
         self,

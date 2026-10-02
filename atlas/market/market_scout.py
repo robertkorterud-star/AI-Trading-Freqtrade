@@ -37,6 +37,7 @@ class MarketObservation:
     liquid: bool = True
     breakout_percent: float = 0.0
     bid_ask_spread_percent: float | None = None
+    order_book_depth_quote: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
