@@ -22,6 +22,7 @@ class BinanceScannerService:
     DEFAULT_VOLUME_SAMPLES = 24
     DEFAULT_VOLUME_ENRICHMENT_LIMIT = 15
     DEFAULT_RELATIVE_VOLUME_5M_DISCOVERY_LIMIT = 100
+    DEFAULT_SPREAD_ENRICHMENT_LIMIT = 15
     DEFAULT_VOLUME_CACHE_TTL_SECONDS = 300.0
     DEFAULT_CATALYST_CACHE_TTL_SECONDS = 3600.0
     DEFAULT_ENRICHMENT_WORKERS = 8
@@ -62,6 +63,7 @@ class BinanceScannerService:
         volume_samples: int = DEFAULT_VOLUME_SAMPLES,
         volume_enrichment_limit: int = DEFAULT_VOLUME_ENRICHMENT_LIMIT,
         relative_volume_5m_discovery_limit: int = DEFAULT_RELATIVE_VOLUME_5M_DISCOVERY_LIMIT,
+        spread_enrichment_limit: int = DEFAULT_SPREAD_ENRICHMENT_LIMIT,
         volume_cache_ttl_seconds: float = DEFAULT_VOLUME_CACHE_TTL_SECONDS,
         news_adapter=None,
         catalyst_cache_ttl_seconds: float = DEFAULT_CATALYST_CACHE_TTL_SECONDS,
@@ -76,6 +78,7 @@ class BinanceScannerService:
         self.relative_volume_5m_discovery_limit = max(
             0, relative_volume_5m_discovery_limit
         )
+        self.spread_enrichment_limit = max(0, spread_enrichment_limit)
         self.volume_cache_ttl_seconds = max(0.0, volume_cache_ttl_seconds)
         self.news_adapter = news_adapter
         self.catalyst_cache_ttl_seconds = max(0.0, catalyst_cache_ttl_seconds)
@@ -151,6 +154,10 @@ class BinanceScannerService:
             eligible,
             limit=self.relative_volume_5m_discovery_limit,
         )
+        spread_symbols = self._select_volume_enrichment_symbols(
+            eligible,
+            limit=self.spread_enrichment_limit,
+        )
         catalyst_symbols = self._catalyst_symbols_for_universe(
             symbol for symbol, _, _, _, _ in eligible
         )
@@ -158,6 +165,7 @@ class BinanceScannerService:
         relative_volume_5m = self._enrich_relative_volume_5m(
             relative_volume_5m_symbols
         )
+        spreads = self._enrich_spreads(spread_symbols)
         observations: list[MarketObservation] = []
         for symbol, price, quote_volume, change_percent, _ in eligible:
             volume = quote_volume
@@ -181,9 +189,53 @@ class BinanceScannerService:
                     atr_percent=atr_percent,
                     relative_volume_5m=relative_volume_5m.get(symbol, 0.0),
                     liquid=True,
+                    bid_ask_spread_percent=spreads.get(symbol),
                 )
             )
         return observations
+
+    def _enrich_spreads(
+        self,
+        symbols: set[str],
+    ) -> dict[str, float]:
+        """Fetch best quoted bid/ask spreads concurrently."""
+        if not symbols:
+            return {}
+
+        workers = min(self.DEFAULT_ENRICHMENT_WORKERS, len(symbols))
+        results: dict[str, float] = {}
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(self._bid_ask_spread_percent, symbol): symbol
+                for symbol in symbols
+            }
+            for future in as_completed(futures):
+                symbol = futures[future]
+                try:
+                    spread = future.result()
+                except Exception:
+                    continue
+                if spread is not None:
+                    results[symbol] = spread
+        return results
+
+    def _bid_ask_spread_percent(self, symbol: str) -> float | None:
+        """Return the best quoted bid/ask spread as percent of midpoint."""
+        try:
+            order_book = self.market_data.adapter.get_order_book(
+                symbol,
+                limit=5,
+            )
+            best_bid = float(order_book["bids"][0][0])
+            best_ask = float(order_book["asks"][0][0])
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+
+        if best_bid <= 0.0 or best_ask <= best_bid:
+            return None
+
+        midpoint = (best_bid + best_ask) / 2.0
+        return (best_ask - best_bid) / midpoint * 100.0
 
     def _enrich_relative_volume_5m(
         self,

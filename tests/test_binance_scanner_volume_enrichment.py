@@ -307,3 +307,50 @@ def test_5m_discovery_can_be_broader_than_deep_volume_enrichment():
 
     assert one_hour_symbols == {"AUSDT"}
     assert five_minute_symbols == {"AUSDT", "BUSDT"}
+
+
+def test_binance_enrichment_exposes_spread_for_bounded_shortlist():
+    class OrderBookAdapter(FakeAdapter):
+        def __init__(self, tickers):
+            super().__init__(tickers)
+            self.order_book_calls = []
+
+        def get_order_book(self, symbol, limit=100):
+            self.order_book_calls.append((symbol, limit))
+            return {
+                "bids": [["99", "10"], ["98", "20"]],
+                "asks": [["101", "10"], ["102", "20"]],
+            }
+
+    tickers = [
+        {
+            "symbol": "AUSDT",
+            "lastPrice": "100",
+            "highPrice": "101",
+            "lowPrice": "90",
+            "quoteVolume": "5000000",
+            "priceChangePercent": "1",
+        },
+        {
+            "symbol": "BUSDT",
+            "lastPrice": "100",
+            "highPrice": "101",
+            "lowPrice": "90",
+            "quoteVolume": "1000000",
+            "priceChangePercent": "0.5",
+        },
+    ]
+    adapter = OrderBookAdapter(tickers)
+    service = BinanceScannerService(
+        MarketData(adapter),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=1,
+    )
+
+    observations = service.observations()
+
+    by_symbol = {item.symbol: item for item in observations}
+    assert adapter.order_book_calls == [("AUSDT", 5)]
+    assert by_symbol["AUSDT"].bid_ask_spread_percent == 2.0
+    assert by_symbol["BUSDT"].bid_ask_spread_percent is None
