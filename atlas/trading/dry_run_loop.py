@@ -158,6 +158,18 @@ class DryRunLoop:
 
         decision = orchestration.decision
         expected_return = self._estimate_expected_return(snapshot.symbol, decision)
+
+        approved_quantity = None
+        canonical_decision = orchestration.canonical_decision
+        if canonical_decision is not None:
+            risk_assessment = canonical_decision.risk_assessment
+            if (
+                risk_assessment is not None
+                and risk_assessment.allowed
+                and risk_assessment.position_size > 0.0
+            ):
+                approved_quantity = risk_assessment.position_size
+
         execution = self.trader.process_signal(
             symbol=snapshot.symbol,
             action=decision.action,
@@ -166,6 +178,7 @@ class DryRunLoop:
             risk_score=decision.risk_score,
             reason=decision.reason,
             expected_return=expected_return,
+            approved_quantity=approved_quantity,
         )
 
         return DryRunCycleResult(

@@ -277,3 +277,52 @@ def test_dry_run_loop_forwards_open_position_to_orchestrator():
 
     assert captured["current_position"] == 2.5
     assert captured["average_price"] == 100.0
+
+
+def test_dry_run_loop_executes_canonical_risk_approved_quantity():
+    """DryRunLoop must not replace canonical RiskManager sizing at execution."""
+    from atlas.models.action import Action
+    from atlas.risk.manager import RiskAssessment
+
+    loop = DryRunLoop(agents=[])
+
+    approved_quantity = 1.25
+    captured = {}
+
+    original_decide = loop.orchestrator.decide
+
+    def canonical_sized_decide(*args, **kwargs):
+        result = original_decide(*args, **kwargs)
+        decision = result.canonical_decision
+
+        object.__setattr__(decision, "action", Action.BUY)
+        object.__setattr__(
+            decision,
+            "risk_assessment",
+            RiskAssessment(
+                action=Action.BUY,
+                allowed=True,
+                risk_level="LOW",
+                position_size=approved_quantity,
+                position_value=approved_quantity * 100.0,
+                stop_loss_price=None,
+                take_profit_price=None,
+                reasons=("Approved canonical size for regression test.",),
+            ),
+        )
+        return result
+
+    loop.orchestrator.decide = canonical_sized_decide
+
+    original_process_signal = loop.trader.process_signal
+
+    def capture_execution(*args, **kwargs):
+        result = original_process_signal(*args, **kwargs)
+        captured["quantity"] = result.quantity
+        return result
+
+    loop.trader.process_signal = capture_execution
+
+    loop.process(snapshot())
+
+    assert captured["quantity"] == approved_quantity

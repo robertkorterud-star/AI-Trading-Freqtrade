@@ -79,6 +79,7 @@ class DryRunTrader:
         risk_score: float = 0.0,
         reason: str = "",
         expected_return: float | None = None,
+        approved_quantity: float | None = None,
     ) -> DryRunResult:
         """
         Process one ATLAS decision.
@@ -300,6 +301,19 @@ class DryRunTrader:
             / price
         )
 
+        if (
+            approved_quantity is not None
+            and approved_quantity > 0.0
+            and action in {Action.BUY, Action.SELL}
+        ):
+            if action is Action.BUY:
+                target_quantity = current_quantity + approved_quantity
+            else:
+                target_quantity = max(
+                    0.0,
+                    current_quantity - approved_quantity,
+                )
+
         quantity = 0.0
         realized_pnl = 0.0
 
@@ -331,6 +345,16 @@ class DryRunTrader:
 
         elif decision.action is PositionAction.EXIT:
             quantity = current_quantity
+
+            if (
+                approved_quantity is not None
+                and approved_quantity > 0.0
+                and action is Action.SELL
+            ):
+                quantity = min(
+                    current_quantity,
+                    approved_quantity,
+                )
 
             if quantity > 0.0:
                 realized_pnl = self.portfolio.sell(

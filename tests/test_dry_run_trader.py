@@ -330,3 +330,33 @@ def test_dry_run_protective_stop_loss_executes_during_hold():
     assert result.quantity > 0.0
     assert "stop loss" in result.reason
     assert "BTC-USD" not in trader.portfolio.positions
+
+def test_dry_run_sell_respects_canonical_approved_quantity():
+    """Canonical RiskManager sizing must cap a paper SELL execution."""
+    portfolio = PaperPortfolio(
+        initial_cash=100_000.0,
+        fee_rate=0.0,
+    )
+    trader = DryRunTrader(
+        portfolio=portfolio,
+        journal=TradeJournal(),
+        max_position_value=10_000.0,
+    )
+
+    portfolio.buy(
+        "BTC-USD",
+        price=100.0,
+        quantity=5.0,
+    )
+
+    result = trader.process_signal(
+        "BTC-USD",
+        Action.SELL,
+        price=100.0,
+        confidence=0.95,
+        risk_score=0.10,
+        approved_quantity=1.25,
+    )
+
+    assert result.quantity == 1.25
+    assert portfolio.positions["BTC-USD"].quantity == 3.75
