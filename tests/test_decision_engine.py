@@ -1349,3 +1349,35 @@ def test_fully_uninformative_hold_does_not_break_active_unanimity():
     assert decision.action is Action.BUY
     assert decision.dominant_action is Action.BUY
     assert decision.opposing_analysts == []
+
+
+def test_zero_confidence_hold_does_not_override_strong_sell():
+    """A fully uninformative HOLD must not become dominant over active SELL."""
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    results = [
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="signal_fusion",
+            action=Action.SELL,
+            confidence=80.0,
+            evidence=80.0,
+            reasoning=["Active bearish evidence."],
+        ),
+        AnalysisResult(
+            symbol="BTC-USD",
+            analyst="market_intelligence",
+            action=Action.HOLD,
+            confidence=0.0,
+            evidence=0.0,
+            reasoning=["No confident directional intelligence."],
+        ),
+    ]
+
+    decision = DecisionEngine().evaluate(results)
+
+    assert decision.action is Action.SELL
+    assert decision.dominant_action is Action.SELL
+    assert decision.dominant_weight == 100.0

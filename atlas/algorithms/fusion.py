@@ -243,7 +243,7 @@ class SignalFusion:
     ) -> float:
         """Convert a signal score into a directional contribution."""
 
-        normalized = (signal.score - 50.0) / 50.0
+        normalized = abs(signal.score - 50.0) / 50.0
 
         if signal.action is Action.BUY:
             return normalized

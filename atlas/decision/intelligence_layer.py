@@ -94,7 +94,7 @@ class IntelligenceLayer:
                 0.0,
                 float(weights.get(result.analyst, 0.0)),
             )
-            for result in results
+            for result in decision_results
         }
 
         total_weight = sum(
@@ -104,7 +104,7 @@ class IntelligenceLayer:
         if total_weight <= 0:
             effective_weights = {
                 result.analyst: 1.0
-                for result in results
+                for result in decision_results
             }
 
             total_weight = float(total)
@@ -112,7 +112,7 @@ class IntelligenceLayer:
         weighted_buy = (
             sum(
                 effective_weights[result.analyst]
-                for result in results
+                for result in decision_results
                 if result.action == Action.BUY
             )
             / total_weight
@@ -121,7 +121,7 @@ class IntelligenceLayer:
         weighted_hold = (
             sum(
                 effective_weights[result.analyst]
-                for result in results
+                for result in decision_results
                 if result.action == Action.HOLD
             )
             / total_weight
@@ -130,7 +130,7 @@ class IntelligenceLayer:
         weighted_sell = (
             sum(
                 effective_weights[result.analyst]
-                for result in results
+                for result in decision_results
                 if result.action == Action.SELL
             )
             / total_weight

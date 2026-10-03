@@ -91,3 +91,39 @@ def test_signal_fusion_preserves_original_algorithm_signals_for_audit():
         "test_algorithm",
         "test_algorithm_2",
     ]
+
+
+def test_signal_fusion_sell_preserves_directional_score_semantics():
+    fusion = SignalFusion()
+
+    fusion_result = fusion.combine(
+        [
+            AlgorithmSignal(
+                algorithm="sell_1",
+                symbol="BTC-USD",
+                timeframe="multi",
+                action=Action.SELL,
+                score=20.0,
+                confidence=0.90,
+            ),
+            AlgorithmSignal(
+                algorithm="sell_2",
+                symbol="BTC-USD",
+                timeframe="multi",
+                action=Action.SELL,
+                score=30.0,
+                confidence=0.90,
+            ),
+            AlgorithmSignal(
+                algorithm="hold",
+                symbol="BTC-USD",
+                timeframe="multi",
+                action=Action.HOLD,
+                score=50.0,
+                confidence=0.70,
+            ),
+        ]
+    )
+
+    assert fusion_result.action is Action.SELL
+    assert fusion_result.score < 50.0
