@@ -14,6 +14,7 @@ from atlas.models.action import Action
 from atlas.models.analysis_result import AnalysisResult
 from atlas.trading.backtest_result import BacktestResult
 from atlas.trading.historical_market_data import HistoricalMarketData, OHLCVBar
+from atlas.trading.market_data import Candle, MarketSnapshot
 from atlas.trading.strategy_hypothesis import StrategyHypothesis
 
 
@@ -148,6 +149,56 @@ class BacktestEngine:
             symbol=strategy.symbol,
             trades=trades,
         )
+
+    def historical_snapshots(
+        self,
+        data: HistoricalMarketData,
+        *,
+        warmup_bars: int = MIN_BARS,
+    ):
+        """Yield chronological MarketSnapshots without future bars."""
+
+        if warmup_bars <= 0:
+            raise ValueError("warmup_bars must be greater than zero")
+
+        bars = data.bars
+        if len(bars) < warmup_bars:
+            return
+
+        candles = tuple(
+            Candle(
+                timestamp=bar.timestamp.timestamp(),
+                open=bar.open,
+                high=bar.high,
+                low=bar.low,
+                close=bar.close,
+                volume=bar.volume,
+            )
+            for bar in bars
+        )
+
+        for end_index in range(warmup_bars - 1, len(candles)):
+            yield MarketSnapshot.from_candles(
+                data.symbol,
+                candles[: end_index + 1],
+            )
+
+    def replay(
+        self,
+        data: HistoricalMarketData,
+        *,
+        loop,
+        warmup_bars: int = MIN_BARS,
+    ) -> list[object]:
+        """Replay historical snapshots through an existing ATLAS loop."""
+
+        return [
+            loop.process(snapshot)
+            for snapshot in self.historical_snapshots(
+                data,
+                warmup_bars=warmup_bars,
+            )
+        ]
 
     def run_decision(
         self,
