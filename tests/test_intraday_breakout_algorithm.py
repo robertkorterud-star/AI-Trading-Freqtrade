@@ -83,6 +83,7 @@ def test_breakout_returns_structured_sell_signal():
     )
 
     assert signal.action is Action.SELL
+    assert signal.score < 50.0
 
 
 def test_breakout_returns_hold_inside_range():
@@ -112,6 +113,7 @@ def test_breakout_returns_hold_inside_range():
     )
 
     assert signal.action is Action.HOLD
+    assert signal.score == 50.0
 
 
 def test_breakout_requires_enough_candles():
