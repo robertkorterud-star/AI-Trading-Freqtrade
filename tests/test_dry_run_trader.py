@@ -293,3 +293,40 @@ def test_dry_run_risk_block_prevents_sell():
     # The position must still exist because the SELL was blocked.
     assert "BTC-USD" in trader.portfolio.positions
     assert trader.journal.trade_count == 1
+
+
+def test_dry_run_protective_stop_loss_executes_during_hold():
+    trader = DryRunTrader(
+        portfolio=PaperPortfolio(
+            initial_cash=100_000.0,
+            fee_rate=0.0,
+        ),
+        journal=TradeJournal(),
+        max_position_value=10_000.0,
+    )
+
+    entry = trader.process_signal(
+        "BTC-USD",
+        Action.BUY,
+        price=100.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert entry.action.value == "enter"
+    assert entry.quantity > 0.0
+    assert "BTC-USD" in trader.portfolio.positions
+
+    result = trader.process_signal(
+        "BTC-USD",
+        Action.HOLD,
+        price=90.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert result.action.value == "exit"
+    assert result.executed is True
+    assert result.quantity > 0.0
+    assert "stop loss" in result.reason
+    assert "BTC-USD" not in trader.portfolio.positions

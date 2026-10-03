@@ -193,39 +193,58 @@ class DryRunTrader:
         else:
             requested_amount = 0.0
 
+        context = PositionContext(
+            current_position=current_position,
+            entry_price=(
+                current.average_price
+                if current is not None
+                else None
+            ),
+            current_price=price,
+            peak_price=(
+                current.average_price
+                if current is not None
+                else None
+            ),
+            confidence=confidence,
+            risk_score=risk_score,
+        )
+
+        position_decision = self.position_engine.decide(
+            action,
+            context,
+        )
+
+        risk_action = (
+            Action.SELL
+            if position_decision.action is PositionAction.EXIT
+            else action
+        )
+        risk_requested_amount = (
+            current.quantity * price
+            if (
+                risk_action is Action.SELL
+                and current is not None
+            )
+            else requested_amount
+        )
+
         risk_result = self.risk_engine.evaluate(
             decision=type(
                 "DryRunDecision",
                 (),
                 {
                     "symbol": symbol,
-                    "action": action,
+                    "action": risk_action,
                 },
             )(),
             total_equity_nok=portfolio_equity,
             cash_nok=self.portfolio.cash,
-            requested_amount_nok=requested_amount,
+            requested_amount_nok=risk_requested_amount,
             position_exists=current is not None,
         )
 
         if not risk_result.approved:
-            context = PositionContext(
-                current_position=current_position,
-                entry_price=(
-                    current.average_price
-                    if current is not None
-                    else None
-                ),
-                current_price=price,
-                peak_price=(
-                    current.average_price
-                    if current is not None
-                    else None
-                ),
-                confidence=confidence,
-                risk_score=risk_score,
-            )
-
             blocked = self.position_engine.decide(
                 Action.HOLD,
                 context,
