@@ -326,3 +326,47 @@ def test_dry_run_loop_executes_canonical_risk_approved_quantity():
     loop.process(snapshot())
 
     assert captured["quantity"] == approved_quantity
+
+def test_portfolio_context_uses_last_observed_price_per_symbol():
+    """A snapshot for one symbol must not reprice every open position."""
+    from atlas.trading.dry_run_loop import DryRunLoop
+    from atlas.trading.market_data import MarketSnapshot
+
+    loop = DryRunLoop(agents=[])
+
+    # Existing ETH position bought at 1,500.
+    loop.trader.portfolio.buy(
+        "ETH-USD",
+        price=1500.0,
+        quantity=2.0,
+    )
+
+    # First observe ETH trading at 2,000.
+    eth = MarketSnapshot(
+        symbol="ETH-USD",
+        price=2000.0,
+        timestamp=1.0,
+        candles=(),
+    )
+    loop._portfolio_context(eth)
+
+    # Then process an unrelated BTC price.
+    btc = MarketSnapshot(
+        symbol="BTC-USD",
+        price=100.0,
+        timestamp=2.0,
+        candles=(),
+    )
+    equity, exposure_pct, _, positions = loop._portfolio_context(btc)
+
+    eth_position = next(
+        position for position in positions
+        if position.symbol == "ETH-USD"
+    )
+
+    # ETH must retain its last observed ETH price: 2 * 2,000 = 4,000.
+    assert eth_position.market_value == 4000.0
+
+    # Cash after ETH purchase is 97,000; marked ETH value is 4,000.
+    # fee_rate default is 0.001, so account for the 3.0 entry fee.
+    assert equity == 100997.0

@@ -88,6 +88,7 @@ class DryRunLoop:
             max_single_position_pct=self.risk_manager.max_position_pct,
         )
         self._peak_equity: float | None = None
+        self._latest_prices: dict[str, float] = {}
         self.orchestrator = orchestrator or DecisionOrchestrator(
             decision_engine=DecisionEngine(
                 risk_manager=self.risk_manager,
@@ -199,8 +200,12 @@ class DryRunLoop:
         snapshot: MarketSnapshot,
     ) -> tuple[float, float, float, tuple[PortfolioPosition, ...]]:
         """Build the canonical risk/portfolio context before a dry-run decision."""
-        prices = {symbol: snapshot.price for symbol in self.trader.portfolio.positions}
-        prices[snapshot.symbol] = snapshot.price
+        self._latest_prices[snapshot.symbol] = snapshot.price
+        prices = {
+            symbol: self._latest_prices[symbol]
+            for symbol in self.trader.portfolio.positions
+            if symbol in self._latest_prices
+        }
         equity = self.trader.portfolio.equity(prices)
         if self._peak_equity is None:
             self._peak_equity = equity
