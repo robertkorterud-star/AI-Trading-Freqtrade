@@ -80,6 +80,10 @@ class DecisionOrchestrator:
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
         portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...] = (),
+        current_position: float = 0.0,
+        last_buy_price: float | None = None,
+        average_price: float | None = None,
+        peak_price: float | None = None,
     ) -> OrchestrationResult:
         """Run the complete decision chain without executing a trade.
 
@@ -182,6 +186,10 @@ class DecisionOrchestrator:
             current_exposure_pct=current_exposure_pct,
             drawdown_pct=drawdown_pct,
             portfolio_positions=portfolio_positions,
+            current_position=current_position,
+            last_buy_price=last_buy_price,
+            average_price=average_price,
+            peak_price=peak_price,
         )
 
         reasoning = (
@@ -215,6 +223,10 @@ class DecisionOrchestrator:
         current_exposure_pct: float = 0.0,
         drawdown_pct: float = 0.0,
         portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...] = (),
+        current_position: float = 0.0,
+        last_buy_price: float | None = None,
+        average_price: float | None = None,
+        peak_price: float | None = None,
     ) -> tuple[DecisionResult, object | None]:
         """Return compatibility and canonical decisions without duplicating logic."""
         if self.decision_core is not None:
@@ -239,6 +251,10 @@ class DecisionOrchestrator:
             current_exposure_pct=current_exposure_pct,
             drawdown_pct=drawdown_pct,
             portfolio_positions=portfolio_positions,
+            current_position=current_position,
+            last_buy_price=last_buy_price,
+            average_price=average_price,
+            peak_price=peak_price,
         )
 
         # Legacy RiskContext is retained only for callers that have not yet
@@ -280,6 +296,10 @@ class DecisionOrchestrator:
         current_exposure_pct: float,
         drawdown_pct: float,
         portfolio_positions: list[PortfolioPosition] | tuple[PortfolioPosition, ...],
+        current_position: float,
+        last_buy_price: float | None,
+        average_price: float | None,
+        peak_price: float | None,
     ):
         """Evaluate through the canonical engine while preserving old test doubles.
 
@@ -295,6 +315,10 @@ class DecisionOrchestrator:
                 current_exposure_pct=current_exposure_pct,
                 drawdown_pct=drawdown_pct,
                 portfolio_positions=portfolio_positions,
+                current_position=current_position,
+                last_buy_price=last_buy_price,
+                average_price=average_price,
+                peak_price=peak_price,
             )
         except TypeError as exc:
             if "unexpected keyword argument" not in str(exc):

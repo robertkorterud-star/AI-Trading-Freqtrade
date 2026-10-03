@@ -137,6 +137,10 @@ class DryRunLoop:
         equity, current_exposure_pct, drawdown_pct, positions = self._portfolio_context(
             snapshot
         )
+        current = self.trader.portfolio.positions.get(snapshot.symbol)
+        current_position = current.quantity if current is not None else 0.0
+        average_price = current.average_price if current is not None else None
+
         orchestration = self.orchestrator.decide(
             snapshot.symbol,
             intelligence_signal,
@@ -148,6 +152,8 @@ class DryRunLoop:
             current_exposure_pct=current_exposure_pct,
             drawdown_pct=drawdown_pct,
             portfolio_positions=positions,
+            current_position=current_position,
+            average_price=average_price,
         )
 
         decision = orchestration.decision

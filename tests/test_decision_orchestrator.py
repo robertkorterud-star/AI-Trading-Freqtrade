@@ -629,3 +629,117 @@ def test_neutral_market_intelligence_does_not_create_maximum_hold_evidence():
 
     assert result.action is Action.HOLD
     assert result.evidence == 0.0
+
+
+def test_orchestrator_forwards_open_position_context_to_canonical_engine():
+    """Canonical DecisionEngine must receive the actual open-position context."""
+    from atlas.algorithms.base import AlgorithmSignal
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+    from atlas.models.action import Action
+
+    captured = {}
+
+    class CapturingDecisionEngine:
+        def evaluate_algorithm_signals(
+            self,
+            signals,
+            *,
+            price=None,
+            equity=None,
+            current_exposure_pct=0.0,
+            drawdown_pct=0.0,
+            portfolio_positions=(),
+            current_position=0.0,
+            last_buy_price=None,
+            average_price=None,
+            peak_price=None,
+        ):
+            captured.update(
+                current_position=current_position,
+                last_buy_price=last_buy_price,
+                average_price=average_price,
+                peak_price=peak_price,
+            )
+
+            return type(
+                "CanonicalDecision",
+                (),
+                {
+                    "action": Action.SELL,
+                    "confidence": 80.0,
+                    "evidence": 80.0,
+                },
+            )()
+
+    orchestrator = DecisionOrchestrator(
+        decision_engine=CapturingDecisionEngine(),
+    )
+
+    orchestrator.decide(
+        "BTC-USD",
+        [
+            AlgorithmSignal(
+                algorithm="test_sell",
+                symbol="BTC-USD",
+                timeframe="4h",
+                action=Action.SELL,
+                score=20.0,
+                confidence=0.8,
+            )
+        ],
+        price=100.0,
+        equity=10_000.0,
+        current_position=2.5,
+        last_buy_price=90.0,
+        average_price=92.0,
+        peak_price=110.0,
+    )
+
+    assert captured == {
+        "current_position": 2.5,
+        "last_buy_price": 90.0,
+        "average_price": 92.0,
+        "peak_price": 110.0,
+    }
+
+
+def test_canonical_sell_with_open_position_is_not_blocked_as_positionless():
+    """An actual open position must allow canonical SELL risk evaluation."""
+    from atlas.algorithms.base import AlgorithmSignal
+    from atlas.algorithms.orchestrator import DecisionOrchestrator
+    from atlas.models.action import Action
+    from atlas.decision.engine import DecisionEngine
+    from atlas.risk.manager import RiskManager
+
+    risk_manager = RiskManager()
+    orchestrator = DecisionOrchestrator(
+        decision_engine=DecisionEngine(risk_manager=risk_manager),
+    )
+
+    result = orchestrator.decide(
+        "BTC-USD",
+        [],
+        algorithm_signals=[
+            AlgorithmSignal(
+                algorithm="test_sell",
+                symbol="BTC-USD",
+                timeframe="4h",
+                action=Action.SELL,
+                score=20.0,
+                confidence=0.90,
+            )
+        ],
+        price=100.0,
+        equity=10_000.0,
+        current_position=2.5,
+        average_price=110.0,
+    )
+
+    canonical = result.canonical_decision
+    risk = orchestrator.decision_engine.last_risk_assessment
+
+    assert canonical is not None
+    assert canonical.action is Action.SELL
+    assert risk is not None
+    assert risk.allowed is True
+    assert "No open position available to sell." not in risk.reasons

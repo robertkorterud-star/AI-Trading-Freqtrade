@@ -247,3 +247,33 @@ def test_process_binance_passes_crypto_freshness_into_prediction_evidence(monkey
         latest_candle_timestamp=pytest.approx(1710014940.0),
         expected_interval_seconds=60.0,
     )
+
+
+def test_dry_run_loop_forwards_open_position_to_orchestrator():
+    """Dry-run canonical decision must see the actual symbol position."""
+    from atlas.trading.dry_run_loop import DryRunLoop
+
+    loop = DryRunLoop(agents=[])
+
+    loop.trader.portfolio.buy(
+        "BTC-USD",
+        price=100.0,
+        quantity=2.5,
+    )
+
+    captured = {}
+    original_decide = loop.orchestrator.decide
+
+    def capturing_decide(*args, **kwargs):
+        captured["current_position"] = kwargs.get("current_position")
+        captured["last_buy_price"] = kwargs.get("last_buy_price")
+        captured["average_price"] = kwargs.get("average_price")
+        captured["peak_price"] = kwargs.get("peak_price")
+        return original_decide(*args, **kwargs)
+
+    loop.orchestrator.decide = capturing_decide
+
+    loop.process(snapshot())
+
+    assert captured["current_position"] == 2.5
+    assert captured["average_price"] == 100.0
