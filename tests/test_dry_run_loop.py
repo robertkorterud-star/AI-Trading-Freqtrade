@@ -106,6 +106,26 @@ def test_dry_run_loop_passes_precomputed_signals_and_fusion_to_orchestrator():
     assert decide.call_args.kwargs.get("market_data") is None
 
 
+def test_dry_run_loop_does_not_double_count_agent_intelligence():
+    """Agent observations must reach DecisionEngine only through agent:* signals."""
+    loop = DryRunLoop(agents=[BullishAgent()])
+    decide = Mock(wraps=loop.orchestrator.decide)
+    loop.orchestrator.decide = decide
+
+    result = loop.process(snapshot())
+
+    assert result.observations
+    assert decide.call_args is not None
+
+    positional_signals = decide.call_args.args[1]
+
+    assert not any(
+        signal.algorithm == "market_intelligence"
+        for signal in positional_signals
+    )
+    assert decide.call_args.kwargs["observations"] == list(result.observations)
+
+
 def test_dry_run_loop_adds_optional_ml_prediction_signal():
     service = PredictionSignalService(signal=MLPredictionSignal(_model()))
     loop = DryRunLoop(agents=[BullishAgent()], prediction_signal_service=service)

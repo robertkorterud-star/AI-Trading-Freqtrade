@@ -134,7 +134,6 @@ class DryRunLoop:
             algorithm_signals = [*algorithm_signals, prediction_signal]
             fusion_result = self.algorithm_pipeline.fusion.combine(algorithm_signals)
 
-        intelligence_signal = self._signals_from_intelligence(snapshot, intelligence)
         equity, current_exposure_pct, drawdown_pct, positions = self._portfolio_context(
             snapshot
         )
@@ -144,7 +143,7 @@ class DryRunLoop:
 
         orchestration = self.orchestrator.decide(
             snapshot.symbol,
-            intelligence_signal,
+            [],
             observations=list(observations),
             algorithm_signals=algorithm_signals,
             fusion_result=fusion_result,
