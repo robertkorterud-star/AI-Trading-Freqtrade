@@ -95,6 +95,7 @@ class DecisionEngine:
         last_buy_price: float | None = None,
         average_price: float | None = None,
         peak_price: float | None = None,
+        market_regime=None,
     ) -> DecisionResult:
         """Evaluate algorithm signals through the canonical DecisionEngine.
 
@@ -123,6 +124,7 @@ class DecisionEngine:
             last_buy_price=last_buy_price,
             average_price=average_price,
             peak_price=peak_price,
+            market_regime=market_regime,
         )
 
     @staticmethod
@@ -191,6 +193,7 @@ class DecisionEngine:
         last_buy_price: float | None = None,
         average_price: float | None = None,
         peak_price: float | None = None,
+        market_regime=None,
     ) -> DecisionResult:
         if not results:
             raise ValueError("No analysis results provided.")
@@ -346,6 +349,16 @@ class DecisionEngine:
             action = Action.HOLD
             economic_gate_blocked = True
 
+        trend_gate_blocked = False
+        if (
+            action is Action.BUY
+            and market_regime is not None
+            and market_regime.timeframe == "4h"
+            and 3.0 <= float(market_regime.trend_score) < 5.0
+        ):
+            action = Action.HOLD
+            trend_gate_blocked = True
+
         risk_assessment: RiskAssessment | None = None
         if self.risk_manager is not None:
             if price is None or equity is None:
@@ -483,6 +496,13 @@ class DecisionEngine:
             reasoning.append(
                 "Economic gate blocked BUY because expected net return "
                 "after trading costs is not positive; final action is HOLD."
+            )
+
+        if trend_gate_blocked:
+            reasoning.append(
+                "Trend gate blocked BUY because the 20-bar trend return "
+                "is in the researched 3-5% weak-continuation zone; "
+                "final action is HOLD."
             )
 
         return DecisionResult(

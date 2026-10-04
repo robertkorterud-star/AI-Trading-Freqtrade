@@ -90,6 +90,18 @@ def snapshot():
     return MarketSnapshot.from_candles("BTC-USD", candles)
 
 
+def process_without_market_regime(loop, market_snapshot):
+    """Exercise expected-return behavior independently of the 4h trend gate."""
+    original_decide = loop.orchestrator.decide
+
+    def decide_without_regime(*args, **kwargs):
+        kwargs["market_regime"] = None
+        return original_decide(*args, **kwargs)
+
+    loop.orchestrator.decide = decide_without_regime
+    return loop.process(market_snapshot)
+
+
 def paper_trader():
     return DryRunTrader(
         portfolio=PaperPortfolio(
@@ -108,7 +120,7 @@ def test_expected_return_flows_from_history_to_paper_execution():
         trader=paper_trader(),
     )
 
-    result = loop.process(snapshot())
+    result = process_without_market_regime(loop, snapshot())
 
     # 1.0% historical mean * 50% haircut = 0.5% expected gross return.
     assert result.decision.action.value == "buy"
@@ -126,7 +138,7 @@ def test_expected_return_below_trading_cost_blocks_paper_entry():
         trader=paper_trader(),
     )
 
-    result = loop.process(snapshot())
+    result = process_without_market_regime(loop, snapshot())
 
     # 0.4% historical mean * 50% haircut = 0.2%,
     # below the default 0.24% round-trip direct trading cost.
@@ -147,7 +159,7 @@ def test_expected_return_remains_optional_without_service():
         trader=trader,
     )
 
-    result = loop.process(snapshot())
+    result = process_without_market_regime(loop, snapshot())
 
     assert result.expected_return is None
     assert result.execution.executed is True

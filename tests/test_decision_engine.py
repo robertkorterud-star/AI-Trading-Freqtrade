@@ -1381,3 +1381,82 @@ def test_zero_confidence_hold_does_not_override_strong_sell():
     assert decision.action is Action.SELL
     assert decision.dominant_action is Action.SELL
     assert decision.dominant_weight == 100.0
+
+
+
+def test_decision_engine_blocks_buy_in_weak_continuation_trend_zone():
+    """Canonical DecisionEngine owns the final BUY gate from regime context."""
+    from types import SimpleNamespace
+
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    signal = AnalysisResult(
+        analyst="test",
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        reasoning=["Strong BUY evidence."],
+    )
+
+    def regime(trend_score):
+        return SimpleNamespace(
+            symbol="BTC-USD",
+            timeframe="4h",
+            trend_score=trend_score,
+        )
+
+    blocked = DecisionEngine().evaluate(
+        [signal],
+        market_regime=regime(4.0),
+    )
+    below_zone = DecisionEngine().evaluate(
+        [signal],
+        market_regime=regime(2.99),
+    )
+    above_zone = DecisionEngine().evaluate(
+        [signal],
+        market_regime=regime(5.0),
+    )
+    without_regime = DecisionEngine().evaluate([signal])
+
+    assert blocked.action is Action.HOLD
+    assert any(
+        "trend" in reason.lower()
+        for reason in blocked.reasoning
+    )
+
+    assert below_zone.action is Action.BUY
+    assert above_zone.action is Action.BUY
+    assert without_regime.action is Action.BUY
+
+
+def test_decision_engine_does_not_apply_4h_trend_gate_to_other_timeframes():
+    """The researched 3-5% weak-continuation gate is specific to 4h context."""
+    from types import SimpleNamespace
+
+    from atlas.decision.engine import DecisionEngine
+    from atlas.models.action import Action
+    from atlas.models.analysis_result import AnalysisResult
+
+    signal = AnalysisResult(
+        analyst="test",
+        symbol="BTC-USD",
+        action=Action.BUY,
+        confidence=90.0,
+        evidence=90.0,
+        reasoning=["Strong BUY evidence."],
+    )
+
+    decision = DecisionEngine().evaluate(
+        [signal],
+        market_regime=SimpleNamespace(
+            symbol="BTC-USD",
+            timeframe="1h",
+            trend_score=4.0,
+        ),
+    )
+
+    assert decision.action is Action.BUY

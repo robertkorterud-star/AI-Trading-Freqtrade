@@ -84,6 +84,7 @@ class DecisionOrchestrator:
         last_buy_price: float | None = None,
         average_price: float | None = None,
         peak_price: float | None = None,
+        market_regime=None,
     ) -> OrchestrationResult:
         """Run the complete decision chain without executing a trade.
 
@@ -190,6 +191,7 @@ class DecisionOrchestrator:
             last_buy_price=last_buy_price,
             average_price=average_price,
             peak_price=peak_price,
+            market_regime=market_regime,
         )
 
         reasoning = (
@@ -227,6 +229,7 @@ class DecisionOrchestrator:
         last_buy_price: float | None = None,
         average_price: float | None = None,
         peak_price: float | None = None,
+        market_regime=None,
     ) -> tuple[DecisionResult, object | None]:
         """Return compatibility and canonical decisions without duplicating logic."""
         if self.decision_core is not None:
@@ -255,6 +258,7 @@ class DecisionOrchestrator:
             last_buy_price=last_buy_price,
             average_price=average_price,
             peak_price=peak_price,
+            market_regime=market_regime,
         )
 
         # Legacy RiskContext is retained only for callers that have not yet
@@ -300,6 +304,7 @@ class DecisionOrchestrator:
         last_buy_price: float | None,
         average_price: float | None,
         peak_price: float | None,
+        market_regime=None,
     ):
         """Evaluate through the canonical engine while preserving old test doubles.
 
@@ -319,10 +324,30 @@ class DecisionOrchestrator:
                 last_buy_price=last_buy_price,
                 average_price=average_price,
                 peak_price=peak_price,
+                market_regime=market_regime,
             )
         except TypeError as exc:
             if "unexpected keyword argument" not in str(exc):
                 raise
+
+            if "market_regime" in str(exc):
+                try:
+                    return self.decision_engine.evaluate_algorithm_signals(
+                        decision_inputs,
+                        price=price,
+                        equity=equity,
+                        current_exposure_pct=current_exposure_pct,
+                        drawdown_pct=drawdown_pct,
+                        portfolio_positions=portfolio_positions,
+                        current_position=current_position,
+                        last_buy_price=last_buy_price,
+                        average_price=average_price,
+                        peak_price=peak_price,
+                    )
+                except TypeError as retry_exc:
+                    if "unexpected keyword argument" not in str(retry_exc):
+                        raise
+
             return self.decision_engine.evaluate_algorithm_signals(decision_inputs)
 
     @staticmethod

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from atlas.algorithms.base import Action, AlgorithmSignal
+from atlas.algorithms.regime import MarketRegimeEngine
 from atlas.algorithms.orchestrator import DecisionOrchestrator
 from atlas.algorithms.pipeline import AlgorithmPipeline
 from atlas.algorithms.registry import AlgorithmRegistry
@@ -137,6 +138,10 @@ class DryRunLoop:
         equity, current_exposure_pct, drawdown_pct, positions = self._portfolio_context(
             snapshot
         )
+        market_regime = MarketRegimeEngine(timeframe="4h").analyze(
+            snapshot.symbol,
+            list(snapshot.candles),
+        )
         current = self.trader.portfolio.positions.get(snapshot.symbol)
         current_position = current.quantity if current is not None else 0.0
         average_price = current.average_price if current is not None else None
@@ -154,6 +159,7 @@ class DryRunLoop:
             portfolio_positions=positions,
             current_position=current_position,
             average_price=average_price,
+            market_regime=market_regime,
         )
 
         decision = orchestration.decision

@@ -169,6 +169,14 @@ def test_process_binance_feeds_snapshot_into_dry_run():
 
 def test_dry_run_loop_uses_canonical_risk_and_portfolio_managers():
     loop = DryRunLoop(agents=[BullishAgent()])
+
+    original_decide = loop.orchestrator.decide
+
+    def decide_without_regime(*args, **kwargs):
+        kwargs["market_regime"] = None
+        return original_decide(*args, **kwargs)
+
+    loop.orchestrator.decide = decide_without_regime
     result = loop.process(snapshot())
 
     engine = loop.orchestrator.decision_engine
@@ -312,6 +320,7 @@ def test_dry_run_loop_executes_canonical_risk_approved_quantity():
     original_decide = loop.orchestrator.decide
 
     def canonical_sized_decide(*args, **kwargs):
+        kwargs["market_regime"] = None
         result = original_decide(*args, **kwargs)
         decision = result.canonical_decision
 
@@ -390,3 +399,56 @@ def test_portfolio_context_uses_last_observed_price_per_symbol():
     # Cash after ETH purchase is 97,000; marked ETH value is 4,000.
     # fee_rate default is 0.001, so account for the 3.0 entry fee.
     assert equity == 100997.0
+
+
+def test_dry_run_loop_forwards_market_regime_to_canonical_decision():
+    """DryRunLoop must provide descriptive regime context to DecisionEngine."""
+    from types import SimpleNamespace
+
+    from atlas.algorithms.base import Action
+    from atlas.trading.dry_run_loop import DryRunLoop
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    captured = {}
+
+    class CapturingOrchestrator:
+        def decide(self, symbol, signals, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(
+                decision=SimpleNamespace(
+                    action=Action.HOLD,
+                    confidence=0.0,
+                    risk_score=0.0,
+                    reason="test",
+                ),
+                canonical_decision=None,
+            )
+
+    candles = tuple(
+        Candle(
+            timestamp=float(index + 1),
+            open=100.0,
+            high=105.0,
+            low=99.0,
+            close=100.0 + (4.0 * index / 20.0),
+            volume=1000.0,
+        )
+        for index in range(21)
+    )
+
+    snapshot = MarketSnapshot.from_candles(
+        "BTCUSDT",
+        candles,
+    )
+
+    loop = DryRunLoop(
+        agents=[],
+        orchestrator=CapturingOrchestrator(),
+    )
+    loop.process(snapshot)
+
+    regime = captured["market_regime"]
+
+    assert regime.symbol == "BTCUSDT"
+    assert regime.timeframe == "4h"
+    assert regime.trend_score == 4.0
