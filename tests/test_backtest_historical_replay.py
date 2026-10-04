@@ -127,3 +127,123 @@ def test_historical_replay_runs_through_real_dry_run_loop():
     assert engine.portfolio_manager is loop.portfolio_manager
     assert engine.last_risk_assessment is not None
     assert engine.last_portfolio_assessment is not None
+
+
+def test_multi_symbol_replay_is_globally_chronological():
+    """Multiple symbols must share one chronological modern replay stream."""
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    btc = _historical_data(bar_count=52)
+
+    eth_bars = []
+    for index in range(52):
+        price = 2000.0 + index
+        eth_bars.append(
+            OHLCVBar(
+                timestamp=start + timedelta(hours=4 * index, minutes=30),
+                open=price,
+                high=price + 1.0,
+                low=price - 1.0,
+                close=price + 0.5,
+                volume=2000.0 + index,
+            )
+        )
+
+    eth = HistoricalMarketData(
+        symbol="ETH-USD",
+        bars=eth_bars,
+        timeframe="4h",
+        source="test",
+    )
+
+    loop = RecordingReplayLoop()
+
+    results = BacktestEngine().replay_many(
+        [btc, eth],
+        loop=loop,
+        warmup_bars=50,
+    )
+
+    assert len(results) == 6
+    assert [snapshot.symbol for snapshot in loop.snapshots] == [
+        "BTC-USD",
+        "ETH-USD",
+        "BTC-USD",
+        "ETH-USD",
+        "BTC-USD",
+        "ETH-USD",
+    ]
+    assert [snapshot.timestamp for snapshot in loop.snapshots] == sorted(
+        snapshot.timestamp for snapshot in loop.snapshots
+    )
+
+    assert len(loop.snapshots[0].candles) == 50
+    assert len(loop.snapshots[1].candles) == 50
+    assert len(loop.snapshots[-2].candles) == 52
+    assert len(loop.snapshots[-1].candles) == 52
+
+
+def test_multi_symbol_replay_runs_through_shared_real_dry_run_loop():
+    """Multiple symbols must share one canonical runtime and portfolio context."""
+    from atlas.trading.dry_run_loop import DryRunLoop
+
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    btc = _historical_data(bar_count=52)
+
+    eth_bars = []
+    for index in range(52):
+        price = 2000.0 + index
+        eth_bars.append(
+            OHLCVBar(
+                timestamp=start + timedelta(hours=4 * index, minutes=30),
+                open=price,
+                high=price + 1.0,
+                low=price - 1.0,
+                close=price + 0.5,
+                volume=2000.0 + index,
+            )
+        )
+
+    eth = HistoricalMarketData(
+        symbol="ETH-USD",
+        bars=eth_bars,
+        timeframe="4h",
+        source="test",
+    )
+
+    loop = DryRunLoop(agents=[])
+
+    results = BacktestEngine().replay_many(
+        [btc, eth],
+        loop=loop,
+        warmup_bars=50,
+    )
+
+    assert len(results) == 6
+    assert [result.symbol for result in results] == [
+        "BTC-USD",
+        "ETH-USD",
+        "BTC-USD",
+        "ETH-USD",
+        "BTC-USD",
+        "ETH-USD",
+    ]
+
+    assert all(
+        result.canonical_decision is not None
+        for result in results
+    )
+    assert all(
+        result.execution is not None
+        for result in results
+    )
+
+    engine = loop.orchestrator.decision_engine
+
+    assert engine.risk_manager is loop.risk_manager
+    assert engine.portfolio_manager is loop.portfolio_manager
+
+    assert "BTC-USD" in loop._latest_prices
+    assert "ETH-USD" in loop._latest_prices
+    assert loop._latest_prices["BTC-USD"] == btc.bars[-1].close
+    assert loop._latest_prices["ETH-USD"] == eth.bars[-1].close

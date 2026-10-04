@@ -200,6 +200,30 @@ class BacktestEngine:
             )
         ]
 
+    def replay_many(
+        self,
+        datasets: list[HistoricalMarketData],
+        *,
+        loop,
+        warmup_bars: int = MIN_BARS,
+    ) -> list[object]:
+        """Replay multiple symbols through one chronological ATLAS loop."""
+
+        snapshots = [
+            snapshot
+            for data in datasets
+            for snapshot in self.historical_snapshots(
+                data,
+                warmup_bars=warmup_bars,
+            )
+        ]
+        snapshots.sort(key=lambda snapshot: snapshot.timestamp)
+
+        return [
+            loop.process(snapshot)
+            for snapshot in snapshots
+        ]
+
     def run_decision(
         self,
         data: HistoricalMarketData,
