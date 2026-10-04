@@ -247,3 +247,102 @@ def test_multi_symbol_replay_runs_through_shared_real_dry_run_loop():
     assert "ETH-USD" in loop._latest_prices
     assert loop._latest_prices["BTC-USD"] == btc.bars[-1].close
     assert loop._latest_prices["ETH-USD"] == eth.bars[-1].close
+
+
+def test_multi_symbol_replay_carries_executed_exposure_into_next_symbol_decision():
+    """An executed trade must affect portfolio context for the next symbol."""
+    from atlas.models.action import Action
+    from atlas.risk.manager import RiskAssessment
+    from atlas.trading.dry_run_loop import DryRunLoop
+
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    btc = _historical_data(bar_count=50)
+
+    eth_bars = []
+    for index in range(50):
+        price = 2000.0 + index
+        eth_bars.append(
+            OHLCVBar(
+                timestamp=start + timedelta(hours=4 * index, minutes=30),
+                open=price,
+                high=price + 1.0,
+                low=price - 1.0,
+                close=price + 0.5,
+                volume=2000.0 + index,
+            )
+        )
+
+    eth = HistoricalMarketData(
+        symbol="ETH-USD",
+        bars=eth_bars,
+        timeframe="4h",
+        source="test",
+    )
+
+    loop = DryRunLoop(agents=[])
+
+    original_decide = loop.orchestrator.decide
+    captured = []
+
+    def capturing_decide(*args, **kwargs):
+        captured.append(
+            {
+                "symbol": args[0],
+                "equity": kwargs["equity"],
+                "current_exposure_pct": kwargs["current_exposure_pct"],
+                "portfolio_positions": tuple(kwargs["portfolio_positions"]),
+            }
+        )
+
+        result = original_decide(*args, **kwargs)
+
+        if args[0] == "BTC-USD":
+            decision = result.canonical_decision
+            approved_quantity = 10.0
+
+            object.__setattr__(decision, "action", Action.BUY)
+            object.__setattr__(
+                decision,
+                "risk_assessment",
+                RiskAssessment(
+                    action=Action.BUY,
+                    allowed=True,
+                    risk_level="LOW",
+                    position_size=approved_quantity,
+                    position_value=approved_quantity * kwargs["price"],
+                    stop_loss_price=None,
+                    take_profit_price=None,
+                    reasons=("Approved BTC size for replay contract test.",),
+                ),
+            )
+            object.__setattr__(result.decision, "action", Action.BUY)
+
+        return result
+
+    loop.orchestrator.decide = capturing_decide
+
+    results = BacktestEngine().replay_many(
+        [btc, eth],
+        loop=loop,
+        warmup_bars=50,
+    )
+
+    assert len(results) == 2
+    assert captured[0]["symbol"] == "BTC-USD"
+    assert captured[1]["symbol"] == "ETH-USD"
+
+    assert results[0].execution.quantity == 10.0
+    assert "BTC-USD" in loop.trader.portfolio.positions
+
+    btc_position = loop.trader.portfolio.positions["BTC-USD"]
+    expected_btc_value = btc_position.quantity * btc.bars[-1].close
+
+    eth_context = captured[1]
+
+    assert eth_context["current_exposure_pct"] > 0.0
+    assert any(
+        position.symbol == "BTC-USD"
+        and position.market_value == expected_btc_value
+        for position in eth_context["portfolio_positions"]
+    )
