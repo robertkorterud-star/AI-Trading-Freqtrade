@@ -16,6 +16,7 @@ class PaperPosition:
     symbol: str
     quantity: float
     average_price: float
+    peak_price: float | None = None
 
 
 @dataclass
@@ -64,6 +65,7 @@ class PaperPortfolio:
                 symbol=symbol,
                 quantity=quantity,
                 average_price=price,
+                peak_price=price,
             )
         else:
             new_quantity = existing.quantity + quantity
@@ -76,6 +78,12 @@ class PaperPortfolio:
                 symbol=symbol,
                 quantity=new_quantity,
                 average_price=average_price,
+                peak_price=max(
+                    existing.peak_price
+                    if existing.peak_price is not None
+                    else existing.average_price,
+                    price,
+                ),
             )
 
         self.positions[symbol] = position
@@ -114,9 +122,40 @@ class PaperPortfolio:
                 symbol=symbol,
                 quantity=remaining,
                 average_price=position.average_price,
+                peak_price=position.peak_price,
             )
 
         return pnl
+
+    def observe_price(self, symbol: str, price: float) -> PaperPosition | None:
+        """Record the highest observed price for an open paper position."""
+
+        if price <= 0.0:
+            raise ValueError("price must be greater than zero")
+
+        position = self.positions.get(symbol)
+
+        if position is None:
+            return None
+
+        peak_price = max(
+            position.peak_price
+            if position.peak_price is not None
+            else position.average_price,
+            price,
+        )
+
+        if peak_price == position.peak_price:
+            return position
+
+        updated = PaperPosition(
+            symbol=position.symbol,
+            quantity=position.quantity,
+            average_price=position.average_price,
+            peak_price=peak_price,
+        )
+        self.positions[symbol] = updated
+        return updated
 
     def equity(self, prices: dict[str, float]) -> float:
         """Return total marked-to-market paper equity."""

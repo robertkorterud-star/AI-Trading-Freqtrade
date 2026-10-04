@@ -1,4 +1,5 @@
 from atlas.models.action import Action
+from atlas.algorithms.position_exit import PositionExitEngine
 from atlas.trading.dry_run_trader import DryRunTrader
 from atlas.trading.paper_portfolio import PaperPortfolio
 from atlas.trading.trade_journal import TradeJournal
@@ -360,3 +361,57 @@ def test_dry_run_sell_respects_canonical_approved_quantity():
 
     assert result.quantity == 1.25
     assert portfolio.positions["BTC-USD"].quantity == 3.75
+
+
+def test_dry_run_trailing_stop_tracks_peak_reached_after_entry():
+    """Paper lifecycle must trail from the highest observed price after entry."""
+    trader = DryRunTrader(
+        portfolio=PaperPortfolio(
+            initial_cash=100_000.0,
+            fee_rate=0.0,
+        ),
+        journal=TradeJournal(),
+        position_engine=PositionExitEngine(
+            stop_loss=0.50,
+            trailing_stop=0.10,
+        ),
+        max_position_value=10_000.0,
+    )
+
+    entry = trader.process_signal(
+        "BTC-USD",
+        Action.BUY,
+        price=100.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert entry.action.value == "enter"
+    assert "BTC-USD" in trader.portfolio.positions
+
+    # Price establishes a new post-entry peak.
+    rising = trader.process_signal(
+        "BTC-USD",
+        Action.HOLD,
+        price=120.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert rising.action.value == "hold"
+    assert "BTC-USD" in trader.portfolio.positions
+
+    # 110 is above the 50% stop-loss from the 100 entry,
+    # but more than 10% below the observed 120 peak.
+    trailing_exit = trader.process_signal(
+        "BTC-USD",
+        Action.HOLD,
+        price=107.0,
+        confidence=0.95,
+        risk_score=0.10,
+    )
+
+    assert trailing_exit.action.value == "exit"
+    assert trailing_exit.executed is True
+    assert "trailing stop" in trailing_exit.reason
+    assert "BTC-USD" not in trader.portfolio.positions

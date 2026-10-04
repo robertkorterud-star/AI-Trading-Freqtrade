@@ -48,6 +48,9 @@ class PaperPortfolioStore:
                         symbol=str(symbol),
                         quantity=quantity,
                         average_price=average_price,
+                        peak_price=float(
+                            data.get("peak_price", average_price)
+                        ),
                     )
 
         return portfolio
@@ -65,6 +68,11 @@ class PaperPortfolioStore:
                 symbol: {
                     "quantity": position.quantity,
                     "average_price": position.average_price,
+                    "peak_price": (
+                        position.peak_price
+                        if position.peak_price is not None
+                        else position.average_price
+                    ),
                 }
                 for symbol, position in portfolio.positions.items()
             },

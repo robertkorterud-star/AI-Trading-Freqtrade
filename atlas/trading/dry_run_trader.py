@@ -111,7 +111,7 @@ class DryRunTrader:
             normalized_action = action_value.strip().upper()
             action = Action(normalized_action)
 
-        current = self.portfolio.positions.get(symbol)
+        current = self.portfolio.observe_price(symbol, price)
 
         current_position = 0.0
 
@@ -146,7 +146,7 @@ class DryRunTrader:
                         ),
                         current_price=price,
                         peak_price=(
-                            current.average_price
+                            current.peak_price
                             if current is not None
                             else None
                         ),
@@ -203,7 +203,7 @@ class DryRunTrader:
             ),
             current_price=price,
             peak_price=(
-                current.average_price
+                current.peak_price
                 if current is not None
                 else None
             ),
@@ -276,7 +276,7 @@ class DryRunTrader:
             ),
             current_price=price,
             peak_price=(
-                current.average_price
+                current.peak_price
                 if current is not None
                 else None
             ),
