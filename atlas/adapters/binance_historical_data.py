@@ -55,13 +55,41 @@ class BinanceHistoricalDataProvider(HistoricalDataProvider):
             else None
         )
 
-        raw_klines = self.adapter.get_klines(
-            symbol=symbol,
-            interval=self.interval,
-            limit=self.limit,
-            start_time=start_time,
-            end_time=end_time,
-        )
+        if start_time is not None and end_time is not None:
+            raw_klines = []
+            next_start_time = start_time
+
+            while next_start_time < end_time:
+                page = self.adapter.get_klines(
+                    symbol=symbol,
+                    interval=self.interval,
+                    limit=self.limit,
+                    start_time=next_start_time,
+                    end_time=end_time,
+                )
+
+                if not page:
+                    break
+
+                page_next_start_time = int(page[-1][6]) + 1
+
+                if page_next_start_time <= next_start_time:
+                    break
+
+                raw_klines.extend(page)
+
+                if len(page) < self.limit:
+                    break
+
+                next_start_time = page_next_start_time
+        else:
+            raw_klines = self.adapter.get_klines(
+                symbol=symbol,
+                interval=self.interval,
+                limit=self.limit,
+                start_time=start_time,
+                end_time=end_time,
+            )
 
         now_ms = int(self._now().timestamp() * 1000)
 
