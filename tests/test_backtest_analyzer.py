@@ -483,3 +483,132 @@ def test_analyzer_expectancy_excludes_costs_from_open_lifecycle():
     assert report.completed_trade_count == 1
     assert report.net_pnl == pytest.approx(90.0)
     assert report.net_expectancy == pytest.approx(100.0)
+
+
+def test_analyzer_reports_net_win_rate_and_profit_factor_per_completed_trade():
+    journal = TradeJournal()
+
+    # Completed winner: +100 net.
+    _record(
+        journal,
+        action="enter",
+        symbol="BTC/USDT",
+        quantity=10.0,
+        price=100.0,
+    )
+    _record(
+        journal,
+        action="exit",
+        symbol="BTC/USDT",
+        quantity=10.0,
+        price=110.0,
+        realized_pnl=100.0,
+    )
+
+    # Completed loser: -40 net.
+    _record(
+        journal,
+        action="enter",
+        symbol="ETH/USDT",
+        quantity=10.0,
+        price=100.0,
+    )
+    _record(
+        journal,
+        action="exit",
+        symbol="ETH/USDT",
+        quantity=10.0,
+        price=96.0,
+        realized_pnl=-40.0,
+    )
+
+    report = BacktestAnalyzer(
+        cost_model=TradingCostModel(
+            fee_rate=0.0,
+            spread_bps=0.0,
+            slippage_bps=0.0,
+        )
+    ).analyze(journal)
+
+    assert report.completed_trade_count == 2
+    assert report.wins == 1
+    assert report.losses == 1
+    assert report.win_rate == pytest.approx(0.5)
+    assert report.profit_factor == pytest.approx(2.5)
+    assert report.net_expectancy == pytest.approx(30.0)
+
+
+def test_analyzer_completed_trade_metric_edge_cases():
+    winner_journal = TradeJournal()
+    _record(
+        winner_journal,
+        action="enter",
+        quantity=10.0,
+        price=100.0,
+    )
+    _record(
+        winner_journal,
+        action="exit",
+        quantity=10.0,
+        price=110.0,
+        realized_pnl=100.0,
+    )
+
+    winner_report = BacktestAnalyzer(
+        cost_model=TradingCostModel(
+            fee_rate=0.0,
+            spread_bps=0.0,
+            slippage_bps=0.0,
+        )
+    ).analyze(winner_journal)
+
+    assert winner_report.wins == 1
+    assert winner_report.losses == 0
+    assert winner_report.win_rate == pytest.approx(1.0)
+    assert winner_report.profit_factor == float("inf")
+
+    breakeven_journal = TradeJournal()
+    _record(
+        breakeven_journal,
+        action="enter",
+        quantity=10.0,
+        price=100.0,
+    )
+    _record(
+        breakeven_journal,
+        action="exit",
+        quantity=10.0,
+        price=100.0,
+        realized_pnl=0.0,
+    )
+
+    breakeven_report = BacktestAnalyzer(
+        cost_model=TradingCostModel(
+            fee_rate=0.0,
+            spread_bps=0.0,
+            slippage_bps=0.0,
+        )
+    ).analyze(breakeven_journal)
+
+    assert breakeven_report.completed_trade_count == 1
+    assert breakeven_report.wins == 0
+    assert breakeven_report.losses == 0
+    assert breakeven_report.win_rate == 0.0
+    assert breakeven_report.profit_factor == 0.0
+    assert breakeven_report.net_expectancy == 0.0
+
+    open_journal = TradeJournal()
+    _record(
+        open_journal,
+        action="enter",
+        quantity=10.0,
+        price=100.0,
+    )
+
+    open_report = BacktestAnalyzer().analyze(open_journal)
+
+    assert open_report.completed_trade_count == 0
+    assert open_report.wins == 0
+    assert open_report.losses == 0
+    assert open_report.win_rate == 0.0
+    assert open_report.profit_factor == 0.0

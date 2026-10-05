@@ -14,6 +14,10 @@ class BacktestAnalysis:
     completed_exit_count: int
     realized_exit_count: int
     completed_trade_count: int
+    wins: int
+    losses: int
+    win_rate: float
+    profit_factor: float
     turnover: float
     gross_pnl: float
     actual_fees: float
@@ -130,6 +134,36 @@ class BacktestAnalyzer:
 
         completed_trade_count = len(completed_trade_net_pnl)
 
+        wins = sum(
+            pnl > 0.0
+            for pnl in completed_trade_net_pnl
+        )
+        losses = sum(
+            pnl < 0.0
+            for pnl in completed_trade_net_pnl
+        )
+        win_rate = (
+            wins / completed_trade_count
+            if completed_trade_count
+            else 0.0
+        )
+
+        gross_profit = sum(
+            pnl
+            for pnl in completed_trade_net_pnl
+            if pnl > 0.0
+        )
+        gross_loss = -sum(
+            pnl
+            for pnl in completed_trade_net_pnl
+            if pnl < 0.0
+        )
+        profit_factor = (
+            gross_profit / gross_loss
+            if gross_loss > 0.0
+            else float("inf") if gross_profit > 0.0 else 0.0
+        )
+
         # Backward-compatible alias for the original realized-exit metric.
         completed_exit_count = realized_exit_count
 
@@ -144,6 +178,10 @@ class BacktestAnalyzer:
             completed_exit_count=completed_exit_count,
             realized_exit_count=realized_exit_count,
             completed_trade_count=completed_trade_count,
+            wins=wins,
+            losses=losses,
+            win_rate=win_rate,
+            profit_factor=profit_factor,
             turnover=turnover,
             gross_pnl=gross_pnl,
             actual_fees=actual_fees,
