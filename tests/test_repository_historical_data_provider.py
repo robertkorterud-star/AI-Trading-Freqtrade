@@ -81,3 +81,101 @@ def test_provider_preserves_requested_date_range(tmp_path):
         data.bars[1],
         data.bars[2],
     )
+
+
+def test_persisted_multi_timeframe_data_replays_without_future_bars(tmp_path):
+    from atlas.trading.backtest_engine import BacktestEngine
+
+    class RecordingLoop:
+        def __init__(self):
+            self.snapshots = []
+
+        def process(self, snapshot):
+            self.snapshots.append(snapshot)
+            return snapshot
+
+    database = Database(tmp_path / "atlas.db")
+    initialize_database(database)
+    repository = HistoricalMarketDataRepository(database)
+
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    base = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="4h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=start + timedelta(hours=4 * index),
+                open=100.0 + index,
+                high=105.0 + index,
+                low=99.0 + index,
+                close=103.0 + index,
+                volume=1000.0 + index,
+            )
+            for index in range(2)
+        ],
+    )
+
+    hourly = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="1h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=start + timedelta(hours=index),
+                open=100.0 + index,
+                high=105.0 + index,
+                low=99.0 + index,
+                close=103.0 + index,
+                volume=1000.0 + index,
+            )
+            for index in range(9)
+        ],
+    )
+
+    repository.save(base)
+    repository.save(hourly)
+
+    base_provider = RepositoryHistoricalDataProvider(
+        repository=repository,
+        timeframe="4h",
+        source="binance",
+    )
+    hourly_provider = RepositoryHistoricalDataProvider(
+        repository=repository,
+        timeframe="1h",
+        source="binance",
+    )
+
+    base_history = base_provider.load("BTCUSDT")
+    hourly_history = hourly_provider.load("BTCUSDT")
+
+    loop = RecordingLoop()
+
+    BacktestEngine().replay(
+        base_history,
+        loop=loop,
+        warmup_bars=1,
+        timeframe_data={
+            "1h": hourly_history,
+        },
+    )
+
+    assert len(loop.snapshots) == 2
+
+    assert [
+        candle.timestamp
+        for candle in loop.snapshots[0].timeframe_candles["1h"]
+    ] == [
+        (start + timedelta(hours=index)).timestamp()
+        for index in range(4)
+    ]
+
+    assert [
+        candle.timestamp
+        for candle in loop.snapshots[1].timeframe_candles["1h"]
+    ] == [
+        (start + timedelta(hours=index)).timestamp()
+        for index in range(8)
+    ]
