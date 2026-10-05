@@ -612,3 +612,93 @@ def test_analyzer_completed_trade_metric_edge_cases():
     assert open_report.losses == 0
     assert open_report.win_rate == 0.0
     assert open_report.profit_factor == 0.0
+
+
+def test_analyzer_cost_multiplier_stresses_completed_trade_economics():
+    journal = TradeJournal()
+
+    _record(
+        journal,
+        action="enter",
+        quantity=10.0,
+        price=100.0,
+        fee=1.0,
+    )
+    _record(
+        journal,
+        action="exit",
+        quantity=10.0,
+        price=110.0,
+        fee=1.1,
+        realized_pnl=98.9,
+    )
+
+    analyzer = BacktestAnalyzer(
+        cost_model=TradingCostModel(
+            fee_rate=0.001,
+            spread_bps=2.0,
+            slippage_bps=1.0,
+        )
+    )
+
+    baseline = analyzer.analyze(journal)
+    stressed = analyzer.analyze(
+        journal,
+        cost_multiplier=2.0,
+    )
+
+    # Gross market P&L and executions do not change in a read-only
+    # cost stress. Only direct trading costs are stressed.
+    assert stressed.execution_count == baseline.execution_count
+    assert stressed.completed_trade_count == baseline.completed_trade_count
+    assert stressed.gross_pnl == pytest.approx(100.0)
+
+    # Observed fees: (1.0 + 1.1) * 2.
+    assert stressed.actual_fees == pytest.approx(4.2)
+
+    # Baseline spread/slippage is 0.42, stressed to 0.84.
+    assert stressed.estimated_spread_slippage == pytest.approx(0.84)
+
+    assert stressed.net_pnl == pytest.approx(
+        100.0 - 4.2 - 0.84
+    )
+    assert stressed.net_expectancy == pytest.approx(stressed.net_pnl)
+
+
+def test_analyzer_cost_multiplier_one_matches_default_analysis():
+    journal = TradeJournal()
+
+    _record(
+        journal,
+        action="enter",
+        quantity=10.0,
+        price=100.0,
+        fee=1.0,
+    )
+    _record(
+        journal,
+        action="exit",
+        quantity=10.0,
+        price=110.0,
+        fee=1.1,
+        realized_pnl=98.9,
+    )
+
+    analyzer = BacktestAnalyzer()
+
+    assert analyzer.analyze(
+        journal,
+        cost_multiplier=1.0,
+    ) == analyzer.analyze(journal)
+
+
+@pytest.mark.parametrize("cost_multiplier", [0.0, -1.0])
+def test_analyzer_rejects_non_positive_cost_multiplier(cost_multiplier):
+    with pytest.raises(
+        ValueError,
+        match="cost_multiplier must be greater than zero",
+    ):
+        BacktestAnalyzer().analyze(
+            TradeJournal(),
+            cost_multiplier=cost_multiplier,
+        )

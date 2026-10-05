@@ -35,7 +35,14 @@ class BacktestAnalyzer:
     ) -> None:
         self.cost_model = cost_model or TradingCostModel()
 
-    def analyze(self, journal: TradeJournal) -> BacktestAnalysis:
+    def analyze(
+        self,
+        journal: TradeJournal,
+        *,
+        cost_multiplier: float = 1.0,
+    ) -> BacktestAnalysis:
+        if cost_multiplier <= 0.0:
+            raise ValueError("cost_multiplier must be greater than zero")
         executions = [
             record
             for record in journal.records
@@ -54,9 +61,12 @@ class BacktestAnalyzer:
             for record in executions
         )
 
-        actual_fees = sum(
-            record.fee
-            for record in executions
+        actual_fees = (
+            sum(
+                record.fee
+                for record in executions
+            )
+            * cost_multiplier
         )
 
         # PaperPortfolio realized_pnl includes the exit-side fee.
@@ -72,7 +82,9 @@ class BacktestAnalyzer:
         )
 
         estimated_spread_slippage = (
-            turnover * spread_slippage_rate
+            turnover
+            * spread_slippage_rate
+            * cost_multiplier
         )
 
         net_pnl = (
@@ -94,7 +106,11 @@ class BacktestAnalyzer:
             symbol = record.symbol
             open_quantity = open_quantities.get(symbol, 0.0)
             notional = record.quantity * record.price
-            spread_slippage = notional * spread_slippage_rate
+            spread_slippage = (
+                notional
+                * spread_slippage_rate
+                * cost_multiplier
+            )
 
             if record.action == "enter":
                 if open_quantity <= 1e-12:
@@ -105,7 +121,7 @@ class BacktestAnalyzer:
                 )
                 lifecycle_net_pnl[symbol] = (
                     lifecycle_net_pnl.get(symbol, 0.0)
-                    - record.fee
+                    - record.fee * cost_multiplier
                     - spread_slippage
                 )
                 continue
@@ -116,7 +132,7 @@ class BacktestAnalyzer:
                 lifecycle_net_pnl.get(symbol, 0.0)
                 + record.realized_pnl
                 + record.fee
-                - record.fee
+                - record.fee * cost_multiplier
                 - spread_slippage
             )
 
