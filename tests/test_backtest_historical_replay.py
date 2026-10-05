@@ -346,3 +346,16 @@ def test_multi_symbol_replay_carries_executed_exposure_into_next_symbol_decision
         and position.market_value == expected_btc_value
         for position in eth_context["portfolio_positions"]
     )
+
+
+def test_historical_snapshot_preserves_dataset_timeframe():
+    data = _historical_data()
+
+    snapshot = next(
+        BacktestEngine().historical_snapshots(
+            data,
+            warmup_bars=50,
+        )
+    )
+
+    assert snapshot.timeframe == "4h"

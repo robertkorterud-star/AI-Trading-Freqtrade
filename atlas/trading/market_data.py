@@ -49,6 +49,7 @@ class MarketSnapshot:
     timestamp: float
     price: float
     candles: tuple[Candle, ...]
+    timeframe: str = "unknown"
     timeframe_candles: Mapping[str, tuple[Candle, ...]] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -87,6 +88,7 @@ class MarketSnapshot:
         symbol: str,
         candles: Sequence[Candle],
         timeframe_candles: Mapping[str, Sequence[Candle]] | None = None,
+        timeframe: str = "unknown",
     ) -> "MarketSnapshot":
         if not candles:
             raise ValueError("at least one candle is required")
@@ -100,5 +102,6 @@ class MarketSnapshot:
             timestamp=latest.timestamp,
             price=latest.close,
             candles=tuple(candles),
+            timeframe=timeframe,
             timeframe_candles=normalized_timeframes,
         )

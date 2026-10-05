@@ -56,3 +56,27 @@ def test_binance_market_data_can_attach_multi_timeframe_candles():
     assert all(len(candles) == 2 for candles in snapshot.timeframe_candles.values())
     assert len(adapter.calls) == 5
     assert {call["interval"] for call in adapter.calls} == {"4h", "1h", "15m", "5m", "1m"}
+
+
+def test_binance_snapshot_preserves_primary_interval():
+    from atlas.adapters.binance_market_data import BinanceMarketData
+
+    class FakeBinance:
+        def get_klines(self, **kwargs):
+            return [
+                [
+                    1710000000000,
+                    "100",
+                    "101",
+                    "99",
+                    "100.5",
+                    "10",
+                ],
+            ]
+
+    snapshot = BinanceMarketData(FakeBinance()).snapshot(
+        "BTCUSDT",
+        interval="15m",
+    )
+
+    assert snapshot.timeframe == "15m"

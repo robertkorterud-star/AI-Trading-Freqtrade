@@ -181,6 +181,7 @@ class BacktestEngine:
             yield MarketSnapshot.from_candles(
                 data.symbol,
                 candles[: end_index + 1],
+                timeframe=data.timeframe,
             )
 
     def replay(

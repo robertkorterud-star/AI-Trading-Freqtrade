@@ -125,3 +125,26 @@ def test_market_snapshot_rejects_timestamp_older_than_latest_candle():
         raise AssertionError(
             "Expected a stale snapshot timestamp to be rejected."
         )
+
+
+def test_market_snapshot_preserves_primary_timeframe():
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    candles = (
+        Candle(
+            timestamp=1.0,
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.5,
+            volume=1000.0,
+        ),
+    )
+
+    snapshot = MarketSnapshot.from_candles(
+        "BTCUSDT",
+        candles,
+        timeframe="15m",
+    )
+
+    assert snapshot.timeframe == "15m"

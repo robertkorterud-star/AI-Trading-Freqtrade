@@ -439,6 +439,7 @@ def test_dry_run_loop_forwards_market_regime_to_canonical_decision():
     snapshot = MarketSnapshot.from_candles(
         "BTCUSDT",
         candles,
+        timeframe="1h",
     )
 
     loop = DryRunLoop(
@@ -450,5 +451,5 @@ def test_dry_run_loop_forwards_market_regime_to_canonical_decision():
     regime = captured["market_regime"]
 
     assert regime.symbol == "BTCUSDT"
-    assert regime.timeframe == "4h"
+    assert regime.timeframe == "1h"
     assert regime.trend_score == 4.0

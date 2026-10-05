@@ -243,6 +243,7 @@ class YFinanceMarketDataProvider:
             symbol=symbol,
             candles=candles,
             timeframe_candles=timeframe_candles,
+            timeframe=interval,
         )
 
 

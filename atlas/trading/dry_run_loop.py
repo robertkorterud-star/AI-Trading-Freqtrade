@@ -138,7 +138,9 @@ class DryRunLoop:
         equity, current_exposure_pct, drawdown_pct, positions = self._portfolio_context(
             snapshot
         )
-        market_regime = MarketRegimeEngine(timeframe="4h").analyze(
+        market_regime = MarketRegimeEngine(
+            timeframe=snapshot.timeframe,
+        ).analyze(
             snapshot.symbol,
             list(snapshot.candles),
         )

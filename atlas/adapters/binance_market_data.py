@@ -49,6 +49,7 @@ class BinanceMarketData:
             symbol=symbol,
             candles=candles,
             timeframe_candles=timeframe_candles,
+            timeframe=interval,
         )
 
     @staticmethod
