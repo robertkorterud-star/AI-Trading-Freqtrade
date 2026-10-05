@@ -18,6 +18,22 @@ CREATE TABLE IF NOT EXISTS assets (
 CREATE INDEX IF NOT EXISTS idx_assets_active
 ON assets(active);
 
+CREATE TABLE IF NOT EXISTS historical_market_data (
+    source TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    timeframe TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    open REAL NOT NULL,
+    high REAL NOT NULL,
+    low REAL NOT NULL,
+    close REAL NOT NULL,
+    volume REAL NOT NULL,
+    PRIMARY KEY (source, symbol, timeframe, timestamp)
+);
+
+CREATE INDEX IF NOT EXISTS idx_historical_market_data_lookup
+ON historical_market_data(source, symbol, timeframe, timestamp);
+
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
