@@ -298,3 +298,68 @@ def test_pipeline_does_not_substitute_base_candles_for_missing_explicit_timefram
 
     assert signals == []
     assert algorithm.calls == []
+
+
+def test_pipeline_uses_base_candles_when_algorithm_matches_snapshot_timeframe():
+    """Explicit algorithm timeframe may use base candles only when it matches the snapshot."""
+    from atlas.trading.market_data import Candle, MarketSnapshot
+
+    class CapturingAlgorithm:
+        name = "five_minute"
+        timeframe = "5m"
+
+        def __init__(self):
+            self.received_candles = None
+
+        def generate_signal(self, symbol, candles):
+            from atlas.algorithms.base import AlgorithmSignal
+            from atlas.models.action import Action
+
+            self.received_candles = candles
+            return AlgorithmSignal(
+                algorithm=self.name,
+                symbol=symbol,
+                timeframe=self.timeframe,
+                action=Action.HOLD,
+                score=50.0,
+                confidence=50.0,
+            )
+
+    def candle(timestamp, close):
+        return Candle(
+            timestamp=timestamp,
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=1.0,
+        )
+
+    base = (
+        candle(1.0, 100.0),
+        candle(2.0, 101.0),
+    )
+    fifteen_minute = (
+        candle(3.0, 102.0),
+    )
+
+    snapshot = MarketSnapshot.from_candles(
+        "BTCUSDT",
+        base,
+        timeframe="5m",
+        timeframe_candles={
+            "15m": fifteen_minute,
+        },
+    )
+
+    algorithm = CapturingAlgorithm()
+    registry = AlgorithmRegistry()
+    registry.register(algorithm)
+
+    signals = AlgorithmPipeline(registry).generate_signals(
+        "BTCUSDT",
+        snapshot,
+    )
+
+    assert len(signals) == 1
+    assert algorithm.received_candles == base

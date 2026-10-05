@@ -42,15 +42,20 @@ class AlgorithmPipeline:
             if (
                 not isinstance(market_data, dict)
                 and timeframe is not None
-                and timeframe_candles
-                and timeframe not in timeframe_candles
             ):
-                continue
-
-            candles = timeframe_candles.get(
-                timeframe,
-                base_candles,
-            )
+                if timeframe in timeframe_candles:
+                    candles = timeframe_candles[timeframe]
+                elif timeframe == market_data.timeframe:
+                    candles = base_candles
+                elif timeframe_candles:
+                    continue
+                else:
+                    candles = base_candles
+            else:
+                candles = timeframe_candles.get(
+                    timeframe,
+                    base_candles,
+                )
 
             try:
                 signal = algorithm.generate_signal(
