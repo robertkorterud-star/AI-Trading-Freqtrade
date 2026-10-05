@@ -359,3 +359,132 @@ def test_historical_snapshot_preserves_dataset_timeframe():
     )
 
     assert snapshot.timeframe == "4h"
+
+
+def test_historical_snapshots_attach_only_closed_multi_timeframe_bars():
+    base_start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    base = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="4h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=base_start + timedelta(hours=4 * index),
+                open=100.0 + index,
+                high=101.0 + index,
+                low=99.0 + index,
+                close=100.5 + index,
+                volume=1000.0,
+            )
+            for index in range(2)
+        ],
+    )
+
+    hourly = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="1h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=base_start + timedelta(hours=index),
+                open=100.0 + index,
+                high=101.0 + index,
+                low=99.0 + index,
+                close=100.5 + index,
+                volume=1000.0,
+            )
+            for index in range(8)
+        ],
+    )
+
+    snapshots = list(
+        BacktestEngine().historical_snapshots(
+            base,
+            warmup_bars=1,
+            timeframe_data={
+                "1h": hourly,
+            },
+        )
+    )
+
+    assert len(snapshots) == 2
+
+    first = snapshots[0]
+    second = snapshots[1]
+
+    assert [
+        candle.timestamp
+        for candle in first.timeframe_candles["1h"]
+    ] == [
+        (base_start + timedelta(hours=index)).timestamp()
+        for index in range(4)
+    ]
+
+    assert [
+        candle.timestamp
+        for candle in second.timeframe_candles["1h"]
+    ] == [
+        (base_start + timedelta(hours=index)).timestamp()
+        for index in range(8)
+    ]
+
+
+def test_historical_replay_passes_closed_multi_timeframe_data_to_loop():
+    base_start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    base = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="4h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=base_start,
+                open=100.0,
+                high=101.0,
+                low=99.0,
+                close=100.5,
+                volume=1000.0,
+            )
+        ],
+    )
+
+    hourly = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="1h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=base_start + timedelta(hours=index),
+                open=100.0 + index,
+                high=101.0 + index,
+                low=99.0 + index,
+                close=100.5 + index,
+                volume=1000.0,
+            )
+            for index in range(5)
+        ],
+    )
+
+    loop = RecordingReplayLoop()
+
+    BacktestEngine().replay(
+        base,
+        loop=loop,
+        warmup_bars=1,
+        timeframe_data={
+            "1h": hourly,
+        },
+    )
+
+    assert len(loop.snapshots) == 1
+
+    snapshot = loop.snapshots[0]
+
+    assert [
+        candle.timestamp
+        for candle in snapshot.timeframe_candles["1h"]
+    ] == [
+        (base_start + timedelta(hours=index)).timestamp()
+        for index in range(4)
+    ]

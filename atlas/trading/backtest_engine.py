@@ -155,6 +155,7 @@ class BacktestEngine:
         data: HistoricalMarketData,
         *,
         warmup_bars: int = MIN_BARS,
+        timeframe_data: dict[str, HistoricalMarketData] | None = None,
     ):
         """Yield chronological MarketSnapshots without future bars."""
 
@@ -177,12 +178,63 @@ class BacktestEngine:
             for bar in bars
         )
 
+        normalized_timeframes = {
+            timeframe: tuple(
+                Candle(
+                    timestamp=bar.timestamp.timestamp(),
+                    open=bar.open,
+                    high=bar.high,
+                    low=bar.low,
+                    close=bar.close,
+                    volume=bar.volume,
+                )
+                for bar in timeframe_history.bars
+            )
+            for timeframe, timeframe_history in (timeframe_data or {}).items()
+        }
+
         for end_index in range(warmup_bars - 1, len(candles)):
+            current_bar = bars[end_index]
+            available_at = (
+                current_bar.timestamp.timestamp()
+                + self._timeframe_seconds(data.timeframe)
+            )
+
+            closed_timeframes = {
+                timeframe: tuple(
+                    candle
+                    for candle in timeframe_candles
+                    if (
+                        candle.timestamp
+                        + self._timeframe_seconds(timeframe)
+                        <= available_at
+                    )
+                )
+                for timeframe, timeframe_candles in normalized_timeframes.items()
+            }
+
             yield MarketSnapshot.from_candles(
                 data.symbol,
                 candles[: end_index + 1],
                 timeframe=data.timeframe,
+                timeframe_candles=closed_timeframes,
             )
+
+    @staticmethod
+    def _timeframe_seconds(timeframe: str) -> float:
+        """Convert historical timeframe notation to seconds."""
+        unit_seconds = {
+            "m": 60.0,
+            "h": 3600.0,
+            "d": 86400.0,
+            "w": 604800.0,
+        }
+        try:
+            return float(timeframe[:-1]) * unit_seconds[timeframe[-1]]
+        except (KeyError, ValueError):
+            raise ValueError(
+                f"Unsupported historical timeframe: {timeframe}"
+            ) from None
 
     def replay(
         self,
@@ -190,6 +242,7 @@ class BacktestEngine:
         *,
         loop,
         warmup_bars: int = MIN_BARS,
+        timeframe_data: dict[str, HistoricalMarketData] | None = None,
     ) -> list[object]:
         """Replay historical snapshots through an existing ATLAS loop."""
 
@@ -198,6 +251,7 @@ class BacktestEngine:
             for snapshot in self.historical_snapshots(
                 data,
                 warmup_bars=warmup_bars,
+                timeframe_data=timeframe_data,
             )
         ]
 
