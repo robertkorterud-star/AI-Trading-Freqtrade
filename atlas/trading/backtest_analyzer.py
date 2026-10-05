@@ -12,6 +12,8 @@ class BacktestAnalysis:
 
     execution_count: int
     completed_exit_count: int
+    realized_exit_count: int
+    completed_trade_count: int
     turnover: float
     gross_pnl: float
     actual_fees: float
@@ -75,16 +77,73 @@ class BacktestAnalyzer:
             - estimated_spread_slippage
         )
 
-        completed_exit_count = len(completed_exits)
+        realized_exit_count = len(completed_exits)
+
+        # Reconstruct completed position lifecycles from executed quantities.
+        # Action labels alone are insufficient because an EXIT may be
+        # quantity-limited and therefore leave part of a position open.
+        open_quantities: dict[str, float] = {}
+        lifecycle_net_pnl: dict[str, float] = {}
+        completed_trade_net_pnl: list[float] = []
+
+        for record in executions:
+            symbol = record.symbol
+            open_quantity = open_quantities.get(symbol, 0.0)
+            notional = record.quantity * record.price
+            spread_slippage = notional * spread_slippage_rate
+
+            if record.action == "enter":
+                if open_quantity <= 1e-12:
+                    lifecycle_net_pnl[symbol] = 0.0
+
+                open_quantities[symbol] = (
+                    open_quantity + record.quantity
+                )
+                lifecycle_net_pnl[symbol] = (
+                    lifecycle_net_pnl.get(symbol, 0.0)
+                    - record.fee
+                    - spread_slippage
+                )
+                continue
+
+            # PaperPortfolio realized_pnl already contains the exit-side fee,
+            # so adding the fee back recovers gross market P&L before costs.
+            lifecycle_net_pnl[symbol] = (
+                lifecycle_net_pnl.get(symbol, 0.0)
+                + record.realized_pnl
+                + record.fee
+                - record.fee
+                - spread_slippage
+            )
+
+            remaining = max(
+                0.0,
+                open_quantity - record.quantity,
+            )
+
+            if open_quantity > 1e-12 and remaining <= 1e-12:
+                completed_trade_net_pnl.append(
+                    lifecycle_net_pnl.pop(symbol, 0.0)
+                )
+
+            open_quantities[symbol] = remaining
+
+        completed_trade_count = len(completed_trade_net_pnl)
+
+        # Backward-compatible alias for the original realized-exit metric.
+        completed_exit_count = realized_exit_count
+
         net_expectancy = (
-            net_pnl / completed_exit_count
-            if completed_exit_count
+            sum(completed_trade_net_pnl) / completed_trade_count
+            if completed_trade_count
             else 0.0
         )
 
         return BacktestAnalysis(
             execution_count=len(executions),
             completed_exit_count=completed_exit_count,
+            realized_exit_count=realized_exit_count,
+            completed_trade_count=completed_trade_count,
             turnover=turnover,
             gross_pnl=gross_pnl,
             actual_fees=actual_fees,
