@@ -200,8 +200,9 @@ class BacktestEngine:
                 + self._timeframe_seconds(data.timeframe)
             )
 
-            closed_timeframes = {
-                timeframe: tuple(
+            closed_timeframes = {}
+            for timeframe, timeframe_candles in normalized_timeframes.items():
+                closed_candles = tuple(
                     candle
                     for candle in timeframe_candles
                     if (
@@ -210,8 +211,8 @@ class BacktestEngine:
                         <= available_at
                     )
                 )
-                for timeframe, timeframe_candles in normalized_timeframes.items()
-            }
+                if closed_candles:
+                    closed_timeframes[timeframe] = closed_candles
 
             yield MarketSnapshot.from_candles(
                 data.symbol,

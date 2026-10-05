@@ -488,3 +488,52 @@ def test_historical_replay_passes_closed_multi_timeframe_data_to_loop():
         (base_start + timedelta(hours=index)).timestamp()
         for index in range(4)
     ]
+
+
+def test_historical_snapshots_omit_timeframe_until_first_bar_is_closed():
+    base_start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    base = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="4h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=base_start,
+                open=100.0,
+                high=101.0,
+                low=99.0,
+                close=100.5,
+                volume=1000.0,
+            )
+        ],
+    )
+
+    hourly = HistoricalMarketData(
+        symbol="BTCUSDT",
+        timeframe="1h",
+        source="binance",
+        bars=[
+            OHLCVBar(
+                timestamp=base_start + timedelta(hours=4),
+                open=101.0,
+                high=102.0,
+                low=100.0,
+                close=101.5,
+                volume=1000.0,
+            )
+        ],
+    )
+
+    snapshots = list(
+        BacktestEngine().historical_snapshots(
+            base,
+            warmup_bars=1,
+            timeframe_data={
+                "1h": hourly,
+            },
+        )
+    )
+
+    assert len(snapshots) == 1
+    assert "1h" not in snapshots[0].timeframe_candles
