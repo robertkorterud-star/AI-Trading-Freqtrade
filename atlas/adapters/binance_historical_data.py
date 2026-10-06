@@ -27,11 +27,13 @@ class BinanceHistoricalDataProvider(HistoricalDataProvider):
         adapter=None,
         interval: str = "4h",
         limit: int = 500,
+        source: str = "binance",
         now=None,
     ):
         self.adapter = adapter or BinanceAdapter()
         self.interval = interval
         self.limit = limit
+        self.source = source
         self._now = now or (
             lambda: datetime.now(timezone.utc)
         )
@@ -125,5 +127,5 @@ class BinanceHistoricalDataProvider(HistoricalDataProvider):
             symbol=symbol,
             bars=bars,
             timeframe=self.interval,
-            source="binance",
+            source=self.source,
         )

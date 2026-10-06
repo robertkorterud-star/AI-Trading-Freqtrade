@@ -273,3 +273,33 @@ def test_binance_historical_provider_stops_when_pagination_makes_no_progress():
         datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc),
         datetime(2026, 1, 1, 4, 0, tzinfo=timezone.utc),
     ]
+
+
+def test_binance_historical_provider_can_label_injected_market_source():
+    adapter = FakeBinance([
+        [
+            1767225600000,
+            "100",
+            "105",
+            "99",
+            "103",
+            "12.5",
+            1767225899999,
+        ],
+    ])
+
+    provider = BinanceHistoricalDataProvider(
+        adapter=adapter,
+        interval="5m",
+        source="binance_futures",
+        now=lambda: datetime(
+            2026, 1, 2, tzinfo=timezone.utc
+        ),
+    )
+
+    result = provider.load("BTCUSDT")
+
+    assert result.symbol == "BTCUSDT"
+    assert result.timeframe == "5m"
+    assert result.source == "binance_futures"
+    assert len(result.bars) == 1
