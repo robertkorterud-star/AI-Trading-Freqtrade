@@ -135,3 +135,38 @@ def test_crypto_intelligence_does_not_create_signal_from_market_context():
     assert result.multi_timeframe_signal == "WAIT"
     assert result.confidence == 0.0
     assert result.is_actionable is False
+
+
+def test_crypto_intelligence_can_carry_derivatives_flow_without_creating_signal():
+    from atlas.trading.historical_derivatives_data import (
+        DerivativesFlowObservation,
+    )
+
+    flow = DerivativesFlowObservation(
+        timestamp=1_791_279_000.0,
+        spot_taker_buy_ratio=0.80,
+        futures_taker_buy_ratio=0.40,
+        open_interest_change=0.02,
+    )
+
+    service = CryptoMarketIntelligenceService(
+        crypto_market_service=FakeCryptoMarketService(),
+        breadth_analyzer=CryptoMarketBreadthAnalyzer(),
+    )
+
+    result = service.analyze(
+        coin_id="bitcoin",
+        symbol="BTC-USD",
+        technical_signal="WAIT",
+        multi_timeframe_signal="WAIT",
+        market_alignment=0.0,
+        confidence=0.0,
+        derivatives_flow=flow,
+    )
+
+    assert result.derivatives_flow is flow
+    assert result.technical_signal == "WAIT"
+    assert result.multi_timeframe_signal == "WAIT"
+    assert result.market_alignment == 0.0
+    assert result.confidence == 0.0
+    assert result.is_actionable is False

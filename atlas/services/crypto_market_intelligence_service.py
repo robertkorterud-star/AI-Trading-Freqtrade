@@ -5,6 +5,9 @@ ATLAS Crypto Market Intelligence Service.
 from atlas.trading.crypto_intelligence_snapshot import (
     CryptoIntelligenceSnapshot,
 )
+from atlas.trading.historical_derivatives_data import (
+    DerivativesFlowObservation,
+)
 
 
 class CryptoMarketIntelligenceService:
@@ -132,6 +135,7 @@ class CryptoMarketIntelligenceService:
         multi_timeframe_signal: str = "WAIT",
         market_alignment: float = 0.0,
         confidence: float = 0.0,
+        derivatives_flow: DerivativesFlowObservation | None = None,
     ) -> CryptoIntelligenceSnapshot:
 
         asset = (
@@ -163,4 +167,5 @@ class CryptoMarketIntelligenceService:
             ),
             market_alignment=market_alignment,
             confidence=confidence,
+            derivatives_flow=derivatives_flow,
         )

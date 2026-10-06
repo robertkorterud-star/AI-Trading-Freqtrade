@@ -186,3 +186,35 @@ def test_partial_data_blocks_actionability():
 
     assert result.confidence == 0.0
     assert result.is_actionable is False
+
+
+def test_snapshot_can_carry_optional_derivatives_flow_without_changing_signal():
+    from atlas.trading.historical_derivatives_data import (
+        DerivativesFlowObservation,
+    )
+
+    flow = DerivativesFlowObservation(
+        timestamp=1_791_279_000.0,
+        spot_taker_buy_ratio=0.80,
+        futures_taker_buy_ratio=0.40,
+        open_interest_change=0.02,
+    )
+
+    snapshot = CryptoIntelligenceSnapshot.build(
+        symbol="BTC-USD",
+        asset=_asset(),
+        global_market=_global(),
+        breadth=_breadth(),
+        technical_signal="WAIT",
+        multi_timeframe_signal="WAIT",
+        market_alignment=0.0,
+        confidence=0.0,
+        derivatives_flow=flow,
+    )
+
+    assert snapshot.derivatives_flow is flow
+    assert snapshot.technical_signal == "WAIT"
+    assert snapshot.multi_timeframe_signal == "WAIT"
+    assert snapshot.market_alignment == 0.0
+    assert snapshot.confidence == 0.0
+    assert snapshot.is_actionable is False

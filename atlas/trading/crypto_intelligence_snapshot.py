@@ -17,6 +17,9 @@ from atlas.trading.crypto_market_context import (
     CryptoAssetContext,
     GlobalCryptoContext,
 )
+from atlas.trading.historical_derivatives_data import (
+    DerivativesFlowObservation,
+)
 
 
 @dataclass(slots=True)
@@ -34,6 +37,8 @@ class CryptoIntelligenceSnapshot:
     confidence: float
 
     data_quality: str
+
+    derivatives_flow: DerivativesFlowObservation | None = None
 
     @property
     def market_regime(self) -> str:
@@ -62,6 +67,7 @@ class CryptoIntelligenceSnapshot:
         multi_timeframe_signal: str = "WAIT",
         market_alignment: float = 0.0,
         confidence: float = 0.0,
+        derivatives_flow: DerivativesFlowObservation | None = None,
     ) -> "CryptoIntelligenceSnapshot":
 
         quality = cls._quality(
@@ -84,6 +90,7 @@ class CryptoIntelligenceSnapshot:
             market_alignment=market_alignment,
             confidence=confidence,
             data_quality=quality,
+            derivatives_flow=derivatives_flow,
         )
 
     @staticmethod
