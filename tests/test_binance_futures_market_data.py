@@ -82,3 +82,41 @@ def test_open_interest_history_uses_usdm_public_endpoint():
     assert "endTime=1767312000000" in request.full_url
     assert "limit=100" in request.full_url
     assert timeout == 10.0
+
+
+def test_klines_use_usdm_public_endpoint():
+    requests = []
+
+    def opener(request, timeout):
+        requests.append((request, timeout))
+        return FakeResponse(
+            b'[[1791279000000,"86200.0","86250.0","86180.0",'
+            b'"86230.0","123.45",1791279059999,"10640000.0",'
+            b'321,"78.90","6800000.0","0"]]'
+        )
+
+    adapter = BinanceFuturesAdapter(opener=opener)
+
+    result = adapter.get_klines(
+        symbol="BTCUSDT",
+        interval="1m",
+        start_time=1791279000000,
+        end_time=1791279060000,
+        limit=500,
+    )
+
+    assert result[0][0] == 1791279000000
+    assert result[0][5] == "123.45"
+    assert result[0][9] == "78.90"
+
+    request, timeout = requests[0]
+
+    assert request.full_url.startswith(
+        "https://fapi.binance.com/fapi/v1/klines?"
+    )
+    assert "symbol=BTCUSDT" in request.full_url
+    assert "interval=1m" in request.full_url
+    assert "startTime=1791279000000" in request.full_url
+    assert "endTime=1791279060000" in request.full_url
+    assert "limit=500" in request.full_url
+    assert timeout == 10.0

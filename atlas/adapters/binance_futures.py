@@ -61,6 +61,34 @@ class BinanceFuturesAdapter:
 
         return payload
 
+    def get_klines(
+        self,
+        symbol: str,
+        interval: str,
+        start_time: int | None = None,
+        end_time: int | None = None,
+        limit: int = 500,
+    ) -> list[list]:
+        """Return public USD-M Futures kline data."""
+
+        payload = self._get(
+            "/fapi/v1/klines",
+            {
+                "symbol": symbol,
+                "interval": interval,
+                "startTime": start_time,
+                "endTime": end_time,
+                "limit": limit,
+            },
+        )
+
+        if not isinstance(payload, list):
+            raise RuntimeError(
+                "Binance Futures returned invalid kline data"
+            )
+
+        return payload
+
     def get_open_interest_history(
         self,
         symbol: str,
