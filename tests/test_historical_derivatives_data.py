@@ -85,3 +85,26 @@ def test_funding_rate_observation_has_no_trading_action():
     )
 
     assert not hasattr(observation, "action")
+
+
+def test_derivatives_flow_observation_is_descriptive_market_evidence():
+    from atlas.trading.historical_derivatives_data import (
+        DerivativesFlowObservation,
+    )
+
+    observation = DerivativesFlowObservation(
+        timestamp=1_760_000_000.0,
+        spot_taker_buy_ratio=0.64,
+        futures_taker_buy_ratio=0.48,
+        open_interest_change=-0.0015,
+    )
+
+    assert observation.timestamp == 1_760_000_000.0
+    assert observation.spot_taker_buy_ratio == 0.64
+    assert observation.futures_taker_buy_ratio == 0.48
+    assert observation.open_interest_change == -0.0015
+    assert observation.taker_buy_ratio_delta == pytest.approx(0.16)
+
+    # Market evidence only: this model must not own a trading decision.
+    assert not hasattr(observation, "action")
+    assert not hasattr(observation, "decision")

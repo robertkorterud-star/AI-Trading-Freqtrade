@@ -45,3 +45,20 @@ class OpenInterestObservation:
             raise ValueError(
                 "open_interest_value cannot be negative"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class DerivativesFlowObservation:
+    """Normalized descriptive spot/futures flow evidence."""
+
+    timestamp: float
+    spot_taker_buy_ratio: float
+    futures_taker_buy_ratio: float
+    open_interest_change: float
+
+    @property
+    def taker_buy_ratio_delta(self) -> float:
+        return (
+            self.spot_taker_buy_ratio
+            - self.futures_taker_buy_ratio
+        )
