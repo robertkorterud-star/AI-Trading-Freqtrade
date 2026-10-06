@@ -95,6 +95,10 @@ class BinanceHistoricalDerivativesDataProvider:
                 ),
             )
             for observation in raw_observations
+            if (
+                end_time is None
+                or int(observation["fundingTime"]) < end_time
+            )
         )
 
     def load_open_interest(
@@ -104,12 +108,15 @@ class BinanceHistoricalDerivativesDataProvider:
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> tuple[OpenInterestObservation, ...]:
+        start_time = self._to_milliseconds(start)
+        end_time = self._to_milliseconds(end)
+
         raw_observations = (
             self.adapter.get_open_interest_history(
                 symbol=symbol,
                 period=period,
-                start_time=self._to_milliseconds(start),
-                end_time=self._to_milliseconds(end),
+                start_time=start_time,
+                end_time=end_time,
                 limit=self.open_interest_limit,
             )
         )
@@ -127,6 +134,10 @@ class BinanceHistoricalDerivativesDataProvider:
                 ),
             )
             for observation in raw_observations
+            if (
+                end_time is None
+                or int(observation["timestamp"]) < end_time
+            )
         )
 
     @staticmethod

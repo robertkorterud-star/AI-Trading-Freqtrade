@@ -198,3 +198,91 @@ def test_funding_pagination_stops_when_no_progress():
 
     assert len(result) == 1
     assert adapter.calls == 2
+
+
+def test_funding_excludes_observation_at_end_boundary():
+    class FakeAdapter:
+        def get_funding_rate_history(
+            self,
+            symbol,
+            start_time=None,
+            end_time=None,
+            limit=100,
+        ):
+            return [
+                {
+                    "symbol": symbol,
+                    "fundingTime": 1767225600000,
+                    "fundingRate": "0.0001",
+                    "markPrice": "93450.0",
+                },
+                {
+                    "symbol": symbol,
+                    "fundingTime": 1767312000000,
+                    "fundingRate": "0.0002",
+                    "markPrice": "94000.0",
+                },
+            ]
+
+    provider = BinanceHistoricalDerivativesDataProvider(
+        adapter=FakeAdapter()
+    )
+
+    result = provider.load_funding_rates(
+        symbol="BTCUSDT",
+        start=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        end=datetime(2026, 1, 2, tzinfo=timezone.utc),
+    )
+
+    assert len(result) == 1
+    assert result[0].timestamp == datetime(
+        2026,
+        1,
+        1,
+        tzinfo=timezone.utc,
+    )
+
+
+def test_open_interest_excludes_observation_at_end_boundary():
+    class FakeAdapter:
+        def get_open_interest_history(
+            self,
+            symbol,
+            period="5m",
+            start_time=None,
+            end_time=None,
+            limit=100,
+        ):
+            return [
+                {
+                    "symbol": symbol,
+                    "sumOpenInterest": "95312.78",
+                    "sumOpenInterestValue": "8122126905.81",
+                    "timestamp": 1767225600000,
+                },
+                {
+                    "symbol": symbol,
+                    "sumOpenInterest": "96000.0",
+                    "sumOpenInterestValue": "8200000000.0",
+                    "timestamp": 1767312000000,
+                },
+            ]
+
+    provider = BinanceHistoricalDerivativesDataProvider(
+        adapter=FakeAdapter()
+    )
+
+    result = provider.load_open_interest(
+        symbol="BTCUSDT",
+        period="5m",
+        start=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        end=datetime(2026, 1, 2, tzinfo=timezone.utc),
+    )
+
+    assert len(result) == 1
+    assert result[0].timestamp == datetime(
+        2026,
+        1,
+        1,
+        tzinfo=timezone.utc,
+    )
