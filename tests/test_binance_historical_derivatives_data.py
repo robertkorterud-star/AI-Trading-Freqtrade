@@ -286,3 +286,101 @@ def test_open_interest_excludes_observation_at_end_boundary():
         1,
         tzinfo=timezone.utc,
     )
+
+
+def test_open_interest_paginates_backward_without_duplicate_boundary():
+    class FakeAdapter:
+        def __init__(self):
+            self.calls = []
+
+        def get_open_interest_history(
+            self,
+            symbol,
+            period="5m",
+            start_time=None,
+            end_time=None,
+            limit=100,
+        ):
+            self.calls.append(
+                {
+                    "symbol": symbol,
+                    "period": period,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "limit": limit,
+                }
+            )
+
+            if len(self.calls) == 1:
+                return [
+                    {
+                        "symbol": symbol,
+                        "sumOpenInterest": "103.0",
+                        "sumOpenInterestValue": "1030.0",
+                        "timestamp": 1767226500000,
+                    },
+                    {
+                        "symbol": symbol,
+                        "sumOpenInterest": "104.0",
+                        "sumOpenInterestValue": "1040.0",
+                        "timestamp": 1767226800000,
+                    },
+                ]
+
+            if len(self.calls) == 2:
+                return [
+                    {
+                        "symbol": symbol,
+                        "sumOpenInterest": "101.0",
+                        "sumOpenInterestValue": "1010.0",
+                        "timestamp": 1767225900000,
+                    },
+                    {
+                        "symbol": symbol,
+                        "sumOpenInterest": "102.0",
+                        "sumOpenInterestValue": "1020.0",
+                        "timestamp": 1767226200000,
+                    },
+                ]
+
+            return []
+
+    adapter = FakeAdapter()
+    provider = BinanceHistoricalDerivativesDataProvider(
+        adapter=adapter,
+        open_interest_limit=2,
+    )
+
+    result = provider.load_open_interest(
+        symbol="BTCUSDT",
+        period="5m",
+        start=datetime(
+            2026,
+            1,
+            1,
+            0,
+            5,
+            tzinfo=timezone.utc,
+        ),
+        end=datetime(
+            2026,
+            1,
+            1,
+            0,
+            25,
+            tzinfo=timezone.utc,
+        ),
+    )
+
+    assert [
+        observation.timestamp
+        for observation in result
+    ] == [
+        datetime(2026, 1, 1, 0, 5, tzinfo=timezone.utc),
+        datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc),
+        datetime(2026, 1, 1, 0, 15, tzinfo=timezone.utc),
+        datetime(2026, 1, 1, 0, 20, tzinfo=timezone.utc),
+    ]
+
+    assert len(adapter.calls) == 2
+    assert adapter.calls[1]["end_time"] == 1767226500000 - 1

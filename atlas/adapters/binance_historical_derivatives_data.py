@@ -111,15 +111,49 @@ class BinanceHistoricalDerivativesDataProvider:
         start_time = self._to_milliseconds(start)
         end_time = self._to_milliseconds(end)
 
-        raw_observations = (
-            self.adapter.get_open_interest_history(
-                symbol=symbol,
-                period=period,
-                start_time=start_time,
-                end_time=end_time,
-                limit=self.open_interest_limit,
+        if start_time is not None and end_time is not None:
+            raw_observations = []
+            next_end_time = end_time
+
+            while next_end_time > start_time:
+                page = self.adapter.get_open_interest_history(
+                    symbol=symbol,
+                    period=period,
+                    start_time=start_time,
+                    end_time=next_end_time,
+                    limit=self.open_interest_limit,
+                )
+
+                if not page:
+                    break
+
+                page_first_time = int(page[0]["timestamp"])
+
+                if (
+                    raw_observations
+                    and page_first_time
+                    >= int(raw_observations[0]["timestamp"])
+                ):
+                    break
+
+                raw_observations = page + raw_observations
+
+                page_next_end_time = page_first_time - 1
+
+                if page_next_end_time >= next_end_time:
+                    break
+
+                next_end_time = page_next_end_time
+        else:
+            raw_observations = (
+                self.adapter.get_open_interest_history(
+                    symbol=symbol,
+                    period=period,
+                    start_time=start_time,
+                    end_time=end_time,
+                    limit=self.open_interest_limit,
+                )
             )
-        )
 
         return tuple(
             OpenInterestObservation(
@@ -135,8 +169,11 @@ class BinanceHistoricalDerivativesDataProvider:
             )
             for observation in raw_observations
             if (
-                end_time is None
-                or int(observation["timestamp"]) < end_time
+                (start_time is None
+                 or int(observation["timestamp"]) >= start_time)
+                and
+                (end_time is None
+                 or int(observation["timestamp"]) < end_time)
             )
         )
 
