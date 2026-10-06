@@ -190,3 +190,36 @@ def test_bridge_does_not_change_snapshot():
     )
 
     assert after == before
+
+
+def test_bridge_exposes_optional_derivatives_flow_without_changing_signal():
+    from atlas.trading.historical_derivatives_data import (
+        DerivativesFlowObservation,
+    )
+
+    flow = DerivativesFlowObservation(
+        timestamp=1_791_279_000.0,
+        spot_taker_buy_ratio=0.80,
+        futures_taker_buy_ratio=0.40,
+        open_interest_change=0.02,
+    )
+
+    snapshot = CryptoIntelligenceSnapshot.build(
+        symbol="BTC-USD",
+        asset=_asset(),
+        global_market=_global(),
+        breadth=_breadth(),
+        technical_signal="WAIT",
+        multi_timeframe_signal="WAIT",
+        market_alignment=0.0,
+        confidence=0.0,
+        derivatives_flow=flow,
+    )
+
+    result = CryptoIntelligenceContextBridge.build(snapshot)
+
+    assert result.derivatives_flow is flow
+    assert result.technical_signal == "WAIT"
+    assert result.multi_timeframe_signal == "WAIT"
+    assert result.confidence == 0.0
+    assert result.actionable is False

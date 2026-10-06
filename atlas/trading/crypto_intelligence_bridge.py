@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from atlas.trading.crypto_intelligence_snapshot import (
     CryptoIntelligenceSnapshot,
 )
+from atlas.trading.historical_derivatives_data import (
+    DerivativesFlowObservation,
+)
 
 
 @dataclass(slots=True)
@@ -35,6 +38,8 @@ class CryptoIntelligenceContext:
 
     data_quality: str
     actionable: bool
+
+    derivatives_flow: DerivativesFlowObservation | None = None
 
 
 class CryptoIntelligenceContextBridge:
@@ -90,4 +95,5 @@ class CryptoIntelligenceContextBridge:
 
             data_quality=snapshot.data_quality,
             actionable=snapshot.is_actionable,
+            derivatives_flow=snapshot.derivatives_flow,
         )
