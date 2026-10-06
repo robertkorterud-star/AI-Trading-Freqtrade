@@ -34,6 +34,31 @@ CREATE TABLE IF NOT EXISTS historical_market_data (
 CREATE INDEX IF NOT EXISTS idx_historical_market_data_lookup
 ON historical_market_data(source, symbol, timeframe, timestamp);
 
+CREATE TABLE IF NOT EXISTS historical_funding_rates (
+    source TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    funding_rate REAL NOT NULL,
+    mark_price REAL NOT NULL,
+    PRIMARY KEY (source, symbol, timestamp)
+);
+
+CREATE INDEX IF NOT EXISTS idx_historical_funding_rates_lookup
+ON historical_funding_rates(source, symbol, timestamp);
+
+CREATE TABLE IF NOT EXISTS historical_open_interest (
+    source TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    period TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    open_interest REAL NOT NULL,
+    open_interest_value REAL NOT NULL,
+    PRIMARY KEY (source, symbol, period, timestamp)
+);
+
+CREATE INDEX IF NOT EXISTS idx_historical_open_interest_lookup
+ON historical_open_interest(source, symbol, period, timestamp);
+
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
