@@ -101,7 +101,7 @@ class BinanceCryptoMarketDataProvider:
             asset_type=AssetType.CRYPTO,
             price=price,
             volume=quote_volume,
-            average_volume=quote_volume,
+            # Broad 24h discovery has no historical-volume baseline yet.\n            average_volume=0.0,
             change_percent=change_percent,
             liquid=quote_volume > 0.0,
             bid_ask_spread_percent=spread_percent,
