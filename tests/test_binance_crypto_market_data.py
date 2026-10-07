@@ -92,3 +92,12 @@ def test_binance_provider_skips_invalid_or_zero_quotes():
     assert BinanceCryptoMarketDataProvider(
         InvalidTickerBinance()
     ).get_crypto_observations() == []
+
+
+def test_binance_broad_discovery_does_not_fake_relative_volume_history():
+    observations = BinanceCryptoMarketDataProvider(FakeBinance()).get_crypto_observations()
+
+    observation = observations[0]
+
+    assert observation.volume == 1200000.0
+    assert observation.average_volume == 0.0
