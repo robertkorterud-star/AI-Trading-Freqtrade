@@ -20,12 +20,15 @@ class BinanceAdapter:
     """Read-only adapter for Binance Spot public REST API."""
 
     BASE_URL = "https://data-api.binance.vision/api/v3"
+    SAPI_BASE_URL = "https://api.binance.com/sapi/v1"
 
     def __init__(
         self,
         base_url: str | None = None,
         timeout: float = 10.0,
         user_agent: str = "ATLAS/1.0",
+        api_key: str | None = None,
+        sapi_base_url: str | None = None,
         opener=None,
     ):
         self.base_url = (
@@ -35,6 +38,12 @@ class BinanceAdapter:
         )
         self.timeout = timeout
         self.user_agent = user_agent
+        self.api_key = api_key
+        self.sapi_base_url = (
+            sapi_base_url.rstrip("/")
+            if sapi_base_url
+            else self.SAPI_BASE_URL
+        )
         self._opener = opener or urlopen
 
     def get_price(self, symbol: str) -> dict:
@@ -94,6 +103,19 @@ class BinanceAdapter:
             },
         )
 
+    def get_tokenized_assets(self) -> list[dict]:
+        """Return Binance tokenized-asset metadata using API-key auth only."""
+        if not self.api_key:
+            return []
+
+        payload = self._get_absolute(
+            f"{self.sapi_base_url}/equity/market/tokenized-assets",
+            headers={"X-MBX-APIKEY": self.api_key},
+        )
+        if not isinstance(payload, list):
+            raise RuntimeError("Binance returned an invalid tokenized asset list")
+        return payload
+
     def get_exchange_info(self, symbol: str | None = None) -> dict:
         """Return public exchange metadata, optionally for one symbol."""
         return self._get(
@@ -106,14 +128,23 @@ class BinanceAdapter:
         path: str,
         params: dict | None = None,
     ):
-        url = self._build_url(path, params)
+        return self._get_absolute(self._build_url(path, params))
+
+    def _get_absolute(
+        self,
+        url: str,
+        headers: dict | None = None,
+    ):
+        request_headers = {
+            "Accept": "application/json",
+            "User-Agent": self.user_agent,
+        }
+        if headers:
+            request_headers.update(headers)
 
         request = Request(
             url,
-            headers={
-                "Accept": "application/json",
-                "User-Agent": self.user_agent,
-            },
+            headers=request_headers,
             method="GET",
         )
 
