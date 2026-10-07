@@ -136,3 +136,34 @@ def test_invalid_json_is_reported():
 
     with pytest.raises(RuntimeError, match="invalid JSON"):
         adapter.get_price("BTCUSDT")
+
+
+def test_get_tokenized_assets_uses_api_key_header_without_signature():
+    opener = RecordingOpener(
+        [
+            {
+                "assetCode": "AAPLB",
+                "underlyingEquitySymbol": "AAPL",
+            }
+        ]
+    )
+    adapter = BinanceAdapter(
+        api_key="test-key",
+        sapi_base_url="https://example.test/sapi/v1",
+        opener=opener,
+    )
+
+    result = adapter.get_tokenized_assets()
+
+    assert result[0]["assetCode"] == "AAPLB"
+    assert opener.request.full_url.endswith(
+        "/equity/market/tokenized-assets"
+    )
+    assert opener.request.headers["X-mbx-apikey"] == "test-key"
+    assert "signature=" not in opener.request.full_url
+
+
+def test_get_tokenized_assets_without_api_key_is_empty():
+    adapter = BinanceAdapter(opener=RecordingOpener([]))
+
+    assert adapter.get_tokenized_assets() == []
