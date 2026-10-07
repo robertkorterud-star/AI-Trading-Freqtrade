@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import math
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from atlas.adapters.binance import BinanceAdapter
 from atlas.market.market_scout import AssetType, MarketObservation
@@ -18,6 +22,19 @@ class BinanceCryptoMarketDataProvider:
     ) -> None:
         self.adapter = adapter or BinanceAdapter()
         self.quote_asset = quote_asset.strip().upper()
+
+    @classmethod
+    def from_env(
+        cls,
+        env_file: str | Path | None = None,
+        quote_asset: str = "USDT",
+    ) -> "BinanceCryptoMarketDataProvider":
+        """Build the provider using the Binance API key from the environment."""
+        load_dotenv(dotenv_path=env_file)
+        return cls(
+            adapter=BinanceAdapter(api_key=os.getenv("BINANCE_API_KEY")),
+            quote_asset=quote_asset,
+        )
 
     def get_crypto_observations(self) -> list[MarketObservation]:
         """Return active quote-market observations from one ticker snapshot."""

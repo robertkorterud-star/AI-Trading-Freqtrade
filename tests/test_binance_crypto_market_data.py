@@ -148,3 +148,16 @@ def test_binance_provider_excludes_exchange_reported_tokenized_assets():
     ).get_crypto_observations()
 
     assert [item.symbol for item in observations] == ["BTC"]
+
+
+def test_binance_provider_loads_api_key_from_env_file(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "BINANCE_API_KEY=test-binance-key\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("BINANCE_API_KEY", raising=False)
+
+    provider = BinanceCryptoMarketDataProvider.from_env(env_file=env_file)
+
+    assert provider.adapter.api_key == "test-binance-key"
