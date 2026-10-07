@@ -45,4 +45,8 @@ class AtlasConfig:
         )
     )
 
+    binance_api_key: str | None = field(
+        default_factory=lambda: os.environ.get("BINANCE_API_KEY")
+    )
+
     load_persisted_settings: bool = False
