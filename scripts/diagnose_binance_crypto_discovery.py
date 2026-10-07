@@ -22,7 +22,7 @@ DISPLAY_LIMIT = 40
 
 
 def main() -> None:
-    provider = BinanceCryptoMarketDataProvider()
+    provider = BinanceCryptoMarketDataProvider.from_env()
     scanner = ScannerService()
 
     print("Starting read-only Binance Spot discovery ...", flush=True)
