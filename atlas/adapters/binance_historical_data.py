@@ -46,6 +46,57 @@ class BinanceHistoricalDataProvider(HistoricalDataProvider):
     ) -> HistoricalMarketData:
         """Load fully closed Binance klines as historical data."""
 
+        raw_klines = self.load_raw_klines(
+            symbol,
+            start=start,
+            end=end,
+        )
+
+        now_ms = int(self._now().timestamp() * 1000)
+
+        bars = []
+
+        for kline in raw_klines:
+            if len(kline) < 7:
+                raise ValueError(
+                    "Binance historical kline must contain "
+                    "at least 7 fields"
+                )
+
+            close_time_ms = int(kline[6])
+
+            if close_time_ms >= now_ms:
+                continue
+
+            bars.append(
+                OHLCVBar(
+                    timestamp=datetime.fromtimestamp(
+                        float(kline[0]) / 1000.0,
+                        tz=timezone.utc,
+                    ),
+                    open=float(kline[1]),
+                    high=float(kline[2]),
+                    low=float(kline[3]),
+                    close=float(kline[4]),
+                    volume=float(kline[5]),
+                )
+            )
+
+        return HistoricalMarketData(
+            symbol=symbol,
+            bars=bars,
+            timeframe=self.interval,
+            source=self.source,
+        )
+
+    def load_raw_klines(
+        self,
+        symbol: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> tuple[list, ...]:
+        """Load raw Binance klines using historical pagination."""
+
         start_time = (
             int(start.timestamp() * 1000)
             if start is not None
@@ -93,39 +144,4 @@ class BinanceHistoricalDataProvider(HistoricalDataProvider):
                 end_time=end_time,
             )
 
-        now_ms = int(self._now().timestamp() * 1000)
-
-        bars = []
-
-        for kline in raw_klines:
-            if len(kline) < 7:
-                raise ValueError(
-                    "Binance historical kline must contain "
-                    "at least 7 fields"
-                )
-
-            close_time_ms = int(kline[6])
-
-            if close_time_ms >= now_ms:
-                continue
-
-            bars.append(
-                OHLCVBar(
-                    timestamp=datetime.fromtimestamp(
-                        float(kline[0]) / 1000.0,
-                        tz=timezone.utc,
-                    ),
-                    open=float(kline[1]),
-                    high=float(kline[2]),
-                    low=float(kline[3]),
-                    close=float(kline[4]),
-                    volume=float(kline[5]),
-                )
-            )
-
-        return HistoricalMarketData(
-            symbol=symbol,
-            bars=bars,
-            timeframe=self.interval,
-            source=self.source,
-        )
+        return tuple(raw_klines)

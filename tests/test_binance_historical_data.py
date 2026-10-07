@@ -303,3 +303,94 @@ def test_binance_historical_provider_can_label_injected_market_source():
     assert result.timeframe == "5m"
     assert result.source == "binance_futures"
     assert len(result.bars) == 1
+
+
+def test_binance_historical_provider_loads_paginated_raw_klines():
+    class PaginatedBinance:
+        def __init__(self):
+            self.calls = []
+
+        def get_klines(self, **kwargs):
+            self.calls.append(kwargs)
+
+            if len(self.calls) == 1:
+                return [
+                    [
+                        1767225600000,
+                        "100",
+                        "105",
+                        "99",
+                        "103",
+                        "12.5",
+                        1767225899999,
+                        "0",
+                        10,
+                        "7.5",
+                        "0",
+                        "0",
+                    ],
+                    [
+                        1767225900000,
+                        "103",
+                        "108",
+                        "102",
+                        "107",
+                        "18.0",
+                        1767226199999,
+                        "0",
+                        12,
+                        "10.8",
+                        "0",
+                        "0",
+                    ],
+                ]
+
+            if len(self.calls) == 2:
+                return [
+                    [
+                        1767226200000,
+                        "107",
+                        "110",
+                        "106",
+                        "109",
+                        "20.0",
+                        1767226499999,
+                        "0",
+                        15,
+                        "13.0",
+                        "0",
+                        "0",
+                    ],
+                ]
+
+            return []
+
+    adapter = PaginatedBinance()
+    provider = BinanceHistoricalDataProvider(
+        adapter=adapter,
+        interval="5m",
+        limit=2,
+        now=lambda: datetime(
+            2026, 1, 10, tzinfo=timezone.utc
+        ),
+    )
+
+    result = provider.load_raw_klines(
+        "BTCUSDT",
+        start=datetime(
+            2026, 1, 1, 0, 0, tzinfo=timezone.utc
+        ),
+        end=datetime(
+            2026, 1, 1, 1, 0, tzinfo=timezone.utc
+        ),
+    )
+
+    assert len(result) == 3
+
+    # Preserve Binance raw taker-buy base volume.
+    assert result[0][9] == "7.5"
+    assert result[1][9] == "10.8"
+    assert result[2][9] == "13.0"
+
+    assert len(adapter.calls) == 2
+    assert adapter.calls[1]["start_time"] == 1767226200000
