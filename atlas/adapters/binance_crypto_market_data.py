@@ -23,6 +23,11 @@ class BinanceCryptoMarketDataProvider:
         """Return active quote-market observations from one ticker snapshot."""
         exchange_info = self.adapter.get_exchange_info()
         raw_markets = exchange_info.get("symbols", [])
+        tokenized_assets = {
+            str(item.get("assetCode", "")).upper()
+            for item in self.adapter.get_tokenized_assets()
+            if isinstance(item, dict) and item.get("assetCode")
+        }
         tickers = {
             str(item.get("symbol", "")).upper(): item
             for item in self.adapter.get_24hr_tickers()
@@ -39,7 +44,11 @@ class BinanceCryptoMarketDataProvider:
             base_asset = str(market.get("baseAsset", "")).upper()
             ticker = tickers.get(exchange_symbol)
 
-            if not base_asset or ticker is None:
+            if (
+                not base_asset
+                or base_asset in tokenized_assets
+                or ticker is None
+            ):
                 continue
 
             observation = self._observation(base_asset, ticker)
