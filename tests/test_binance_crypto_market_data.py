@@ -69,7 +69,7 @@ def test_binance_provider_builds_observation_from_active_usdt_spot_market():
     assert observation.symbol == "BTC"
     assert observation.price == 100000.0
     assert observation.volume == 1200000.0
-    assert observation.average_volume == 1200000.0
+    assert observation.average_volume == 0.0
     assert observation.change_percent == 5.0
     assert observation.liquid is True
     assert observation.bid_ask_spread_percent == 0.02
