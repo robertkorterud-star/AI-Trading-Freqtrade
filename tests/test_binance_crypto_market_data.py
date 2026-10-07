@@ -29,6 +29,9 @@ class FakeBinance:
             ]
         }
 
+    def get_tokenized_assets(self):
+        return []
+
     def get_24hr_tickers(self):
         return [
             {
@@ -101,3 +104,47 @@ def test_binance_broad_discovery_does_not_fake_relative_volume_history():
 
     assert observation.volume == 1200000.0
     assert observation.average_volume == 0.0
+
+
+def test_binance_provider_excludes_exchange_reported_tokenized_assets():
+    class TokenizedAssetBinance(FakeBinance):
+        def get_exchange_info(self):
+            info = super().get_exchange_info()
+            info["symbols"].append(
+                {
+                    "symbol": "AAPLBUSDT",
+                    "baseAsset": "AAPLB",
+                    "quoteAsset": "USDT",
+                    "status": "TRADING",
+                    "isSpotTradingAllowed": True,
+                }
+            )
+            return info
+
+        def get_tokenized_assets(self):
+            return [
+                {
+                    "assetCode": "AAPLB",
+                    "name": "Apple Inc.",
+                    "underlyingEquitySymbol": "AAPL",
+                }
+            ]
+
+        def get_24hr_tickers(self):
+            return super().get_24hr_tickers() + [
+                {
+                    "symbol": "AAPLBUSDT",
+                    "lastPrice": "250",
+                    "volume": "100",
+                    "quoteVolume": "25000",
+                    "priceChangePercent": "2",
+                    "bidPrice": "249",
+                    "askPrice": "251",
+                }
+            ]
+
+    observations = BinanceCryptoMarketDataProvider(
+        TokenizedAssetBinance()
+    ).get_crypto_observations()
+
+    assert [item.symbol for item in observations] == ["BTC"]
