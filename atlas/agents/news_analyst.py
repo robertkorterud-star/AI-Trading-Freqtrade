@@ -5,6 +5,7 @@ Analyzes recent financial news using the AI adapter.
 """
 
 from dataclasses import asdict, is_dataclass
+from datetime import datetime, timezone
 
 from atlas.agents.base_agent import BaseAgent
 from atlas.models.action import Action
@@ -214,17 +215,53 @@ class NewsAnalyst(BaseAgent):
             metadata={"news_items": self._serialize_articles(articles)},
         )
 
+    @staticmethod
+    def _historical_news_timestamp(article):
+        """Parse supported publication timestamps; reject ambiguous timestamps."""
+        value = (article.get("published_at") if isinstance(article, dict)
+                 else getattr(article, "published_at", None))
+        try:
+            if isinstance(value, datetime):
+                published = value
+            elif isinstance(value, (int, float)) and not isinstance(value, bool):
+                published = datetime.fromtimestamp(value, tz=timezone.utc)
+            elif isinstance(value, str):
+                value = value.strip()
+                if len(value) == 14 and value.isdigit():
+                    published = datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+                else:
+                    published = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            else:
+                return None
+            if published.tzinfo is None or published.utcoffset() is None:
+                return None
+            return published.astimezone(timezone.utc)
+        except (ValueError, OverflowError, OSError, TypeError):
+            return None
+
     def analyze_with_news(
         self,
         symbol: str,
         articles: list,
+        *,
+        as_of: datetime | None = None,
     ) -> AnalysisResult:
         """
         Analyze already-fetched news.
 
         Useful for tests and for callers that already have
-        a news collection.
+        a news collection. Historical analysis excludes future/undated articles.
         """
+
+        if as_of is not None:
+            if as_of.tzinfo is None or as_of.utcoffset() is None:
+                raise ValueError("as_of must be timezone-aware")
+            cutoff = as_of.astimezone(timezone.utc)
+            articles = [
+                article for article in articles
+                if (published := self._historical_news_timestamp(article)) is not None
+                and published <= cutoff
+            ]
 
         try:
             return self.analyze_news(
