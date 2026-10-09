@@ -187,6 +187,7 @@ class DryRunLoop:
             reason=decision.reason,
             expected_return=expected_return,
             approved_quantity=approved_quantity,
+            market_prices=self._latest_prices.copy(),
         )
 
         return DryRunCycleResult(

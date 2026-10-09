@@ -80,6 +80,7 @@ class DryRunTrader:
         reason: str = "",
         expected_return: float | None = None,
         approved_quantity: float | None = None,
+        market_prices: dict[str, float] | None = None,
     ) -> DryRunResult:
         """
         Process one ATLAS decision.
@@ -111,6 +112,9 @@ class DryRunTrader:
             normalized_action = action_value.strip().upper()
             action = Action(normalized_action)
 
+        prices = dict(market_prices) if market_prices is not None else {}
+        prices[symbol] = price
+
         current = self.portfolio.observe_price(symbol, price)
 
         current_position = 0.0
@@ -122,9 +126,7 @@ class DryRunTrader:
                 / self.max_position_value,
             )
 
-        portfolio_equity = self.portfolio.equity(
-            {symbol: price}
-        )
+        portfolio_equity = self.portfolio.equity(prices)
 
         # Expected-return gate applies to new BUY decisions only.
         # Exits must remain available even when the expected future
@@ -155,9 +157,7 @@ class DryRunTrader:
                     ),
                 )
 
-                equity = self.portfolio.equity(
-                    {symbol: price}
-                )
+                equity = self.portfolio.equity(prices)
 
                 return DryRunResult(
                     symbol=symbol,
@@ -251,9 +251,7 @@ class DryRunTrader:
                 context,
             )
 
-            equity = self.portfolio.equity(
-                {symbol: price}
-            )
+            equity = self.portfolio.equity(prices)
 
             return DryRunResult(
                 symbol=symbol,
@@ -363,9 +361,7 @@ class DryRunTrader:
                     quantity,
                 )
 
-        equity = self.portfolio.equity(
-            {symbol: price}
-        )
+        equity = self.portfolio.equity(prices)
 
         fee = 0.0
 

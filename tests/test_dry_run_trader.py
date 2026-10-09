@@ -415,3 +415,28 @@ def test_dry_run_trailing_stop_tracks_peak_reached_after_entry():
     assert trailing_exit.executed is True
     assert "trailing stop" in trailing_exit.reason
     assert "BTC-USD" not in trader.portfolio.positions
+
+
+def test_dry_run_trader_uses_all_last_known_prices_for_risk_equity():
+    """A multi-symbol execution must use current prices for every position."""
+    class RecordingRiskEngine:
+        def __init__(self):
+            self.equities = []
+
+        def evaluate(self, **kwargs):
+            self.equities.append(kwargs["total_equity_nok"])
+            return type("Result", (), {"approved": True, "reason": "approved"})()
+
+    portfolio = PaperPortfolio(initial_cash=100_000.0, fee_rate=0.0)
+    portfolio.buy("BTCUSDT", 100.0, 100.0)
+    portfolio.buy("ETHUSDT", 100.0, 100.0)
+    risk = RecordingRiskEngine()
+    trader = DryRunTrader(portfolio=portfolio, risk_engine=risk)
+
+    trader.process_signal(
+        "ETHUSDT", Action.HOLD, price=80.0,
+        confidence=0.5, risk_score=0.0,
+        market_prices={"BTCUSDT": 150.0, "ETHUSDT": 80.0},
+    )
+
+    assert risk.equities[-1] == 103_000.0
