@@ -119,6 +119,19 @@ class BinanceScannerService:
             if market.get("status") == "TRADING"
             and market.get("isSpotTradingAllowed") is True
         }
+        tokenized_assets: set[str] = set()
+        get_tokenized_assets = getattr(
+            self.market_data.adapter,
+            "get_tokenized_assets",
+            None,
+        )
+        if callable(get_tokenized_assets):
+            tokenized_assets = {
+                str(asset.get("assetCode", "")).strip().upper()
+                for asset in get_tokenized_assets()
+                if asset.get("assetCode")
+            }
+
         eligible: list[tuple[str, float, float, float, float]] = []
 
         for ticker in tickers:
@@ -127,6 +140,8 @@ class BinanceScannerService:
             if quote_asset not in self.quote_assets:
                 continue
             if symbol not in trading_symbols:
+                continue
+            if self._base_asset(symbol) in tokenized_assets:
                 continue
 
             try:

@@ -52,3 +52,14 @@ def test_dashboard_uses_coingecko_metadata_by_default(tmp_path):
         service.binance_scanner.crypto_metadata,
         CoinGeckoAdapter,
     )
+
+
+def test_dashboard_wires_configured_binance_api_key_into_default_scanner(tmp_path):
+    config = AtlasConfig(
+        database_path=str(tmp_path / "atlas.db"),
+        binance_api_key="test-binance-key",
+    )
+
+    service = DashboardService(config=config)
+
+    assert service.binance_scanner.market_data.adapter.api_key == "test-binance-key"

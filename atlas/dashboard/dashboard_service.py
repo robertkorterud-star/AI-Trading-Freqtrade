@@ -102,8 +102,15 @@ class DashboardService:
                 self.data.portfolio.reset()
         self._portfolio_trade_count = trading.count()
         self.scanner = ScannerService()
+        if binance_market_data is None:
+            from atlas.adapters.binance import BinanceAdapter
+
+            binance_market_data = BinanceMarketDataAdapter(
+                adapter=BinanceAdapter(api_key=resolved_config.binance_api_key)
+            )
+
         self.binance_scanner = BinanceScannerService(
-            binance_market_data or BinanceMarketDataAdapter(),
+            binance_market_data,
             scanner=self.scanner,
             crypto_metadata=crypto_metadata or CoinGeckoAdapter(),
         )

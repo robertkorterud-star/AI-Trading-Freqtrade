@@ -479,3 +479,46 @@ def test_engine_initializes_etoro_scanner_candidate_source(
         engine.scanner_candidate_source.scanner,
         ScannerService,
     )
+
+
+def test_binance_candidate_without_exact_resolution_is_not_added():
+    """Scanner discovery alone must not make a Binance asset available."""
+    from atlas.services.dynamic_asset_service import DynamicAssetService
+
+    engine = object.__new__(AtlasEngine)
+    engine.asset_universe = AssetUniverse(assets=[])
+
+    class FakeResolver:
+        def resolve(self, query):
+            assert query == "GLMR-USD"
+            return [
+                Asset(
+                    symbol="GLMRUSDT",
+                    name="Moonbeam Binance pair",
+                    asset_type=AssetType.CRYPTO,
+                    market="crypto",
+                    currency="USDT",
+                )
+            ]
+
+    engine.dynamic_asset_service = DynamicAssetService(
+        resolver=FakeResolver(),
+        universe=engine.asset_universe,
+    )
+
+    candidate = Candidate(
+        symbol="GLMR-USD",
+        source="binance_scanner",
+        score=51.9,
+        metadata={
+            "exchange": "binance",
+            "scanner_symbol": "GLMRUSDT",
+            "quote_asset": "USDT",
+        },
+    )
+
+    added = engine.expand_universe_from_candidates([candidate])
+
+    assert added == 0
+    assert engine.asset_universe.get("GLMR-USD") is None
+    assert engine.asset_universe.get("GLMRUSDT") is None

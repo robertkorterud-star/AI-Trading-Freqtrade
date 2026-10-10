@@ -367,3 +367,56 @@ def test_binance_scanner_enriches_order_book_depth_for_shortlisted_markets():
     by_symbol = {item.symbol: item for item in observations}
 
     assert by_symbol["BTCUSDT"].order_book_depth_quote == 899_850.0
+
+
+def test_binance_scanner_excludes_exchange_reported_tokenized_assets():
+    class TokenizedAssetAdapter(FakeBinanceAdapter):
+        def get_24hr_tickers(self):
+            return [
+                {
+                    "symbol": "BTCUSDT",
+                    "lastPrice": "100000",
+                    "highPrice": "101000",
+                    "lowPrice": "99000",
+                    "quoteVolume": "500000000",
+                    "priceChangePercent": "2",
+                },
+                {
+                    "symbol": "AAPLBUSDT",
+                    "lastPrice": "250",
+                    "highPrice": "255",
+                    "lowPrice": "245",
+                    "quoteVolume": "5000000",
+                    "priceChangePercent": "4",
+                },
+            ]
+
+        def get_exchange_info(self, symbol=None):
+            return {
+                "symbols": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "status": "TRADING",
+                        "isSpotTradingAllowed": True,
+                    },
+                    {
+                        "symbol": "AAPLBUSDT",
+                        "status": "TRADING",
+                        "isSpotTradingAllowed": True,
+                    },
+                ]
+            }
+
+        def get_tokenized_assets(self):
+            return [{"assetCode": "AAPLB"}]
+
+    service = BinanceScannerService(
+        BinanceMarketDataAdapter(adapter=TokenizedAssetAdapter()),
+        volume_enrichment_limit=0,
+        relative_volume_5m_discovery_limit=0,
+        spread_enrichment_limit=0,
+    )
+
+    observations = service.observations()
+
+    assert [item.symbol for item in observations] == ["BTCUSDT"]
