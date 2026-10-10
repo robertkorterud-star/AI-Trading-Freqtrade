@@ -49,4 +49,6 @@ class AtlasConfig:
         default_factory=lambda: os.environ.get("BINANCE_API_KEY")
     )
 
+    scanner_exchange: str = "etoro"
+
     load_persisted_settings: bool = False

@@ -522,3 +522,38 @@ def test_binance_candidate_without_exact_resolution_is_not_added():
     assert added == 0
     assert engine.asset_universe.get("GLMR-USD") is None
     assert engine.asset_universe.get("GLMRUSDT") is None
+
+
+def test_engine_can_select_binance_scanner_candidate_source(
+    tmp_path,
+    monkeypatch,
+):
+    """Explicit Binance selection must reuse the canonical candidate source."""
+    from atlas.core.config import AtlasConfig
+    from atlas.market.candidates.scanner import ScannerCandidateSource
+    from atlas.services.binance_scanner_service import BinanceScannerService
+
+    monkeypatch.setenv(
+        "ATLAS_DATABASE_PATH",
+        str(tmp_path / "atlas.db"),
+    )
+
+    config = AtlasConfig(
+        scanner_exchange="binance",
+        binance_api_key="test-binance-key",
+    )
+    engine = AtlasEngine(config=config)
+
+    assert isinstance(
+        engine.scanner_candidate_source,
+        ScannerCandidateSource,
+    )
+    assert engine.scanner_candidate_source.exchange == "binance"
+    assert isinstance(
+        engine.scanner_candidate_source.scanner,
+        BinanceScannerService,
+    )
+    assert (
+        engine.scanner_candidate_source.scanner.market_data.adapter.api_key
+        == "test-binance-key"
+    )

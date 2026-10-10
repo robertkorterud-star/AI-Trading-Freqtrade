@@ -147,8 +147,30 @@ class AtlasEngine:
 
         self.candidate_research_service = CandidateResearchService()
 
+        scanner_exchange = self.config.scanner_exchange.strip().lower()
+
+        if scanner_exchange == "binance":
+            from atlas.adapters.binance import BinanceAdapter
+            from atlas.adapters.binance_market_data import BinanceMarketData
+            from atlas.services.binance_scanner_service import BinanceScannerService
+
+            scanner = BinanceScannerService(
+                market_data=BinanceMarketData(
+                    adapter=BinanceAdapter(
+                        api_key=self.config.binance_api_key,
+                    )
+                ),
+            )
+        elif scanner_exchange == "etoro":
+            scanner = ScannerService()
+        else:
+            raise ValueError(
+                f"Unsupported scanner exchange: {scanner_exchange}"
+            )
+
         self.scanner_candidate_source = ScannerCandidateSource(
-            scanner=ScannerService(),
+            scanner=scanner,
+            exchange=scanner_exchange,
         )
 
         self.registry = AgentRegistry()
