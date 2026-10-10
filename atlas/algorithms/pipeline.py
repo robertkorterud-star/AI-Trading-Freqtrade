@@ -91,3 +91,20 @@ class AlgorithmPipeline:
         fused = self.fusion.combine(signals)
 
         return fused, signals
+
+    def analyze_timeframes(
+        self,
+        symbol: str,
+        market_data,
+    ):
+        """Fuse algorithm evidence independently for each timeframe."""
+        signals = self.generate_signals(symbol, market_data)
+
+        grouped = {}
+        for signal in signals:
+            grouped.setdefault(signal.timeframe, []).append(signal)
+
+        return {
+            timeframe: self.fusion.combine(timeframe_signals)
+            for timeframe, timeframe_signals in grouped.items()
+        }
